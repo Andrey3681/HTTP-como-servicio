@@ -1,0 +1,49 @@
+@startuml flujo-aprovisionamiento
+!theme plain
+autonumber
+
+actor "Usuario / Navegador" as User
+participant "Panel Web (Frontend)" as UI
+participant "Controlador HTTP" as Handler
+participant "Orquestador de Servicios" as Orchestrator
+participant "Adaptador VirtualBox" as VBox
+participant "Adaptador Bind9" as DNS
+participant "Adaptador Desplegador" as Deployer
+database "Repositorio de Datos" as Repo
+
+User -> UI : Ingresa nombre de host ("paisajes") y sube "archivos.zip"
+UI -> Handler : POST /api/instancias (multipart/form-data)
+Handler -> Handler : Validar nombre de host y formato de archivo
+Handler -> Orchestrator : Provision(ctx, request)
+
+group 1. Creación de VM
+  Orchestrator -> VBox : CreateVM(name, baseDisk="ApacheServer.vdi")
+  note right: Utiliza disco en modo multiattach\nCreando snapshot/diferencial
+  VBox --> Orchestrator : InstanceInfo (vmID)
+  Orchestrator -> VBox : Start(vmID)
+  Orchestrator -> VBox : WaitForIP(vmID)
+  VBox --> Orchestrator : IP (192.168.10.30)
+end
+
+group 2. Registro DNS Dinámico
+  Orchestrator -> DNS : AddRecord(paisajes.cloud.local., 192.168.10.30)
+  DNS --> Orchestrator : OK
+  Orchestrator -> DNS : VerifyResolution("paisajes.cloud.local.")
+  DNS --> Orchestrator : OK
+end
+
+group 3. Despliegue de Contenido Web
+  Orchestrator -> Deployer : DeployZip(ip="192.168.10.30", zipContent)
+  Deployer --> Orchestrator : OK (extraído en /var/www/html)
+end
+
+group 4. Registro y Persistencia
+  Orchestrator -> Repo : Save(instance)
+  Repo --> Orchestrator : OK
+end
+
+Orchestrator --> Handler : Instance
+Handler --> UI : 201 Created (JSON con enlace y datos)
+UI --> User : Muestra instancia en tabla con enlace activo
+@enduml
+

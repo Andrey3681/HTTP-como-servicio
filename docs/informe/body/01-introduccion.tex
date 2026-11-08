@@ -1,0 +1,8 @@
+\section{Introducción}
+
+El crecimiento sostenido de los modelos de computación en la nube ha transformado la manera en que las organizaciones despliegan, administran y escalan aplicaciones de software. Los modelos de Infraestructura como Servicio (IaaS) y Plataforma como Servicio (PaaS) permiten a los usuarios aprovisionar capacidad de cómputo y pilas de ejecución bajo demanda sin gestionar la complejidad del hardware físico subyacente.
+
+En este contexto, el presente proyecto desarrolla un sistema de Servicio Administrado de Servidores HTTP (HTTPaaS) implementado en un entorno local virtualizado. La plataforma combina tecnologías de virtualización con Oracle VirtualBox, resolución de nombres dinámica con Bind9 y un motor orquestador desarrollado en Golang bajo el patrón de arquitectura hexagonal. 
+
+A través de una interfaz gráfica web centralizada, los usuarios pueden solicitar instancias de servidores web Apache proporcionando un nombre de host deseado y un archivo comprimido (\texttt{.zip}) con el contenido web a publicar. El sistema automatiza completamente el ciclo de vida: creación de máquinas virtuales a partir de discos en modo multiconexión, asignación de red, actualización de zonas DNS y despliegue del contenido.
+

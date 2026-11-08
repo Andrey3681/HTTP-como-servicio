@@ -1,0 +1,54 @@
+\documentclass[journal,10pt]{IEEEtran}
+
+\usepackage{fontspec}
+\usepackage[spanish,es-nodecimaldot]{babel}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{listings}
+
+\graphicspath{{images/}}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  backgroundcolor=\color{gray!10}
+}
+
+\begin{document}
+
+\title{Servicio Administrado de Páginas y Aplicaciones Web (HTTPaaS) en Entorno Local Virtualizado}
+
+\author{Estudiantes del Curso de Computación en la Nube\\
+\IEEEmembership{Facultad de Ingeniería}\\
+Universidad Tecnológica de Pereira\\
+Noviembre de 2026}
+
+\maketitle
+
+\begin{abstract}
+Este documento describe el diseño, la implementación y la validación de un servicio administrado de servidores HTTP (HTTPaaS) desplegado sobre un entorno local virtualizado con Oracle VirtualBox, Apache Web Server y Bind9. La solución orquestada en Golang permite a los usuarios aprovisionar de forma desatendida instancias web a partir de discos en modo multiconexión, actualizando dinámicamente los registros de un servidor DNS local y desplegando paquetes web comprimidos, simulando las capacidades de plataformas de nube como servicio (IaaS/PaaS).
+\end{abstract}
+
+\begin{IEEEkeywords}
+Computación en la nube, HTTPaaS, VirtualBox, discos multiconexión, Bind9, DNS dinámico, Golang, arquitectura hexagonal.
+\end{IEEEkeywords}
+
+\input{body/01-introduccion.tex}
+\input{body/02-marco-teorico.tex}
+\input{body/03-diseno-solucion.tex}
+\input{body/04-implementacion.tex}
+\input{body/05-pruebas-evidencias.tex}
+\input{body/06-problemas-mejoras-conclusiones.tex}
+
+\bibliographystyle{IEEEtran}
+\bibliography{ref}
+
+\end{document}
+

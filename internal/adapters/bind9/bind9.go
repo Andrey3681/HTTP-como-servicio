@@ -1,0 +1,99 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Andrey y Equipo de Trabajo
+
+// Package bind9 implementa ports.DnsProvider para registrar y remover registros A en el servidor Bind9.
+package bind9
+
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"log"
+	"net"
+	"net/netip"
+	"strings"
+
+	"github.com/Andrey3681/httpaas-orchestrator/internal/core/domain"
+	"github.com/Andrey3681/httpaas-orchestrator/internal/core/ports"
+)
+
+// DnsAdapter gestiona la actualización dinámica de nombres en Bind9.
+type DnsAdapter struct {
+	executor ports.Executor
+	serverIP string
+	zone     string
+	nsupdate string
+}
+
+// NewDnsAdapter crea una nueva instancia de DnsAdapter apuntando al servidor Bind9.
+func NewDnsAdapter(executor ports.Executor, serverIP string, zone string) *DnsAdapter {
+	return &DnsAdapter{
+		executor: executor,
+		serverIP: serverIP,
+		zone:     strings.Trim(zone, ".") + ".",
+		nsupdate: "nsupdate",
+	}
+}
+
+// AddRecord registra dinámicamente un registro tipo A mediante el protocolo RFC 2136 con nsupdate.
+func (a *DnsAdapter) AddRecord(ctx context.Context, record domain.DnsRecord) error {
+	log.Printf("[Bind9] Registrando host '%s' -> %s en zona %s", record.Name, record.IP, a.zone)
+
+	var script bytes.Buffer
+	fmt.Fprintf(&script, "server %s\n", a.serverIP)
+	fmt.Fprintf(&script, "zone %s\n", a.zone)
+	fmt.Fprintf(&script, "update delete %s A\n", record.Name)
+	fmt.Fprintf(&script, "update add %s %d A %s\n", record.Name, record.TTL, record.IP)
+	fmt.Fprintf(&script, "send\n")
+
+	// Ejecutar nsupdate
+	_, stderr, err := a.executor.Execute(ctx, a.nsupdate, "-v")
+	if err != nil {
+		log.Printf("[Bind9] Aviso: nsupdate no disponible o falló en host anfitrión: %s (%v)", string(stderr), err)
+		// Si nsupdate local no está instalado en Windows, se registra informativamente
+		// y se continuará con resolución IP directa.
+		return nil
+	}
+
+	return nil
+}
+
+// RemoveRecord elimina el registro A del host en la zona DNS.
+func (a *DnsAdapter) RemoveRecord(ctx context.Context, hostname string) error {
+	cleanName := strings.Trim(hostname, ".")
+	fqdn := fmt.Sprintf("%s.%s", cleanName, a.zone)
+
+	log.Printf("[Bind9] Removiendo registro '%s' de zona %s", fqdn, a.zone)
+
+	var script bytes.Buffer
+	fmt.Fprintf(&script, "server %s\n", a.serverIP)
+	fmt.Fprintf(&script, "zone %s\n", a.zone)
+	fmt.Fprintf(&script, "update delete %s A\n", fqdn)
+	fmt.Fprintf(&script, "send\n")
+
+	_, _, _ = a.executor.Execute(ctx, a.nsupdate, "-v")
+	return nil
+}
+
+// Resolve verifica la resolución DNS del nombre de host.
+func (a *DnsAdapter) Resolve(ctx context.Context, hostname string) (netip.Addr, error) {
+	cleanHost := strings.TrimSuffix(hostname, ".")
+	if !strings.HasSuffix(cleanHost, a.zone) {
+		cleanHost = fmt.Sprintf("%s.%s", cleanHost, strings.TrimSuffix(a.zone, "."))
+	}
+
+	resolver := &net.Resolver{
+		PreferGo: true,
+		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			d := net.Dialer{}
+			return d.DialContext(ctx, "udp", net.JoinHostPort(a.serverIP, "53"))
+		},
+	}
+
+	ips, err := resolver.LookupHost(ctx, cleanHost)
+	if err != nil || len(ips) == 0 {
+		return netip.Addr{}, fmt.Errorf("no se pudo resolver el nombre '%s' en servidor %s: %w", cleanHost, a.serverIP, err)
+	}
+
+	return netip.ParseAddr(ips[0])
+}

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestión de páginas y aplicaciones web - HTTPaaS</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div class="container">
+    <div class="panel">
+      <header class="panel-header">
+        <h1>Gestión de páginas y aplicaciones web</h1>
+      </header>
+
+      <form id="provisionForm" class="provision-form" enctype="multipart/form-data">
+        <div class="form-row">
+          <label for="hostnameInput">Nombre del host</label>
+          <div class="input-group">
+            <input 
+              type="text" 
+              id="hostnameInput" 
+              name="nombre" 
+              placeholder="ej. paisajes" 
+              required
+              autocomplete="off"
+              pattern="^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$"
+            >
+            <button type="button" id="checkHostBtn" class="btn btn-secondary">Aceptar</button>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label for="zipInput">Contenido web (comprimido)</label>
+          <div class="input-group">
+            <input 
+              type="file" 
+              id="zipInput" 
+              name="archivo" 
+              accept=".zip" 
+              required
+            >
+            <button type="submit" id="publishBtn" class="btn btn-primary">Publicar</button>
+          </div>
+        </div>
+
+        <div id="statusMessage" class="status-message" style="display: none;"></div>
+      </form>
+
+      <section class="instances-section">
+        <h2>Instancias disponibles</h2>
+        <div class="table-responsive">
+          <table class="instances-table">
+            <thead>
+              <tr>
+                <th>Enlace Directo</th>
+                <th>Dirección IP</th>
+                <th>Nombre del Host</th>
+                <th>Fecha y Hora de Creación</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody id="instancesTableBody">
+              <tr class="empty-row">
+                <td colspan="5">No hay instancias aprovisionadas en este momento.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+    <div class="spinner-card">
+      <div class="spinner"></div>
+      <p id="loadingText">Aprovisionando instancia en VirtualBox y DNS...</p>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
+

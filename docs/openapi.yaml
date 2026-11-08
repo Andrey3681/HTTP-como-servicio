@@ -1,0 +1,233 @@
+openapi: 3.0.3
+info:
+  title: HTTPaaS API - Orquestador de Servidores HTTP
+  description: API REST para el aprovisionamiento automatizado de máquinas virtuales con Apache HTTP Server y DNS dinámico en Bind9.
+  version: 1.0.0
+  contact:
+    name: Soporte HTTPaaS
+servers:
+  - url: http://localhost:8080
+    description: Servidor local de orquestación
+
+paths:
+  /api/instancias:
+    get:
+      summary: Listar instancias activas
+      description: Retorna la lista de todas las instancias de servidor HTTP aprovisionadas y en ejecución.
+      responses:
+        '200':
+          description: Listado de instancias obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datos:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Instancia'
+                  total:
+                    type: integer
+                    example: 2
+    post:
+      summary: Aprovisionar nueva instancia HTTP
+      description: Crea una máquina virtual a partir del disco multiconexión, asigna red, registra el host en Bind9 y despliega el sitio web.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - nombre
+                - archivo
+              properties:
+                nombre:
+                  type: string
+                  description: Subdominio deseado (ej. paisajes)
+                  example: paisajes
+                  pattern: '^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$'
+                archivo:
+                  type: string
+                  format: binary
+                  description: Archivo .zip con el contenido estático de la página o aplicación web
+      responses:
+        '201':
+          description: Instancia creada y aprovisionada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: Instancia aprovisionada con éxito
+                  datos:
+                    $ref: '#/components/schemas/Instancia'
+        '400':
+          description: Datos de entrada inválidos o nombre de host duplicado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+        '500':
+          description: Error en el aprovisionamiento (VM, DNS o despliegue)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+
+  /api/instancias/{id}:
+    get:
+      summary: Obtener detalle de una instancia
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Identificador o nombre de la instancia
+      responses:
+        '200':
+          description: Detalle de la instancia
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datos:
+                    $ref: '#/components/schemas/Instancia'
+        '404':
+          description: Instancia no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+    delete:
+      summary: Eliminar una instancia
+      description: Apaga y destruye la máquina virtual, elimina los diferenciales de disco y desvincula el registro DNS en Bind9.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Identificador de la instancia a eliminar
+      responses:
+        '200':
+          description: Instancia destruida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: Instancia eliminada exitosamente
+        '404':
+          description: Instancia no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+        '500':
+          description: Error al desmantelar recursos de la instancia
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+
+  /api/dns/registros:
+    get:
+      summary: Consultar registros DNS de la zona
+      description: Retorna los registros de tipo A activos en la zona local cloud.local.
+      responses:
+        '200':
+          description: Lista de registros DNS
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  zona:
+                    type: string
+                    example: cloud.local.
+                  registros:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        nombre:
+                          type: string
+                          example: paisajes.cloud.local.
+                        tipo:
+                          type: string
+                          example: A
+                        ip:
+                          type: string
+                          example: 192.168.10.30
+                        ttl:
+                          type: integer
+                          example: 300
+
+  /api/salud:
+    get:
+      summary: Comprobar salud del entorno
+      description: Verifica la disponibilidad del comando VBoxManage y del servidor DNS Bind9.
+      responses:
+        '200':
+          description: Estado de salud del sistema
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  estado:
+                    type: string
+                    example: ok
+                  vboxmanage:
+                    type: boolean
+                    example: true
+                  bind9:
+                    type: boolean
+                    example: true
+
+components:
+  schemas:
+    Instancia:
+      type: object
+      properties:
+        id:
+          type: string
+          example: paisajes
+        nombre:
+          type: string
+          example: paisajes
+        fqdn:
+          type: string
+          example: paisajes.cloud.local
+        ip:
+          type: string
+          example: 192.168.10.30/24
+        enlace:
+          type: string
+          example: http://paisajes.cloud.local
+        estado:
+          type: string
+          enum: [CREANDO, ACTIVA, ERROR, ELIMINADA]
+          example: ACTIVA
+        creado_en:
+          type: string
+          format: date-time
+          example: '2026-04-22T17:02:03Z'
+
+    ErrorRespuesta:
+      type: object
+      properties:
+        error:
+          type: string
+          example: El nombre de host ya se encuentra registrado
+        codigo:
+          type: integer
+          example: 400
+

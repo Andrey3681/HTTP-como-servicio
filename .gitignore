@@ -1,0 +1,53 @@
+# Binarios de Go y ejecutables
+/httpaas-server
+/httpaas-server.exe
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/bin/
+
+# Pruebas y cobertura
+*.test
+coverage.out
+coverage.html
+
+# Almacenamiento local y datos temporales
+/data/*
+!/data/.gitkeep
+/uploads/*
+*.zip
+*.tar.gz
+
+# Archivos de VirtualBox y discos virtuales
+*.vdi
+*.vmdk
+*.vbox
+*.vbox-prev
+*.nvram
+
+# Artefactos de compilación LaTeX
+docs/informe/*.aux
+docs/informe/*.bbl
+docs/informe/*.bcf
+docs/informe/*.blg
+docs/informe/*.fdb_latexmk
+docs/informe/*.fls
+docs/informe/*.log
+docs/informe/*.out
+docs/informe/*.run.xml
+docs/informe/*.synctex.gz
+docs/informe/*.toc
+docs/informe/*.pdf
+
+# Archivos del sistema y editores
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+

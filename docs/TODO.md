@@ -1,0 +1,50 @@
+# Lista de Seguimiento y Tareas (TODO) - HTTPaaS
+
+## 1. Infraestructura Base y Virtualización
+- [ ] Desplegar y configurar la máquina virtual dedicada `ns` (Debian 13.0 CLI).
+  - [ ] Asignar IP fija `192.168.10.10/24` en la red interna `cloudnet`.
+  - [ ] Instalar y configurar Bind9 (`named`) para la zona `cloud.local.`.
+  - [ ] Habilitar actualizaciones dinámicas mediante TSIG (`nsupdate`) o scripts con clave SSH.
+- [ ] Configurar la máquina virtual plantilla base `ApacheServer` (Debian 13.0 CLI).
+  - [ ] Instalar Apache Web Server y verificar que inicie automáticamente.
+  - [ ] Instalar VirtualBox Guest Additions para permitir consulta de IP por `guestproperty`.
+  - [ ] Habilitar servidor SSH o permisos de escritura en `/var/www/html/`.
+  - [ ] Marcar el disco `ApacheServer.vdi` en modo multiconexión (`multiattach`):
+    `VBoxManage modifymedium disk ApacheServer.vdi --type multiattach`.
+
+## 2. Dominio y Puertos Hexagonales (Go)
+- [x] Definir modelos de dominio e invariantes (`internal/core/domain`).
+- [x] Definir contratos de puertos (`internal/core/ports`).
+- [ ] Implementar pruebas unitarias de invariantes del dominio (`domain_test.go`).
+
+## 3. Adaptadores Secundarios (Infraestructura)
+- [ ] Adaptador `localproc` (`ports.Executor` sobre `os/exec`).
+- [ ] Adaptador `vbox` (`ports.Hypervisor` sobre `VBoxManage` CLI con `sync.Mutex`).
+- [ ] Adaptador `bind9` (`ports.DnsProvider` sobre `nsupdate` o SSH).
+- [ ] Adaptador `deployer` (`ports.Deployer` sobre `guestcontrol` o SSH/SCP).
+- [ ] Adaptador `filestore` (`ports.Repository` sobre JSON atómico / SQLite).
+
+## 4. Servicios de Aplicación y Orquestación
+- [ ] Implementar servicio de orquestación transaccional (`internal/services/orchestrator.go`).
+- [ ] Implementar política de rollback si falla la asignación de IP, registro DNS o despliegue.
+- [ ] Implementar servicio de consulta y eliminación de instancias (`internal/services/instance.go`).
+- [ ] Suite de pruebas de servicios con mocks/fakes de puertos (`orchestrator_test.go`).
+
+## 5. Adaptadores Primarios e Interfaz Web
+- [ ] Implementar handlers REST (`internal/handlers/instance_handler.go`, `dns_handler.go`).
+- [ ] Implementar middleware de logging, CORS y recuperación ante pánicos.
+- [ ] Construir panel web estático en `web/` (HTML, CSS y JS).
+  - [ ] Formulario de carga con campo de texto y selector de `.zip`.
+  - [ ] Validación asíncrona de disponibilidad de subdominio.
+  - [ ] Tabla de instancias activas con enlace `http://<host>.cloud.local` (target="_blank").
+  - [ ] Botón rojo para eliminar instancia con diálogo de confirmación.
+
+## 6. Documentación e Informe Académico
+- [x] Crear especificación arquitectónica (`docs/arquitectura.md`).
+- [x] Crear especificación de diseño (`docs/diseno-solucion.md`).
+- [x] Crear especificación OpenAPI (`docs/openapi.yaml`).
+- [x] Crear diagramas PlantUML (`docs/diagramas/`).
+- [ ] Redactar capítulos del informe IEEEtran en `docs/informe/body/`.
+- [ ] Tomar capturas de pantalla de evidencias y almacenarlas en `docs/informe/images/`.
+- [ ] Compilar informe final en PDF (`task informe`).
+

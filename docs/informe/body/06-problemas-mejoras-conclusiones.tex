@@ -1,0 +1,20 @@
+\section{Dificultades, Mejoras y Conclusiones}
+
+\subsection{Dificultades Técnicas Encontradas}
+Durante el desarrollo se identificaron los siguientes retos principales:
+\begin{enumerate}
+    \item \textbf{Concurrencia en VirtualBox:} Las peticiones paralelas a \texttt{VBoxManage} generaban condiciones de carrera con el demonio \texttt{VBoxSVC}. Esto se solventó implementando un cerrojo (\texttt{sync.Mutex}) en el adaptador para serializar las operaciones críticas.
+    \item \textbf{Detección Dinámica de IP:} El retardo en la inicialización de la interfaz de red y la asignación DHCP requirió un mecanismo de sondeo con retroceso exponencial utilizando \texttt{GuestAdditions}.
+    \item \textbf{Consistencia de Zonas DNS:} La actualización dinámica en Bind9 requirió garantizar permisos adecuados en los archivos de journal (\texttt{.jnl}) de la zona.
+\end{enumerate}
+
+\subsection{Oportunidades de Mejora y Trabajo Futuro}
+\begin{itemize}
+    \item Implementar límites de consumo de CPU y memoria configurables por el usuario para cada instancia.
+    \item Agregar soporte para certificados SSL/TLS automáticos con una Autoridad Certificadora local.
+    \item Migrar la orquestación a contenedores ligeros manteniendo compatibilidad con la misma interfaz hexagonal.
+\end{itemize}
+
+\subsection{Conclusiones}
+Se consolidó una solución de aprovisionamiento automatizado y autoservicio para servidores web que simula fielmente las capacidades de plataformas de nube comerciales. La adopción de la arquitectura hexagonal garantizó un código desacoplado, altamente mantenible y testeable, demostrando la viabilidad de implementar conceptos avanzados de IaaS y PaaS en entornos locales virtualizados.
+

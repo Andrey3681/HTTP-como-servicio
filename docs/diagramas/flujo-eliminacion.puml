@@ -1,0 +1,42 @@
+@startuml flujo-eliminacion
+!theme plain
+autonumber
+
+actor "Usuario" as User
+participant "Panel Web (Frontend)" as UI
+participant "Controlador HTTP" as Handler
+participant "Servicio de Instancia" as Service
+participant "Adaptador VirtualBox" as VBox
+participant "Adaptador Bind9" as DNS
+database "Repositorio de Datos" as Repo
+
+User -> UI : Clic en botón "Eliminar" (confirmación modal)
+UI -> Handler : DELETE /api/instancias/{id}
+Handler -> Service : DeleteInstance(ctx, id)
+
+Service -> Repo : FindByID(id)
+Repo --> Service : Instance (hostname, ip, vmID)
+
+group 1. Destrucción de la VM
+  Service -> VBox : Stop(vmID)
+  VBox --> Service : OK
+  Service -> VBox : Destroy(vmID)
+  note right: Desasocia disco diferencial\ny borra archivos de la VM
+  VBox --> Service : OK
+end
+
+group 2. Baja de Registro DNS
+  Service -> DNS : RemoveRecord(hostname)
+  DNS --> Service : OK
+end
+
+group 3. Limpieza de Persistencia
+  Service -> Repo : Delete(id)
+  Repo --> Service : OK
+end
+
+Service --> Handler : OK
+Handler --> UI : 200 OK / 204 No Content
+UI --> User : Remueve fila de la tabla en tiempo real
+@enduml
+

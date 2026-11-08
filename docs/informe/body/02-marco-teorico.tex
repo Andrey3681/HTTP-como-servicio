@@ -1,0 +1,13 @@
+\section{Marco Teórico}
+
+\subsection{Virtualización y Discos en Modo Multiconexión}
+La virtualización completa permite ejecutar múltiples sistemas operativos invitados de forma aislada sobre un único hipervisor de tipo 2, como Oracle VirtualBox. Para optimizar el aprovisionamiento de máquinas homogéneas y reducir el consumo de almacenamiento, VirtualBox ofrece la modalidad de almacenamiento \textit{multiattach} (multiconexión). 
+
+En el modo multiconexión, una imagen base (\texttt{ApacheServer.vdi}) se comparte entre múltiples máquinas virtuales en modo de sólo lectura. Cuando una máquina virtual escribe en el disco, los cambios se desvían de manera transparente a una imagen diferencial (\textit{differencing image}) exclusiva para esa instancia. Esta técnica agiliza la clonación casi instantánea de servidores sin duplicar el sistema operativo base.
+
+\subsection{Servicio de Nombres de Dominio y DNS Dinámico (Bind9)}
+El Sistema de Nombres de Dominio (DNS) es un componente crítico en la infraestructura de redes. Para evitar la edición manual y el reinicio continuo del demonio \texttt{named}, se utiliza la especificación de actualización dinámica (RFC 2136), permitiendo a la capa de orquestación insertar y revocar registros de tipo A en tiempo de ejecución.
+
+\subsection{Arquitectura Hexagonal (Puertos y Adaptadores)}
+Propuesta por Alistair Cockburn, la arquitectura hexagonal persigue el desacoplamiento de la lógica de dominio respecto a las dependencias de infraestructura y protocolos de entrada/salida. El núcleo permanece puro y agnóstico a las herramientas externas mediante contratos formales de puertos (interfaces), facilitando la testabilidad unitaria y el mantenimiento a largo plazo.
+

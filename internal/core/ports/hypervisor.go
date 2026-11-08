@@ -1,0 +1,30 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Andrey y Equipo de Trabajo
+
+// Package ports define los contratos de interfaz que comunican el núcleo de la aplicación con la infraestructura externa.
+package ports
+
+import (
+	"context"
+	"net/netip"
+
+	"github.com/Andrey3681/httpaas-orchestrator/internal/core/domain"
+)
+
+// Hypervisor define las operaciones requeridas sobre el hipervisor VirtualBox.
+type Hypervisor interface {
+	// CreateInstanceFromBase aprovisiona una nueva VM enlazando el disco multiconexión base.
+	CreateInstanceFromBase(ctx context.Context, name string, baseDiskPath string) (*domain.Instance, error)
+
+	// Start inicia la máquina virtual en modo desatendido (headless).
+	Start(ctx context.Context, vmName string) error
+
+	// GetIPAddress sondea la dirección IP asignada a la VM mediante Guest Additions.
+	GetIPAddress(ctx context.Context, vmName string) (netip.Addr, error)
+
+	// Stop apaga la máquina virtual.
+	Stop(ctx context.Context, vmName string) error
+
+	// Destroy desmantela la VM, desasocia el disco diferencial y elimina los archivos físicos.
+	Destroy(ctx context.Context, vmName string) error
+}

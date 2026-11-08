@@ -1,0 +1,94 @@
+version: "3"
+
+vars:
+  BIN: httpaas-server
+  PKGS: ./...
+
+tasks:
+  setup:
+    desc: Descargar herramientas de desarrollo y dependencias de Go
+    env:
+      GOSUMDB: "off"
+    cmds:
+      - go install github.com/mvdan/gofumpt@latest
+      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      - go install github.com/princjef/gomarkdoc/cmd/gomarkdoc@latest
+
+  doctor:
+    desc: Verificar herramientas del sistema (VBoxManage, dig, etc.)
+    cmds:
+      - cmd: ./scripts/dev-doctor.sh
+        platforms: [linux, darwin]
+      - cmd: powershell -ExecutionPolicy Bypass -File ./scripts/dev-doctor.ps1
+        platforms: [windows]
+
+  run:
+    desc: Ejecutar el servidor orquestador HTTPaaS
+    cmds:
+      - task: fmt
+      - go run ./cmd/server
+
+  test:
+    desc: Formatear y ejecutar la suite completa de pruebas unitarias
+    cmds:
+      - task: fmt
+      - go test {{.PKGS}} -cover -count=1
+
+  fmt:
+    desc: Formatear código Go con gofumpt estricto (o go fmt de respaldo)
+    cmds:
+      - cmd: gofumpt -l -w .
+        ignore_error: true
+      - cmd: go fmt ./...
+
+  lint:
+    desc: Análisis estático de código con golangci-lint
+    cmds:
+      - cmd: golangci-lint run {{.PKGS}}
+        ignore_error: true
+      - cmd: go vet {{.PKGS}}
+
+  doc:
+    desc: Regenerar documentación Markdown de la API Go con gomarkdoc
+    cmds:
+      - gomarkdoc -o "docs/api/{{.Dir}}.md" ./internal/...
+      - gomarkdoc -o docs/api/main.md ./cmd/...
+    ignore_error: true
+
+  openapi:
+    desc: Validar el contrato OpenAPI con Redocly
+    cmd: npx --yes @redocly/cli@latest lint docs/openapi.yaml
+    ignore_error: true
+
+  diagramas:
+    desc: Renderizar diagramas PlantUML a PNG y sincronizar con el informe
+    cmds:
+      - plantuml -tpng docs/diagramas/*.puml
+    ignore_error: true
+
+  informe:
+    desc: Compilar el informe en LaTeX con LuaLaTeX y biblatex
+    dir: docs/informe
+    cmds:
+      - latexmk -lualatex main.tex
+    ignore_error: true
+
+  informe-clean:
+    desc: Limpiar artefactos temporales de compilación de LaTeX
+    dir: docs/informe
+    cmds:
+      - latexmk -C
+    ignore_error: true
+
+  check:
+    desc: Validación integral previa a commit (fmt + lint + test + doc)
+    cmds:
+      - task: fmt
+      - task: lint
+      - task: test
+      - task: doc
+
+  build:
+    desc: Compilar el binario ejecutable final
+    cmd: go build -o {{.BIN}} ./cmd/server
+

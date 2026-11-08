@@ -1,0 +1,19 @@
+\section{Implementación}
+
+\subsection{Backend Orquestador en Golang}
+El backend se estructuró siguiendo estrictamente los principios de diseño hexagonal:
+\begin{itemize}
+    \item \texttt{internal/core/domain}: Define los agregados de datos e invariantes de negocio.
+    \item \texttt{internal/core/ports}: Define las interfaces que desacoplan la lógica del hipervisor y del DNS.
+    \item \texttt{internal/adapters/vbox}: Implementa el control de máquinas virtuales asegurando exclusión mutua global (\texttt{sync.Mutex}) para prevenir bloqueos en \texttt{VBoxSVC}.
+    \item \texttt{internal/adapters/bind9}: Gestiona la actualización de registros tipo A.
+    \item \texttt{internal/services/orchestrator.go}: Ejecuta la secuencia de aprovisionamiento de manera transaccional.
+\end{itemize}
+
+\subsection{Frontend y Experiencia de Usuario}
+Se desarrolló un panel web en \texttt{web/} con diseño adaptativo, que presenta:
+\begin{itemize}
+    \item Formulario para el ingreso del subdominio y selección de archivo \texttt{.zip}.
+    \item Tablero dinámico de instancias aprovisionadas con enlaces directos (\texttt{http://<host>.cloud.local}), dirección IP asignada, fecha y hora de creación, y opción para destruir la instancia de manera controlada.
+\end{itemize}
+

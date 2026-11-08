@@ -1,0 +1,36 @@
+\section{Pruebas y Evidencias}
+
+\subsection{Pruebas Unitarias y de Integración}
+Siguiendo la metodología guiada por pruebas (TDD), se implementaron pruebas unitarias sobre los casos de uso principales utilizando dobles de prueba (\textit{fakes}) para los puertos del hipervisor y del DNS. Esto garantiza que la lógica de orquestación y las rutinas de compensación ante fallos se validen de forma continua e independiente de la infraestructura física.
+
+\subsection{Evidencias de Despliegue en Entorno Real}
+A continuación se relacionan las evidencias del ciclo de vida de aprovisionamiento de las instancias solicitadas en la rúbrica del proyecto (\texttt{paisajes} y \texttt{negocios}):
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.9\linewidth]{captura-dashboard-vacio.png}
+\caption{Panel de gestión inicial en estado vacío.}
+\label{fig:dashboard_vacio}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.9\linewidth]{captura-formulario-subida.png}
+\caption{Carga del archivo comprimido para la instancia \texttt{paisajes}.}
+\label{fig:form_subida}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.9\linewidth]{captura-instancia-paisajes.png}
+\caption{Instancia \texttt{paisajes} desplegada y visible en el panel.}
+\label{fig:instancia_paisajes}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.9\linewidth]{captura-instancia-negocios.png}
+\caption{Instancia \texttt{negocios} desplegada concurrentemente.}
+\label{fig:instancia_negocios}
+\end{figure}
+
