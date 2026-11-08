@@ -15,36 +15,36 @@
 ## 2. Dominio y Puertos Hexagonales (Go)
 - [x] Definir modelos de dominio e invariantes (`internal/core/domain`).
 - [x] Definir contratos de puertos (`internal/core/ports`).
-- [ ] Implementar pruebas unitarias de invariantes del dominio (`domain_test.go`).
+- [x] Implementar pruebas unitarias de invariantes del dominio (`domain_test.go`).
 
 ## 3. Adaptadores Secundarios (Infraestructura)
-- [ ] Adaptador `localproc` (`ports.Executor` sobre `os/exec`).
-- [ ] Adaptador `vbox` (`ports.Hypervisor` sobre `VBoxManage` CLI con `sync.Mutex`).
-- [ ] Adaptador `bind9` (`ports.DnsProvider` sobre `nsupdate` o SSH).
-- [ ] Adaptador `deployer` (`ports.Deployer` sobre `guestcontrol` o SSH/SCP).
-- [ ] Adaptador `filestore` (`ports.Repository` sobre JSON atómico / SQLite).
+- [x] Adaptador `localproc` (`ports.Executor` sobre `os/exec`).
+- [x] Adaptador `vbox` (`ports.Hypervisor` sobre `VBoxManage` CLI con `sync.Mutex`).
+- [x] Adaptador `bind9` (`ports.DnsProvider` sobre `nsupdate` o SSH).
+- [x] Adaptador `deployer` (`ports.Deployer` sobre `guestcontrol` o SSH/SCP).
+- [x] Adaptador `filestore` (`ports.Repository` sobre JSON atómico / SQLite).
 
 ## 4. Servicios de Aplicación y Orquestación
-- [ ] Implementar servicio de orquestación transaccional (`internal/services/orchestrator.go`).
-- [ ] Implementar política de rollback si falla la asignación de IP, registro DNS o despliegue.
-- [ ] Implementar servicio de consulta y eliminación de instancias (`internal/services/instance.go`).
-- [ ] Suite de pruebas de servicios con mocks/fakes de puertos (`orchestrator_test.go`).
+- [x] Implementar servicio de orquestación transaccional (`internal/services/orchestrator.go`).
+- [x] Implementar política de rollback si falla la asignación de IP, registro DNS o despliegue.
+- [x] Implementar servicio de consulta y eliminación de instancias (`internal/services/instance.go`).
+- [x] Suite de pruebas de servicios con mocks/fakes de puertos (`orchestrator_test.go`).
 
 ## 5. Adaptadores Primarios e Interfaz Web
-- [ ] Implementar handlers REST (`internal/handlers/instance_handler.go`, `dns_handler.go`).
-- [ ] Implementar middleware de logging, CORS y recuperación ante pánicos.
-- [ ] Construir panel web estático en `web/` (HTML, CSS y JS).
-  - [ ] Formulario de carga con campo de texto y selector de `.zip`.
-  - [ ] Validación asíncrona de disponibilidad de subdominio.
-  - [ ] Tabla de instancias activas con enlace `http://<host>.cloud.local` (target="_blank").
-  - [ ] Botón rojo para eliminar instancia con diálogo de confirmación.
+- [x] Implementar handlers REST (`internal/handlers/instance_handler.go`, `dns_handler.go`).
+- [x] Implementar middleware de logging, CORS y recuperación ante pánicos.
+- [x] Construir panel web estático en `web/` (HTML, CSS y JS).
+  - [x] Formulario de carga con campo de texto y selector de `.zip`.
+  - [x] Validación asíncrona de disponibilidad de subdominio.
+  - [x] Tabla de instancias activas con enlace `http://<host>.cloud.local` (target="_blank").
+  - [x] Botón rojo para eliminar instancia con diálogo de confirmación.
 
 ## 6. Documentación e Informe Académico
 - [x] Crear especificación arquitectónica (`docs/arquitectura.md`).
 - [x] Crear especificación de diseño (`docs/diseno-solucion.md`).
 - [x] Crear especificación OpenAPI (`docs/openapi.yaml`).
 - [x] Crear diagramas PlantUML (`docs/diagramas/`).
-- [ ] Redactar capítulos del informe IEEEtran en `docs/informe/body/`.
+- [x] Plantilla del informe IEEEtran en LaTeX (`docs/informe/`).
+- [ ] Redactar detalles finales del informe tras desplegar el laboratorio físico.
 - [ ] Tomar capturas de pantalla de evidencias y almacenarlas en `docs/informe/images/`.
 - [ ] Compilar informe final en PDF (`task informe`).
-
