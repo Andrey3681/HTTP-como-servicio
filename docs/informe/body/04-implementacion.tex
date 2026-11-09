@@ -1,19 +1,26 @@
 \section{Implementación}
 
-\subsection{Backend Orquestador en Golang}
-El backend se estructuró siguiendo estrictamente los principios de diseño hexagonal:
+\subsection{Estructura del Backend en Go}
+El backend se implementó en Go siguiendo arquitectura hexagonal y un flujo de trabajo \emph{docs $\rightarrow$ test $\rightarrow$ implementación}. La organización principal del código es:
 \begin{itemize}
-    \item \texttt{internal/core/domain}: Define los agregados de datos e invariantes de negocio.
-    \item \texttt{internal/core/ports}: Define las interfaces que desacoplan la lógica del hipervisor y del DNS.
-    \item \texttt{internal/adapters/vbox}: Implementa el control de máquinas virtuales asegurando exclusión mutua global (\texttt{sync.Mutex}) para prevenir bloqueos en \texttt{VBoxSVC}.
-    \item \texttt{internal/adapters/bind9}: Gestiona la actualización de registros tipo A.
-    \item \texttt{internal/services/orchestrator.go}: Ejecuta la secuencia de aprovisionamiento de manera transaccional.
+    \item \texttt{cmd/server}: punto de entrada, configuración por \textit{flags}, ensamblado de dependencias (inyección en \texttt{main}) y exposición HTTP.
+    \item \texttt{internal/core/domain}: modelos, normalización de nombres y reglas/invariantes del dominio (por ejemplo, validación de \textit{hostname}/FQDN).
+    \item \texttt{internal/core/ports}: contratos de infraestructura (\texttt{Executor}, \texttt{Hypervisor}, \texttt{DnsProvider}, \texttt{Deployer}, \texttt{Repository}).
+    \item \texttt{internal/adapters}: implementaciones concretas (\texttt{localproc} para ejecución de procesos, \texttt{vbox} para \texttt{VBoxManage}, \texttt{bind9} para registro/consulta DNS, \texttt{deployer} para despliegue y \texttt{filestore} para persistencia).
+    \item \texttt{internal/services}: orquestación transaccional del aprovisionamiento/eliminación y políticas de compensación.
+    \item \texttt{internal/handlers}: adaptadores primarios HTTP (instancias, DNS, salud, middleware de \textit{logging}/CORS/recuperación y respuestas JSON).
+    \item \texttt{web}: interfaz de usuario estática servida por el orquestador.
 \end{itemize}
 
-\subsection{Frontend y Experiencia de Usuario}
-Se desarrolló un panel web en \texttt{web/} con diseño adaptativo, que presenta:
-\begin{itemize}
-    \item Formulario para el ingreso del subdominio y selección de archivo \texttt{.zip}.
-    \item Tablero dinámico de instancias aprovisionadas con enlaces directos (\texttt{http://<host>.cloud.local}), dirección IP asignada, fecha y hora de creación, y opción para destruir la instancia de manera controlada.
-\end{itemize}
+\subsection{Orquestación, Infraestructura y Concurrencia}
+El aprovisionamiento coordina la creación/arranque de la VM, la obtención de IP, el registro DNS, el despliegue del \texttt{.zip} y la persistencia del estado. Ante fallos, el orquestador aplica compensaciones para evitar inconsistencias (revocación DNS y destrucción/liberación de recursos según la etapa fallida).
 
+Las operaciones sobre VirtualBox se ejecutan mediante el adaptador \texttt{vbox}, que serializa accesos críticos para mitigar condiciones de carrera asociadas al servicio \texttt{VBoxSVC} (uso de exclusión mutua). La interacción con procesos del sistema se abstrae mediante el puerto \texttt{Executor}, lo que permite aislar dependencias del host y facilitar pruebas con dobles.
+
+\subsection{Interfaz Web Modular}
+La interfaz en \texttt{web/} se implementó como un conjunto de páginas HTML (\texttt{index}, \texttt{detalle}, \texttt{dns}, \texttt{salud}, \texttt{vhosts}, \texttt{ayuda}) con componentes compartidos y reutilizables: montaje de cabecera/pie (\texttt{components.js}), panel global de eventos con estado persistido (\texttt{logs-dock.js}), utilidades comunes (\texttt{common.js}), enrutamiento por intercambio de \texttt{<main>} sin recarga completa (\texttt{router.js}) y lógica por módulo (\texttt{js/pages/*.js}).
+
+La consola de aprovisionamiento incluye validación/ayudas de \textit{hostname}, verificación de disponibilidad, carga de contenido mediante zona de arrastre/selección para archivos \texttt{.zip}, retroalimentación de estado y confirmación de eliminación. Se incorporaron mejoras de accesibilidad y operación: navegación accesible en anchos reducidos, gestión de foco/teclado en el diálogo de eliminación, estados \texttt{aria-busy}/deshabilitado en acciones asíncronas y visualización del estado de salud consumiendo \texttt{/api/salud} (sin afirmar disponibilidad sin evidencia).
+
+\subsection{Calidad, Contratos y Automatización}
+El proyecto define su contrato HTTP en \texttt{docs/openapi.yaml} y documenta módulos web y requisitos en \texttt{docs/}. Las pruebas unitarias cubren dominio, adaptadores, servicios y \textit{handlers}; además, se incorporaron pruebas de contrato de la interfaz web (\texttt{web/ui\_contract\_test.go}) para validar presencia de componentes, identificadores, atributos de accesibilidad y comportamientos esperados del \textit{shell} compartido. Las tareas de formato, verificación y compilación del informe se centralizan en \texttt{Taskfile.yml}.

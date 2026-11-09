@@ -1,20 +1,21 @@
 \section{Dificultades, Mejoras y Conclusiones}
 
-\subsection{Dificultades Técnicas Encontradas}
-Durante el desarrollo se identificaron los siguientes retos principales:
+\subsection{Dificultades Técnicas}
+Durante el diseño e implementación se identificaron retos relevantes:
 \begin{enumerate}
-    \item \textbf{Concurrencia en VirtualBox:} Las peticiones paralelas a \texttt{VBoxManage} generaban condiciones de carrera con el demonio \texttt{VBoxSVC}. Esto se solventó implementando un cerrojo (\texttt{sync.Mutex}) en el adaptador para serializar las operaciones críticas.
-    \item \textbf{Detección Dinámica de IP:} El retardo en la inicialización de la interfaz de red y la asignación DHCP requirió un mecanismo de sondeo con retroceso exponencial utilizando \texttt{GuestAdditions}.
-    \item \textbf{Consistencia de Zonas DNS:} La actualización dinámica en Bind9 requirió garantizar permisos adecuados en los archivos de journal (\texttt{.jnl}) de la zona.
+    \item \textbf{Concurrencia en VirtualBox:} las invocaciones concurrentes a \texttt{VBoxManage} pueden generar condiciones de carrera con \texttt{VBoxSVC}. Se mitigó centralizando y serializando operaciones críticas en el adaptador del hipervisor.
+    \item \textbf{Detección dinámica de IP:} la asignación de red en la VM no es inmediata; se requiere sondeo controlado (con espera/reintentos) apoyado en mecanismos de consulta del invitado para obtener una IP utilizable antes de registrar DNS o desplegar.
+    \item \textbf{Consistencia transaccional entre subsistemas:} un fallo en DNS, IP o despliegue puede dejar recursos huérfanos. La orquestación incorpora compensaciones (\textit{rollback}) para preservar coherencia entre VM, DNS y contenido.
+    \item \textbf{Contraste entre interfaz y estado real:} en consolas operativas es riesgoso mostrar estados \emph{hardcoded}. La interfaz evolucionó hacia indicadores basados en \texttt{/api/salud} y manejo explícito de estados de carga/error, aunque la verificación visual final depende de la estabilización de la UI y del laboratorio.
 \end{enumerate}
 
-\subsection{Oportunidades de Mejora y Trabajo Futuro}
+\subsection{Trabajo Futuro}
 \begin{itemize}
-    \item Implementar límites de consumo de CPU y memoria configurables por el usuario para cada instancia.
-    \item Agregar soporte para certificados SSL/TLS automáticos con una Autoridad Certificadora local.
-    \item Migrar la orquestación a contenedores ligeros manteniendo compatibilidad con la misma interfaz hexagonal.
+    \item Completar evidencias de laboratorio (aprovisionamiento de \texttt{paisajes}/\texttt{negocios}, resolución DNS y capturas) una vez estabilizada la interfaz.
+    \item Conectar datos operativos reales a módulos evolutivos (VHosts/eventos) mediante endpoints dedicados o enriquecimiento de respuestas.
+    \item Incorporar controles de cuota/recursos por instancia y endurecimiento de seguridad (validación reforzada de \texttt{.zip}, autenticación/autorización si el entorno lo requiere).
+    \item Evaluar TLS/HTTPS en el entorno local y estrategias de observabilidad con correlación de eventos por operación.
 \end{itemize}
 
 \subsection{Conclusiones}
-Se consolidó una solución de aprovisionamiento automatizado y autoservicio para servidores web que simula fielmente las capacidades de plataformas de nube comerciales. La adopción de la arquitectura hexagonal garantizó un código desacoplado, altamente mantenible y testeable, demostrando la viabilidad de implementar conceptos avanzados de IaaS y PaaS en entornos locales virtualizados.
-
+Se diseñó e implementó una base funcional de HTTPaaS que integra virtualización, DNS dinámico y orquestación en Go para automatizar el ciclo de vida de servicios HTTP en un entorno local. La arquitectura hexagonal permitió desacoplar el dominio de la infraestructura, favoreciendo pruebas automatizadas y evolución controlada. El contrato OpenAPI y la interfaz web modular proporcionan un punto de acceso coherente para el aprovisionamiento mediante archivos \texttt{.zip}, mientras que la incorporación de TDD, pruebas de contrato y consideraciones de accesibilidad/verdad operativa fortalecen la mantenibilidad. Queda pendiente la consolidación final de evidencias en el laboratorio y la estabilización visual de la interfaz para cerrar la entrega documental.

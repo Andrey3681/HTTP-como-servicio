@@ -1,13 +1,16 @@
 \section{Marco Teórico}
 
 \subsection{Virtualización y Discos en Modo Multiconexión}
-La virtualización completa permite ejecutar múltiples sistemas operativos invitados de forma aislada sobre un único hipervisor de tipo 2, como Oracle VirtualBox. Para optimizar el aprovisionamiento de máquinas homogéneas y reducir el consumo de almacenamiento, VirtualBox ofrece la modalidad de almacenamiento \textit{multiattach} (multiconexión). 
+La virtualización completa permite ejecutar múltiples sistemas operativos invitados de forma aislada sobre un único hipervisor de tipo 2, como Oracle VirtualBox \cite{virtualbox2024}. Para optimizar el aprovisionamiento de máquinas homogéneas y reducir el consumo de almacenamiento, VirtualBox ofrece la modalidad de almacenamiento \textit{multiattach} (multiconexión).
 
-En el modo multiconexión, una imagen base (\texttt{ApacheServer.vdi}) se comparte entre múltiples máquinas virtuales en modo de sólo lectura. Cuando una máquina virtual escribe en el disco, los cambios se desvían de manera transparente a una imagen diferencial (\textit{differencing image}) exclusiva para esa instancia. Esta técnica agiliza la clonación casi instantánea de servidores sin duplicar el sistema operativo base.
+En el modo multiconexión, una imagen base (\texttt{ApacheServer.vdi}) se comparte entre múltiples máquinas virtuales en modo de solo lectura. Cuando una máquina virtual escribe en el disco, los cambios se desvían de manera transparente a una imagen diferencial (\textit{differencing image}) exclusiva para esa instancia. Esta técnica agiliza la clonación casi instantánea de servidores sin duplicar el sistema operativo base.
 
 \subsection{Servicio de Nombres de Dominio y DNS Dinámico (Bind9)}
-El Sistema de Nombres de Dominio (DNS) es un componente crítico en la infraestructura de redes. Para evitar la edición manual y el reinicio continuo del demonio \texttt{named}, se utiliza la especificación de actualización dinámica (RFC 2136), permitiendo a la capa de orquestación insertar y revocar registros de tipo A en tiempo de ejecución.
+El Sistema de Nombres de Dominio (DNS) es un componente crítico en la infraestructura de redes \cite{albitz2001dns}. Para evitar la edición manual y el reinicio continuo del demonio \texttt{named}, se utiliza la especificación de actualización dinámica (RFC~2136) \cite{rfc2136}, que permite a la capa de orquestación insertar y revocar registros de tipo A en tiempo de ejecución, manteniendo coherencia con la zona local administrada por Bind9.
 
 \subsection{Arquitectura Hexagonal (Puertos y Adaptadores)}
-Propuesta por Alistair Cockburn, la arquitectura hexagonal persigue el desacoplamiento de la lógica de dominio respecto a las dependencias de infraestructura y protocolos de entrada/salida. El núcleo permanece puro y agnóstico a las herramientas externas mediante contratos formales de puertos (interfaces), facilitando la testabilidad unitaria y el mantenimiento a largo plazo.
+Propuesta por Alistair Cockburn \cite{cockburn2005hexagonal}, la arquitectura hexagonal persigue el desacoplamiento de la lógica de dominio respecto a las dependencias de infraestructura y protocolos de entrada/salida. El núcleo permanece puro y agnóstico a las herramientas externas mediante contratos formales de puertos (interfaces), facilitando la testabilidad unitaria con dobles de prueba y el mantenimiento a largo plazo.
+
+\subsection{Contrato REST y Desarrollo Guiado por Pruebas}
+La exposición de capacidades de aprovisionamiento mediante una API REST con contrato OpenAPI permite separar el orquestador de sus clientes (interfaz web u otros consumidores) y documentar de forma verificable los recursos, parámetros y respuestas. Complementariamente, el desarrollo guiado por pruebas (TDD) y las pruebas de contrato sobre interfaces y módulos reducen regresiones al validar invariantes de dominio, orquestación y contratos de presentación antes y durante la implementación.
 

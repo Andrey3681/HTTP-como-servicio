@@ -6,6 +6,7 @@
 \usepackage[backend=biber,style=ieee]{biblatex}
 \addbibresource{ref.bib}
 \usepackage{graphicx}
+\graphicspath{{images/}}
 \usepackage[nameinlink]{cleveref} % referencias automáticas: \cref{...}
 % cleveref: con IEEEtran babel español no traduce las etiquetas y quedan
 % en inglés («fig. 1», «section»). Se fijan en español y sin artículo
@@ -43,7 +44,7 @@
 \maketitle
 
 \begin{abstract}
-
+Este trabajo presenta HTTPaaS, una plataforma local de aprovisionamiento automatizado de servicios HTTP que integra virtualización con Oracle VM VirtualBox, resolución dinámica de nombres con Bind9 y un orquestador desarrollado en Go bajo arquitectura hexagonal. A partir de una solicitud web con nombre de host y contenido \texttt{.zip}, el sistema crea instancias desde un disco base en modo multiconexión, gestiona el registro DNS en la zona \texttt{cloud.local.}, despliega el contenido en Apache y expone el estado mediante una API REST con contrato OpenAPI y una interfaz web modular. El diseño prioriza el desacoplamiento por puertos/adaptadores, la automatización transaccional con compensaciones ante fallos y la verificación mediante pruebas unitarias y contratos, estableciendo una base reproducible para un modelo de autoservicio tipo IaaS/PaaS en entorno de laboratorio.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -57,8 +58,7 @@ Computación en la nube, HTTPaaS, VirtualBox, discos multiconexión, Bind9, DNS 
 \input{body/05-pruebas-evidencias.tex}
 \input{body/06-problemas-mejoras-conclusiones.tex}
 
-\bibliographystyle{IEEEtran}
-\bibliography{ref}
+\printbibliography
 
 \end{document}
 
