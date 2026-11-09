@@ -102,6 +102,9 @@ func TestReusableComponentAPIs(t *testing.T) {
 	for _, needle := range []string{`window.toggleLogsDock`, `window.openLogsDock`, `window.closeLogsDock`, `logs-closed`, `logs-open`} {
 		assertContains(t, logs, needle, "js/logs-dock.js (API/comportamiento)")
 	}
+	for _, needle := range []string{`/api/logs`, `/api/logs/stream`, `EventSource`} {
+		assertContains(t, logs, needle, "js/logs-dock.js (conexión API de logs)")
+	}
 	for _, bad := range []string{`journalctl`} {
 		if strings.Contains(logs, bad) {
 			t.Fatalf("js/logs-dock.js: no debe contener %q (dock limpio)", bad)
