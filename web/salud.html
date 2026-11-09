@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html class="h-full" lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>HTTPaaS - Salud del sistema</title>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+  <link href="/css/stitch.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script>tailwind.config={theme:{extend:{colors:{"on-surface":"#181c21","on-surface-variant":"#3e4947","surface-bright":"#f8f9ff","surface-container-lowest":"#ffffff","surface-container-low":"#f1f4fb","surface-container":"#ebeef5","primary-container":"#0f766e","secondary-container":"#e02928",outline:"#6e7977",error:"#ba1a1a"},borderRadius:{xl:"0.5rem",full:"0.75rem"}}}};</script>
+</head>
+<body class="h-full bg-surface-container-lowest text-on-surface antialiased flex flex-col text-[14px]">
+  <div id="site-header-mount"></div>
+
+  <main class="page-main">
+    <div class="page-container">
+      <div class="page-title">
+        <h1>Salud del sistema</h1>
+        <p>Disponibilidad de dependencias del entorno (<code class="mono">GET /api/salud</code>): VirtualBox/VBoxManage y Bind9.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="card"><div class="card-body"><div class="kv-label">Estado general</div><div id="h-overall" class="pill-state" style="margin-top:8px;"><span class="dot warn"></span><span>Sin comprobar</span></div></div></div>
+        <div class="card"><div class="card-body"><div class="kv-label">VBoxManage</div><div id="h-vbox" class="pill-state" style="margin-top:8px;"><span class="dot warn"></span><span>Sin comprobar</span></div></div></div>
+        <div class="card"><div class="card-body"><div class="kv-label">Bind9</div><div id="h-bind9" class="pill-state" style="margin-top:8px;"><span class="dot warn"></span><span>Sin comprobar</span></div></div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div><h2>Comprobación</h2></div>
+          <button class="btn-flat primary" id="checkBtn" type="button"><span class="material-symbols-outlined text-[16px]">stethoscope</span> Comprobar ahora</button>
+        </div>
+        <div class="card-body">
+          <pre class="code-block" id="healthRaw">{
+  "estado": "pendiente",
+  "vboxmanage": null,
+  "bind9": null
+}</pre>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="site-footer-mount"></div>
+
+  <script src="/js/common.js"></script>
+  <script src="/js/components.js"></script>
+  <script src="/js/logs-dock.js"></script>
+  <script src="/js/pages/index.js"></script>
+  <script src="/js/pages/dns.js"></script>
+  <script src="/js/pages/salud.js"></script>
+  <script src="/js/pages/detalle.js"></script>
+  <script src="/js/router.js"></script>
+</body>
+</html>

@@ -32,7 +32,9 @@ func (d *dummyHypervisor) Destroy(ctx context.Context, name string) error { retu
 type dummyDnsProvider struct{}
 
 func (d *dummyDnsProvider) AddRecord(ctx context.Context, record domain.DnsRecord) error { return nil }
-func (d *dummyDnsProvider) RemoveRecord(ctx context.Context, hostname string) error      { return nil }
+
+func (d *dummyDnsProvider) RemoveRecord(ctx context.Context, hostname string) error { return nil }
+
 func (d *dummyDnsProvider) Resolve(ctx context.Context, hostname string) (netip.Addr, error) {
 	return netip.MustParseAddr("192.168.10.30"), nil
 }
@@ -51,6 +53,7 @@ func (m *inMemoryRepo) Save(ctx context.Context, inst domain.Instance) error {
 	m.instances[inst.ID] = inst
 	return nil
 }
+
 func (m *inMemoryRepo) FindByID(ctx context.Context, id string) (*domain.Instance, error) {
 	inst, ok := m.instances[id]
 	if !ok {
@@ -58,6 +61,7 @@ func (m *inMemoryRepo) FindByID(ctx context.Context, id string) (*domain.Instanc
 	}
 	return &inst, nil
 }
+
 func (m *inMemoryRepo) FindAll(ctx context.Context) ([]domain.Instance, error) {
 	var list []domain.Instance
 	for _, v := range m.instances {
@@ -65,6 +69,7 @@ func (m *inMemoryRepo) FindAll(ctx context.Context) ([]domain.Instance, error) {
 	}
 	return list, nil
 }
+
 func (m *inMemoryRepo) Delete(ctx context.Context, id string) error {
 	delete(m.instances, id)
 	return nil
