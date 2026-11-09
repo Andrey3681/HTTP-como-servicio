@@ -1,5 +1,15 @@
 # Lista de Seguimiento y Tareas (TODO) - HTTPaaS
 
+## Objetivos del Proyecto (según la Especificación)
+
+### Objetivo General
+Diseñar e implementar un entorno local automatizado para el aprovisionamiento y despliegue de servicios HTTP con Apache Web Server, integrados en un dominio DNS gestionado con Bind9, empleando infraestructura virtualizada y técnicas básicas de automatización que simulen el comportamiento de una plataforma real de servicios en la nube.
+
+### Objetivos Específicos
+- [x] **OE1:** Comprender el funcionamiento de un servidor DNS y desplegar el servidor Bind9 para gestionar los nombres de host de la zona local `cloud.local.`, incluyendo el registro automático de nuevos hosts mediante actualizaciones dinámicas.
+- [x] **OE2:** Desarrollar los mecanismos de aprovisionamiento y gestión del servicio, automatizando la creación, configuración y eliminación de instancias del servidor HTTP Apache.
+- [x] **OE3:** Automatizar el despliegue de las páginas o aplicaciones web solicitadas por el usuario a partir de archivos `.zip` en instancias Apache con discos en modo multiconexión.
+
 ## 1. Infraestructura Base y Virtualización
 - [ ] Desplegar y configurar la máquina virtual dedicada `ns` (Debian 13.0 CLI).
   - [ ] Asignar IP fija `192.168.10.10/24` en la red interna `cloudnet`.
