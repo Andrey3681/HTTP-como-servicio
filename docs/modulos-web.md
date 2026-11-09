@@ -140,11 +140,12 @@ Componentes transversales (presentes en todos los módulos, RNF-02/07/10): **hea
 ### M6. Operaciones / Eventos — logs (componente global, extensible)
 - **Objetivo:** observabilidad de operaciones (RF-14) ante un flujo con rollback (arquitectura §5).
 - **Trazabilidad:** RF-14,10; RNF-01,02,05,07,11.
-- **Funciones (actuales):** mostrar/ocultar dock con animación, limpiar, redimensionar (componente aislado persistente). **Funciones objetivo:** stream/lista de eventos por operación (aprov/eliminación), severidad, timestamp, fuente (VBox/Bind9/Apache/orquestador), correlación por instancia.
-- **Controles/botones:** `Logs del Sistema` (toggle en footer), `Cerrar`/deslizar, `Limpiar`; (objetivo) pausar stream, filtro por severidad/fuente/instancia.
-- **Elementos UI:** dock inferior persistente, área de salida monoespaciada, indicadores de conexión/estado.
-- **Contrato de componente (reutilizable):** `#logs-toggle-mount` (footer) y dock inyectado por `logs-dock.js`; API global `window.toggleLogsDock`/`openLogsDock`/`closeLogsDock`.
-- **Estados:** oculto, visible, conectado, desconectado/sin fuente. *Contrato futuro:* endpoint/stream de eventos; hoy interfaz preparada (RNF-11).
+- **Funciones:** mostrar/ocultar dock con animación, limpiar vista, redimensionar (componente aislado persistente); cargar eventos recientes y recibir eventos en tiempo real. **Evolutivo:** filtros por severidad/fuente/instancia, pausa, correlación operación↔instancia.
+- **Fuente de datos (API):** `GET /api/logs?limit=` (historial reciente, `{"datos":[LogEntry],"total"}`) y `GET /api/logs/stream` (SSE `text/event-stream`, `data` con `LogEntry` JSON: `id, ts, nivel, componente, mensaje, campos`).
+- **Controles/botones:** `Logs del Sistema` (toggle en footer), `Cerrar`/deslizar, `Limpiar` (limpia solo la vista cliente); indicador de conexión (conectado/conectando/error).
+- **Elementos UI:** dock inferior persistente, área de salida monoespaciada (`role="log"`), indicadores de conexión/estado accesibles.
+- **Contrato de componente (reutilizable):** `#logs-toggle-mount` (footer) y dock inyectado por `logs-dock.js`; API global `window.toggleLogsDock`/`openLogsDock`/`closeLogsDock`. El dock consulta `/api/logs` y se suscribe a `/api/logs/stream` (SSE/EventSource) con deduplicación por `id`.
+- **Estados:** oculto, visible, conectando, conectado (`live`), reconectando/error, backend inaccesible (RNF-11).
 
 ### M7. Ayuda / Verificación operativa (`/ayuda.html`)
 - **Objetivo:** reducir errores de entrada y apoyar diagnóstico (RF-03/08/10) con guía alineada a specs.
