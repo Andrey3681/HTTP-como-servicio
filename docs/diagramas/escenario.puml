@@ -1,42 +1,34 @@
 @startuml escenario
-!theme plain
-skinparam componentStyle rectangle
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultTextAlignment center
+skinparam rectangleBorderThickness 1
+skinparam nodeBorderThickness 1
 
-package "Equipo Anfitrión (Host)" {
-  [Orquestador Go\n(HTTPaaS Core :8080)] as Core
+title Diagrama de Escenario - HTTPaaS
+
+node "Equipo Anfitrión\nVirtualBox\nOrquestador HTTPaaS (Go)" as host
+
+rectangle "Red interna cloudnet\n192.168.10.0/24" as net {
+
+  node "VM DNS - ns\nDebian 13 (CLI)\nBind9\n192.168.10.10/24\nzona cloud.local." as dns
+
+  node "PLANTILLA ApacheServer\nDebian 13 (CLI) + Apache HTTPD\nGuest Additions\nApacheServer.vdi (multiattach)" as tmpl
+
+  node "INSTANCIAS DINÁMICAS\nCreadas desde plantilla\nDiscos diferenciales (multiattach)\n192.168.10.[30..254]\n<host>.cloud.local" as inst
+
+  node "Aplicación Web de Gestión\nInterfaz Web + API REST\nOrquestación y despliegue" as webapp
 }
 
-package "Red Interna / Host-Only (192.168.10.0/24)" {
-  node "VM: ns (Debian 13.0)\n192.168.10.10" as VMDNS {
-    [Servidor DNS Bind9\nZona: cloud.local.] as Bind9
-  }
+host -- net : 192.168.10.1 (host-only)
+net -- dns
+net -- tmpl
+net -- inst
+net -- webapp
 
-  node "Instancia 1: paisajes\n192.168.10.30" as VM1 {
-    [Apache Web Server\n/var/www/html (archivos.zip)] as Apache1
-  }
-
-  node "Instancia 2: negocios\n192.168.10.31" as VM2 {
-    [Apache Web Server\n/var/www/html (pagina.zip)] as Apache2
-  }
-}
-
-database "Almacenamiento VirtualBox" {
-  [ApacheServer.vdi\n(modo multiattach)] as BaseDisk
-  [Diferencial paisajes.vdi] as Diff1
-  [Diferencial negocios.vdi] as Diff2
-}
-
-Core --> VMDNS : Actualización DNS Dinámica (RFC 2136 / SSH)
-Core --> VM1 : Creación y Despliegue
-Core --> VM2 : Creación y Despliegue
-
-BaseDisk ..> Diff1 : Base compartida
-BaseDisk ..> Diff2 : Base compartida
-Diff1 --> VM1
-Diff2 --> VM2
-
-Bind9 ..> Apache1 : Resuelve paisajes.cloud.local.
-Bind9 ..> Apache2 : Resuelve negocios.cloud.local.
+tmpl --> inst : clonación / uso multiattach
+webapp --> dns : registro dinámico (nsupdate)
+webapp --> inst : despliegue .zip a /var/www/html/
+webapp --> tmpl : aprovisionamiento
 
 @enduml
-

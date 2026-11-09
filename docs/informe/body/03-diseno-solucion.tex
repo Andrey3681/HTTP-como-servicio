@@ -18,8 +18,26 @@ Se define una red interna virtual (\texttt{cloudnet}) bajo el segmento IPv4 \tex
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\linewidth]{escenario.png}
-\caption{Topología de red y componentes del entorno HTTPaaS.}
+\includegraphics[width=\linewidth]{escenario.svg}
+\caption{Diagrama de escenario: topología de red y componentes del entorno HTTPaaS.}
 \label{fig:escenario}
 \end{figure}
 
+
+
+\subsection{Vista de Procesos: Flujo de Aprovisionamiento}
+El aprovisionamiento se realiza de forma automatizada y transaccional, garantizando la coherencia entre los componentes de virtualización, DNS y despliegue web.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{secuencia.svg}
+\caption{Diagrama de secuencia del flujo de aprovisionamiento de instancias HTTPaaS.}
+\label{fig:secuencia}
+\end{figure}
+
+\subsection{Manejo de Compensaciones (Rollback)}
+Si alguna etapa del aprovisionamiento falla, el orquestador ejecuta rutinas de compensación inversa para mantener la infraestructura en un estado consistente:
+\begin{itemize}
+    \item Si falla el registro DNS: se destruye la máquina virtual creada en VirtualBox.
+    \item Si falla el despliegue del archivo \texttt{.zip}: se elimina el registro DNS correspondiente y se destruye la máquina virtual creada en VirtualBox.
+\end{itemize}

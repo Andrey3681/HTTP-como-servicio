@@ -6,3 +6,16 @@ En este contexto, el presente proyecto desarrolla un sistema de Servicio Adminis
 
 A través de una interfaz gráfica web centralizada, los usuarios pueden solicitar instancias de servidores web Apache proporcionando un nombre de host deseado y un archivo comprimido (\texttt{.zip}) con el contenido web a publicar. El sistema automatiza completamente el ciclo de vida: creación de máquinas virtuales a partir de discos en modo multiconexión, asignación de red, actualización de zonas DNS y despliegue del contenido.
 
+\subsection{Objetivo General}
+Diseñar e implementar un entorno local automatizado para el aprovisionamiento y despliegue de servicios HTTP con Apache Web Server, integrados en un dominio DNS gestionado con Bind9, empleando infraestructura virtualizada y técnicas básicas de automatización que simulen el comportamiento de una plataforma real de servicios en la nube.
+
+\subsection{Objetivos Específicos}
+\begin{enumerate}
+    \item \textbf{OE1:} Comprender el funcionamiento de un servidor DNS y desplegar el servidor Bind9 para gestionar los nombres de host de la zona local \texttt{cloud.local.}, incluyendo el registro automático de los nuevos hosts en la zona DNS local.
+    \item \textbf{OE2:} Desarrollar los mecanismos de aprovisionamiento y gestión del servicio, automatizando la creación, configuración y eliminación de instancias del servidor HTTP Apache.
+    \item \textbf{OE3:} Automatizar el despliegue de las páginas o aplicaciones web solicitadas por el usuario a partir de archivos \texttt{.zip} en las instancias Apache creadas desde un disco base en modo multiconexión.
+\end{enumerate}
+
+\subsection{Alcance}
+El alcance del proyecto se limita a un entorno local virtualizado con Oracle VirtualBox, utilizando una red interna (\texttt{cloudnet}), un servidor DNS dedicado (\texttt{ns}) para la zona \texttt{cloud.local.} y una plantilla base de Apache para la generación de instancias dinámicas mediante discos en modo multiconexión. La solución orquesta la automatización de extremo a extremo mediante una aplicación web desarrollada en Golang.
+

@@ -1,0 +1,35 @@
+@startuml secuencia
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultTextAlignment left
+
+title Diagrama de Secuencia - Flujo de Aprovisionamiento HTTPaaS
+
+actor Usuario
+participant "Web / API" as API
+participant "Orquestador" as Orq
+participant "VirtualBox" as VBox
+participant "Bind9 (DNS)" as DNS
+participant "Deployer" as Dep
+
+Usuario -> API : POST /api/instancias (nombre, archivo.zip)
+API -> Orq : Validar entrada
+API -> Orq : Solicitar aprovisionamiento
+
+Orq -> VBox : Crear VM desde disco multiattach
+VBox --> Orq : VM creada
+Orq -> VBox : Iniciar VM
+Orq -> VBox : Obtener IP via Guest Additions
+VBox --> Orq : IP asignada (192.168.10.x)
+
+Orq -> DNS : Actualizar zona DNS - registro A <host>.cloud.local
+DNS --> Orq : Registro DNS OK
+
+Orq -> Dep : Desplegar contenido .zip en /var/www/html/
+Dep --> Orq : Despliegue completado
+
+Orq --> API : Persistir instancia
+Orq --> API : Instancia en estado RUNNING
+API --> Usuario : Respuesta 201 Created con http://<host>.cloud.local
+
+@enduml

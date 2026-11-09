@@ -1,0 +1,398 @@
+{
+  "table_of_contents": [
+    {
+      "title": "Nota\tparcial\t#3 \u2013 HTTP\tcomo\tservicio",
+      "heading_level": null,
+      "page_id": 0,
+      "polygon": [
+        [
+          35.560546875,
+          59.68585205078125
+        ],
+        [
+          311.0749206542969,
+          59.68585205078125
+        ],
+        [
+          311.0749206542969,
+          75.796875
+        ],
+        [
+          34.365234375,
+          75.796875
+        ]
+      ]
+    },
+    {
+      "title": "Descripci\u00f3n\tgeneral",
+      "heading_level": null,
+      "page_id": 0,
+      "polygon": [
+        [
+          36.158203125,
+          92.03302001953125
+        ],
+        [
+          147.21600341796875,
+          91.265625
+        ],
+        [
+          147.21600341796875,
+          104.03302001953125
+        ],
+        [
+          34.962890625,
+          105.1875
+        ]
+      ]
+    },
+    {
+      "title": "Objetivo",
+      "heading_level": null,
+      "page_id": 0,
+      "polygon": [
+        [
+          35.26171875,
+          471.9530334472656
+        ],
+        [
+          83.38801574707031,
+          470.63671875
+        ],
+        [
+          83.38801574707031,
+          483.9530334472656
+        ],
+        [
+          35.26171875,
+          483.9530334472656
+        ]
+      ]
+    },
+    {
+      "title": "Objetivos\tespec\u00edficos",
+      "heading_level": null,
+      "page_id": 0,
+      "polygon": [
+        [
+          36.158203125,
+          569.25
+        ],
+        [
+          152.1480255126953,
+          567.703125
+        ],
+        [
+          152.1480255126953,
+          582.3530578613281
+        ],
+        [
+          36.158203125,
+          583.171875
+        ]
+      ]
+    },
+    {
+      "title": "Requisitos\tdel\tProyecto",
+      "heading_level": null,
+      "page_id": 1,
+      "polygon": [
+        [
+          34.962890625,
+          59.15301513671875
+        ],
+        [
+          166.66799926757812,
+          58.39453125
+        ],
+        [
+          166.66799926757812,
+          71.15301513671875
+        ],
+        [
+          34.962890625,
+          71.54296875
+        ]
+      ]
+    },
+    {
+      "title": "1.\tInfraestructura\tvirtualizada",
+      "heading_level": null,
+      "page_id": 1,
+      "polygon": [
+        [
+          36.480003356933594,
+          87.01171875
+        ],
+        [
+          189.19200134277344,
+          85.46484375
+        ],
+        [
+          189.19200134277344,
+          99.23297119140625
+        ],
+        [
+          35.560546875,
+          99.23297119140625
+        ]
+      ]
+    },
+    {
+      "title": "2.\tServidor\tDNS\t(Bind9)",
+      "heading_level": null,
+      "page_id": 1,
+      "polygon": [
+        [
+          36.158203125,
+          185.87298583984375
+        ],
+        [
+          155.1840057373047,
+          185.23828125
+        ],
+        [
+          155.1840057373047,
+          197.87298583984375
+        ],
+        [
+          36.158203125,
+          198.38671875
+        ]
+      ]
+    },
+    {
+      "title": "3.\tServidor\tHTTP\t(Apache)",
+      "heading_level": null,
+      "page_id": 1,
+      "polygon": [
+        [
+          36.158203125,
+          314.9930419921875
+        ],
+        [
+          169.58399963378906,
+          313.62890625
+        ],
+        [
+          169.58399963378906,
+          326.9930419921875
+        ],
+        [
+          34.962890625,
+          326.9930419921875
+        ]
+      ]
+    },
+    {
+      "title": "4.\tAplicaci\u00f3n\tweb\tde\tgesti\u00f3n\t(Golang)",
+      "heading_level": null,
+      "page_id": 1,
+      "polygon": [
+        [
+          35.859375,
+          540.24609375
+        ],
+        [
+          223.10401916503906,
+          538.69921875
+        ],
+        [
+          223.10401916503906,
+          552.8330383300781
+        ],
+        [
+          35.859375,
+          553.39453125
+        ]
+      ]
+    },
+    {
+      "title": "5.\tAutomatizaci\u00f3n",
+      "heading_level": null,
+      "page_id": 2,
+      "polygon": [
+        [
+          36.158203125,
+          59.15301513671875
+        ],
+        [
+          127.61998748779297,
+          58.0078125
+        ],
+        [
+          127.61998748779297,
+          71.15301513671875
+        ],
+        [
+          34.962890625,
+          71.15301513671875
+        ]
+      ]
+    },
+    {
+      "title": "Entregables",
+      "heading_level": null,
+      "page_id": 2,
+      "polygon": [
+        [
+          35.26171875,
+          143.63299560546875
+        ],
+        [
+          102.46800994873047,
+          142.69921875
+        ],
+        [
+          102.46800994873047,
+          155.63299560546875
+        ],
+        [
+          35.26171875,
+          155.84765625
+        ]
+      ]
+    }
+  ],
+  "page_stats": [
+    {
+      "page_id": 0,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          157
+        ],
+        [
+          "Line",
+          38
+        ],
+        [
+          "Text",
+          5
+        ],
+        [
+          "SectionHeader",
+          4
+        ],
+        [
+          "ListItem",
+          3
+        ],
+        [
+          "PageHeader",
+          2
+        ],
+        [
+          "PageFooter",
+          2
+        ],
+        [
+          "ListGroup",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 0,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    },
+    {
+      "page_id": 1,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          147
+        ],
+        [
+          "Line",
+          38
+        ],
+        [
+          "ListItem",
+          11
+        ],
+        [
+          "SectionHeader",
+          5
+        ],
+        [
+          "Text",
+          4
+        ],
+        [
+          "ListGroup",
+          3
+        ],
+        [
+          "PageHeader",
+          2
+        ],
+        [
+          "PageFooter",
+          2
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 0,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    },
+    {
+      "page_id": 2,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          69
+        ],
+        [
+          "Line",
+          21
+        ],
+        [
+          "Text",
+          5
+        ],
+        [
+          "ListItem",
+          5
+        ],
+        [
+          "PageHeader",
+          2
+        ],
+        [
+          "SectionHeader",
+          2
+        ],
+        [
+          "PageFooter",
+          2
+        ],
+        [
+          "ListGroup",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 0,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    }
+  ],
+  "debug_data_path": "debug_data/Nota parcial 3 - Computacion en la Nube"
+}
