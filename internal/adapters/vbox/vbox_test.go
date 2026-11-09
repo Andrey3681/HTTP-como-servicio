@@ -65,7 +65,7 @@ func (m *mockExecutor) Execute(ctx context.Context, command string, args ...stri
 
 func TestHypervisorAdapter_CreateInstanceFromBase(t *testing.T) {
 	mockExec := &mockExecutor{}
-	adapter := vbox.NewHypervisorAdapter(mockExec, "cloud.local")
+	adapter := vbox.NewHypervisorAdapter(mockExec, "cloud.local", nil)
 
 	inst, err := adapter.CreateInstanceFromBase(context.Background(), "paisajes", "ApacheServer.vdi")
 	if err != nil {

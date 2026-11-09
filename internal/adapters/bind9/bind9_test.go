@@ -24,7 +24,7 @@ func (m *mockExecutor) Execute(ctx context.Context, command string, args ...stri
 
 func TestDnsAdapter_AddRecord(t *testing.T) {
 	exec := &mockExecutor{}
-	adapter := bind9.NewDnsAdapter(exec, "192.168.10.10", "cloud.local")
+	adapter := bind9.NewDnsAdapter(exec, "192.168.10.10", "cloud.local", nil)
 
 	rec, err := domain.NewARecord("paisajes", "cloud.local", netip.MustParseAddr("192.168.10.30"), 300)
 	if err != nil {

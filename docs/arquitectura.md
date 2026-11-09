@@ -85,6 +85,16 @@ type DnsProvider interface {
 }
 ```
 
+### 3.3 Registro de eventos (`EventLogger`)
+```go
+// EventLogger define la emisión de eventos estructurados de observabilidad.
+type EventLogger interface {
+    // Append registra un evento con nivel, componente, mensaje y campos opcionales.
+    Append(level string, component string, message string, fields map[string]any)
+}
+```
+`EventLogger` es un puerto transversal: servicios y adaptadores lo reciben por inyección (opcional en constructores cuando aplique) para emitir eventos estructurados sin acoplarse al broker/HTTP. La implementación concreta (`internal/logging.Broker`) se compone en `cmd/server/main.go`.
+
 ### 3.3 Desplegador Web (`Deployer`)
 ```go
 // Deployer transfiere y descomprime los paquetes web en la instancia Apache.

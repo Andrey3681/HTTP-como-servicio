@@ -7,7 +7,11 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Andrey3681/httpaas-orchestrator/internal/core/ports"
 )
+
+var _ ports.EventLogger = (*Broker)(nil)
 
 // Broker almacena eventos recientes en un anillo y los distribuye a suscriptores en tiempo real.
 type Broker struct {
@@ -34,13 +38,19 @@ func NewBroker(capacity int) *Broker {
 }
 
 // Append registra un evento, lo guarda en el anillo y lo notifica a los suscriptores.
-func (b *Broker) Append(level Level, component, message string, fields map[string]any) Entry {
+// Implementa la interfaz ports.EventLogger usando level como cadena.
+func (b *Broker) Append(level string, component, message string, fields map[string]any) {
+	b.AppendEntry(level, component, message, fields)
+}
+
+// AppendEntry registra un evento y retorna la entrada creada.
+func (b *Broker) AppendEntry(level string, component, message string, fields map[string]any) Entry {
 	b.mu.Lock()
 	b.nextID++
 	entry := Entry{
 		ID:         b.nextID,
 		TS:         time.Now().UTC(),
-		Nivel:      level,
+		Nivel:      Level(level),
 		Componente: component,
 		Mensaje:    message,
 	}
@@ -66,21 +76,66 @@ func (b *Broker) Append(level Level, component, message string, fields map[strin
 	return entry
 }
 
-// Recent retorna los eventos más recientes, ordenados del más antiguo al más nuevo, limitados por limit.
-func (b *Broker) Recent(limit int) []Entry {
+// Logf registra un evento con nivel tipado.
+func (b *Broker) Logf(level Level, component, message string, fields map[string]any) Entry {
+	return b.AppendEntry(string(level), component, message, fields)
+}
+
+// QueryOptions define filtros para consultar eventos del anillo.
+type QueryOptions struct {
+	Limit     int
+	Level     string
+	Component string
+	Since     int64
+}
+
+// Query retorna eventos que cumplen los filtros, ordenados del más antiguo al más nuevo.
+func (b *Broker) Query(opts QueryOptions) []Entry {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	if limit <= 0 || limit > b.size {
-		limit = b.size
+	if opts.Limit <= 0 || opts.Limit > b.size {
+		opts.Limit = b.size
 	}
-	result := make([]Entry, 0, limit)
-	start := b.size - limit
-	for i := start; i < b.size; i++ {
+
+	all := make([]Entry, 0, b.size)
+	for i := 0; i < b.size; i++ {
 		idx := (b.next - b.size + i + b.capacity) % b.capacity
-		result = append(result, b.entries[idx])
+		entry := b.entries[idx]
+		if opts.Since > 0 && entry.ID <= opts.Since {
+			continue
+		}
+		if opts.Level != "" && string(entry.Nivel) != opts.Level {
+			continue
+		}
+		if opts.Component != "" && entry.Componente != opts.Component {
+			continue
+		}
+		all = append(all, entry)
 	}
-	return result
+	if len(all) > opts.Limit {
+		all = all[len(all)-opts.Limit:]
+	}
+	return all
+}
+
+// Recent retorna los eventos más recientes, ordenados del más antiguo al más nuevo, limitados por limit.
+func (b *Broker) Recent(limit int) []Entry {
+	return b.Query(QueryOptions{Limit: limit})
+}
+
+// Since retorna eventos con id mayor al cursor indicado.
+func (b *Broker) Since(id int64) []Entry {
+	return b.Query(QueryOptions{Since: id})
+}
+
+// Clear elimina todos los eventos del anillo sin afectar suscriptores.
+func (b *Broker) Clear() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.entries = make([]Entry, b.capacity)
+	b.next = 0
+	b.size = 0
 }
 
 // Subscribe registra un suscriptor para eventos futuros y retorna un canal y una función de cancelación.
@@ -108,7 +163,7 @@ func (b *Broker) Subscribe() (<-chan Entry, func()) {
 func (b *Broker) Write(p []byte) (int, error) {
 	message := strings.TrimSpace(string(p))
 	if message != "" {
-		b.Append(LevelInfo, "system", message, nil)
+		b.Append(string(LevelInfo), "system", message, nil)
 	}
 	return len(p), nil
 }

@@ -18,18 +18,27 @@ import (
 // ApacheDeployer transfiere y extrae paquetes web en las máquinas virtuales Apache.
 type ApacheDeployer struct {
 	executor ports.Executor
+	logger   ports.EventLogger
 }
 
 // NewApacheDeployer crea una nueva instancia de ApacheDeployer.
-func NewApacheDeployer(executor ports.Executor) *ApacheDeployer {
+func NewApacheDeployer(executor ports.Executor, logger ports.EventLogger) *ApacheDeployer {
 	return &ApacheDeployer{
 		executor: executor,
+		logger:   logger,
+	}
+}
+
+func (d *ApacheDeployer) log(level, message string, fields map[string]any) {
+	if d.logger != nil {
+		d.logger.Append(level, "deployer", message, fields)
 	}
 }
 
 // DeployWebZip guarda temporalmente el archivo comprimido y lo transfiere a la instancia Apache en /var/www/html/.
 func (d *ApacheDeployer) DeployWebZip(ctx context.Context, targetIP netip.Addr, zipContent io.Reader, size int64) error {
 	log.Printf("[Deployer] Iniciando despliegue de contenido web en %s (%d bytes)", targetIP.String(), size)
+	d.log("INFO", "Iniciando despliegue web", map[string]any{"ip": targetIP.String(), "bytes": size})
 
 	// Crear archivo temporal local
 	tmpFile, err := os.CreateTemp("", "web-upload-*.zip")
@@ -44,5 +53,6 @@ func (d *ApacheDeployer) DeployWebZip(ctx context.Context, targetIP netip.Addr, 
 	}
 
 	log.Printf("[Deployer] Contenido web verificado y listo para despliegue en host %s", targetIP.String())
+	d.log("INFO", "Despliegue web completado", map[string]any{"ip": targetIP.String()})
 	return nil
 }

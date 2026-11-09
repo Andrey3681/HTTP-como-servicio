@@ -17,14 +17,22 @@ type InstanceService struct {
 	repo        ports.Repository
 	hypervisor  ports.Hypervisor
 	dnsProvider ports.DnsProvider
+	logger      ports.EventLogger
 }
 
 // NewInstanceService crea una nueva instancia del servicio de gestión.
-func NewInstanceService(repo ports.Repository, hypervisor ports.Hypervisor, dnsProvider ports.DnsProvider) *InstanceService {
+func NewInstanceService(repo ports.Repository, hypervisor ports.Hypervisor, dnsProvider ports.DnsProvider, logger ports.EventLogger) *InstanceService {
 	return &InstanceService{
 		repo:        repo,
 		hypervisor:  hypervisor,
 		dnsProvider: dnsProvider,
+		logger:      logger,
+	}
+}
+
+func (s *InstanceService) log(level, message string, fields map[string]any) {
+	if s.logger != nil {
+		s.logger.Append(level, "instance-service", message, fields)
 	}
 }
 
@@ -46,6 +54,7 @@ func (s *InstanceService) DeleteInstance(ctx context.Context, id string) error {
 	}
 
 	log.Printf("[InstanceService] Eliminando instancia '%s'", inst.Name)
+	s.log("INFO", "Eliminando instancia", map[string]any{"instancia": inst.Name})
 
 	// 1. Apagar y destruir VM en VirtualBox
 	_ = s.hypervisor.Stop(ctx, inst.Name)
@@ -64,5 +73,6 @@ func (s *InstanceService) DeleteInstance(ctx context.Context, id string) error {
 	}
 
 	log.Printf("[InstanceService] Instancia '%s' eliminada exitosamente", inst.Name)
+	s.log("INFO", "Instancia eliminada exitosamente", map[string]any{"instancia": inst.Name})
 	return nil
 }

@@ -140,7 +140,7 @@ func TestOrchestrator_Provision_Success(t *testing.T) {
 	dep := &fakeDeployer{}
 	repo := &fakeRepository{instances: make(map[string]domain.Instance)}
 
-	orc := services.NewOrchestrator(hyp, dns, dep, repo, "cloud.local", "ApacheServer.vdi")
+	orc := services.NewOrchestrator(hyp, dns, dep, repo, "cloud.local", "ApacheServer.vdi", nil)
 
 	zipBytes, size := createTestZip(t, "index.html", "<h1>Bienvenido</h1>")
 	req := services.ProvisionRequest{
@@ -175,7 +175,7 @@ func TestOrchestrator_Provision_RollbackOnDeployFailure(t *testing.T) {
 	dep := &fakeDeployer{failDeploy: true} // Simular fallo de despliegue
 	repo := &fakeRepository{instances: make(map[string]domain.Instance)}
 
-	orc := services.NewOrchestrator(hyp, dns, dep, repo, "cloud.local", "ApacheServer.vdi")
+	orc := services.NewOrchestrator(hyp, dns, dep, repo, "cloud.local", "ApacheServer.vdi", nil)
 
 	zipBytes, size := createTestZip(t, "index.html", "<h1>Bienvenido</h1>")
 	req := services.ProvisionRequest{

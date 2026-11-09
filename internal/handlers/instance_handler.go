@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/Andrey3681/httpaas-orchestrator/internal/core/domain"
+	"github.com/Andrey3681/httpaas-orchestrator/internal/core/ports"
 	"github.com/Andrey3681/httpaas-orchestrator/internal/services"
 )
 
@@ -18,13 +19,15 @@ import (
 type InstanceHandler struct {
 	orchestrator    *services.Orchestrator
 	instanceService *services.InstanceService
+	logger          ports.EventLogger
 }
 
 // NewInstanceHandler crea un nuevo InstanceHandler con los servicios requeridos.
-func NewInstanceHandler(orchestrator *services.Orchestrator, instanceService *services.InstanceService) *InstanceHandler {
+func NewInstanceHandler(orchestrator *services.Orchestrator, instanceService *services.InstanceService, logger ports.EventLogger) *InstanceHandler {
 	return &InstanceHandler{
 		orchestrator:    orchestrator,
 		instanceService: instanceService,
+		logger:          logger,
 	}
 }
 
@@ -65,7 +68,8 @@ func (h *InstanceHandler) HandleInstance(w http.ResponseWriter, r *http.Request)
 func (h *InstanceHandler) list(w http.ResponseWriter, r *http.Request) {
 	items, err := h.instanceService.ListInstances(r.Context())
 	if err != nil {
-		Error(w, http.StatusInternalServerError, "Fallo al consultar listado de instancias")
+		logHandlerError(h.logger, "http", "Fallo al consultar listado de instancias", map[string]any{"error": err.Error()})
+		Error(w, http.StatusInternalServerError, "Error interno al consultar las instancias")
 		return
 	}
 
@@ -82,7 +86,8 @@ func (h *InstanceHandler) get(w http.ResponseWriter, r *http.Request, id string)
 			Error(w, http.StatusNotFound, "La instancia solicitada no existe")
 			return
 		}
-		Error(w, http.StatusInternalServerError, "Fallo al consultar la instancia")
+		logHandlerError(h.logger, "http", "Fallo al consultar la instancia", map[string]any{"id": id, "error": err.Error()})
+		Error(w, http.StatusInternalServerError, "Error interno al consultar la instancia")
 		return
 	}
 
@@ -120,7 +125,8 @@ func (h *InstanceHandler) provision(w http.ResponseWriter, r *http.Request) {
 	// Leer a buffer en memoria para permitir ReaderAt y re-lectura
 	buf, err := io.ReadAll(file)
 	if err != nil {
-		Error(w, http.StatusInternalServerError, "Fallo al leer contenido del archivo comprimido")
+		logHandlerError(h.logger, "http", "Fallo al leer archivo de aprovisionamiento", map[string]any{"error": err.Error()})
+		Error(w, http.StatusInternalServerError, "Error interno al procesar el archivo recibido")
 		return
 	}
 
@@ -140,7 +146,8 @@ func (h *InstanceHandler) provision(w http.ResponseWriter, r *http.Request) {
 			Error(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		Error(w, http.StatusInternalServerError, err.Error())
+		logHandlerError(h.logger, "http", "Fallo en aprovisionamiento de instancia", map[string]any{"nombre": nombre, "error": err.Error()})
+		Error(w, http.StatusInternalServerError, "Error interno al aprovisionar la instancia")
 		return
 	}
 
@@ -157,7 +164,8 @@ func (h *InstanceHandler) delete(w http.ResponseWriter, r *http.Request, id stri
 			Error(w, http.StatusNotFound, "La instancia solicitada no existe")
 			return
 		}
-		Error(w, http.StatusInternalServerError, err.Error())
+		logHandlerError(h.logger, "http", "Fallo al eliminar instancia", map[string]any{"id": id, "error": err.Error()})
+		Error(w, http.StatusInternalServerError, "Error interno al eliminar la instancia")
 		return
 	}
 

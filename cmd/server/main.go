@@ -53,17 +53,17 @@ func main() {
 	}
 
 	// 3. Inicializar adaptadores de infraestructura
-	hyp := vbox.NewHypervisorAdapter(executor, *domainZone)
-	dns := bind9.NewDnsAdapter(executor, *dnsIP, *domainZone)
-	dep := deployer.NewApacheDeployer(executor)
+	hyp := vbox.NewHypervisorAdapter(executor, *domainZone, logBroker)
+	dns := bind9.NewDnsAdapter(executor, *dnsIP, *domainZone, logBroker)
+	dep := deployer.NewApacheDeployer(executor, logBroker)
 
 	// 4. Inicializar servicios de aplicación
-	orchestrator := services.NewOrchestrator(hyp, dns, dep, repo, *domainZone, *baseDisk)
-	instanceService := services.NewInstanceService(repo, hyp, dns)
+	orchestrator := services.NewOrchestrator(hyp, dns, dep, repo, *domainZone, *baseDisk, logBroker)
+	instanceService := services.NewInstanceService(repo, hyp, dns, logBroker)
 
 	// 5. Inicializar manejadores HTTP
-	instanceHandler := handlers.NewInstanceHandler(orchestrator, instanceService)
-	dnsHandler := handlers.NewDnsHandler(dns, *domainZone)
+	instanceHandler := handlers.NewInstanceHandler(orchestrator, instanceService, logBroker)
+	dnsHandler := handlers.NewDnsHandler(dns, *domainZone, logBroker)
 	logsHandler := handlers.NewLogsHandler(logBroker)
 
 	// 6. Configurar enrutador y montar endpoints

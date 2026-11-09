@@ -53,19 +53,20 @@ Representación JSON (contrato):
 - El *broker* se inyecta desde `cmd/server/main.go` (composición), igual que otros adaptadores.
 - No se persisten logs en disco en esta fase salvo decisión explícita posterior (el anillo en memoria cubre el dock/diagnóstico reciente).
 
-## 4. Contrato de API (propuesto)
+## 4. Contrato de API
 
 Todos los endpoints bajo `/api/logs`, JSON salvo SSE:
 
 | Método | Ruta | Propósito | Respuesta |
 |---|---|---|---|
-| `GET` | `/api/logs` | Obtener eventos recientes del anillo. | `200` `{"datos":[LogEntry],"total":N}`; query opcional `limit` (defecto razonable, máx. acotado). |
-| `GET` | `/api/logs/stream` | Stream en tiempo real (Server-Sent Events). | `200` `text/event-stream`, eventos `data: <LogEntry JSON>`; `id:` para reanudación opcional futura. |
+| `GET` | `/api/logs` | Obtener eventos recientes del anillo (con filtros). | `200` `{"datos":[LogEntry],"total":N}`; query `limit` (1–1000, def. 200), `nivel` (`DEBUG\|INFO\|WARN\|ERROR`), `componente`, `since` (id exclusivo, cursor). |
+| `GET` | `/api/logs/stream` | Stream en tiempo real (Server-Sent Events). | `200` `text/event-stream`, `id:` + `data: <LogEntry JSON>`; reanudación vía header `Last-Event-ID` o query `since`. |
+| `DELETE` | `/api/logs` | Limpiar el anillo de logs del servidor. | `200` `{"mensaje":"..."}`; `405`. |
 
 Notas:
 - `GET /api/logs/stream` mantiene la conexión abierta; el cliente (dock, rama UI) la consume para el indicador «live».
-- La acción «Limpiar» del dock es **solo cliente** (vacía la vista); el servidor no borra el anillo en esta fase (evita efectos globales inesperados). Si se requiere `DELETE /api/logs`, se definirá en el contrato antes de implementar.
-- Errores siguen `{"error","codigo"}` cuando aplique (p. ej. `405`).
+- `DELETE /api/logs` limpia el historial en memoria del servidor (complementa la limpieza de vista del cliente).
+- Errores siguen `{"error","codigo"}` cuando aplique (p. ej. `400`, `405`).
 
 ## 5. Niveles y uso
 
@@ -76,9 +77,9 @@ Notas:
 
 ## 6. Plan de implementación (incremental)
 
-1. **Docs/contrato** (este documento) + actualizar `docs/openapi.yaml` y `docs/api/endpoints.md` al añadir endpoints.
-2. **Tests**: modelo de evento, ring buffer (capacidad/orden), broker pub/sub (entrega a suscriptor, no bloqueo), handler `GET /api/logs`, handler SSE básico.
-3. **Implementación**: paquete de logging/broker, inyección en `main`, middleware/puentes, rutas `/api/logs` y `/api/logs/stream`.
+1. **Docs/contrato** (este documento) + `docs/openapi.yaml` y `docs/api/endpoints.md`.
+2. **Tests**: modelo/evento, ring buffer (capacidad/orden/limpieza/cursor), filtros, broker pub/sub, handlers `GET/DELETE /api/logs` y SSE (resume).
+3. **Implementación**: `internal/logging`/broker, puerto `EventLogger` inyectado en servicios/adaptadores para eventos estructurados, handlers/rutas, sanitización de mensajes `500` (detalle a logs, mensaje público estable).
 4. **Integración UI**: conectar `logs-dock.js` (rama UI) al stream/consulta — trabajo coordinado con la rama de interfaz.
 
 ## 7. Criterios de aceptación (fase inicial)

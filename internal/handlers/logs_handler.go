@@ -17,7 +17,14 @@ const (
 	maxLogsLimit     = 1000
 )
 
-// LogsHandler atiende los endpoints de consulta y streaming de logs.
+var allowedLogLevels = map[string]bool{
+	string(logging.LevelDebug): true,
+	string(logging.LevelInfo):  true,
+	string(logging.LevelWarn):  true,
+	string(logging.LevelError): true,
+}
+
+// LogsHandler atiende los endpoints de consulta, limpieza y streaming de logs.
 type LogsHandler struct {
 	broker *logging.Broker
 }
@@ -27,27 +34,60 @@ func NewLogsHandler(broker *logging.Broker) *LogsHandler {
 	return &LogsHandler{broker: broker}
 }
 
-// HandleLogs responde con los eventos recientes del anillo de logs (/api/logs).
+// HandleLogs enruta operaciones de colección de logs (/api/logs): listado (GET) y limpieza (DELETE).
 func (h *LogsHandler) HandleLogs(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
+	switch r.Method {
+	case http.MethodGet:
+		h.list(w, r)
+	case http.MethodDelete:
+		h.clear(w, r)
+	default:
 		Error(w, http.StatusMethodNotAllowed, "Método HTTP no permitido")
-		return
 	}
+}
 
-	limit := defaultLogsLimit
-	if raw := r.URL.Query().Get("limit"); raw != "" {
+func (h *LogsHandler) list(w http.ResponseWriter, r *http.Request) {
+	opts := logging.QueryOptions{Limit: defaultLogsLimit}
+	query := r.URL.Query()
+
+	if raw := query.Get("limit"); raw != "" {
 		parsed, err := strconv.Atoi(raw)
 		if err != nil || parsed < 1 || parsed > maxLogsLimit {
 			Error(w, http.StatusBadRequest, "El parámetro 'limit' debe ser un entero entre 1 y 1000")
 			return
 		}
-		limit = parsed
+		opts.Limit = parsed
+	}
+	if nivel := query.Get("nivel"); nivel != "" {
+		if !allowedLogLevels[nivel] {
+			Error(w, http.StatusBadRequest, "El parámetro 'nivel' no es válido")
+			return
+		}
+		opts.Level = nivel
+	}
+	if componente := query.Get("componente"); componente != "" {
+		opts.Component = componente
+	}
+	if raw := query.Get("since"); raw != "" {
+		parsed, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil || parsed < 0 {
+			Error(w, http.StatusBadRequest, "El parámetro 'since' debe ser un entero mayor o igual a 0")
+			return
+		}
+		opts.Since = parsed
 	}
 
-	entries := h.broker.Recent(limit)
+	entries := h.broker.Query(opts)
 	JSON(w, http.StatusOK, Response{
 		Datos: entries,
 		Total: len(entries),
+	})
+}
+
+func (h *LogsHandler) clear(w http.ResponseWriter, r *http.Request) {
+	h.broker.Clear()
+	JSON(w, http.StatusOK, Response{
+		Mensaje: "Registros de log limpiados",
 	})
 }
 
@@ -55,6 +95,12 @@ func (h *LogsHandler) HandleLogs(w http.ResponseWriter, r *http.Request) {
 func (h *LogsHandler) HandleStream(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		Error(w, http.StatusMethodNotAllowed, "Método HTTP no permitido")
+		return
+	}
+
+	since, err := parseSince(r)
+	if err != nil {
+		Error(w, http.StatusBadRequest, "El parámetro 'since' no es válido")
 		return
 	}
 
@@ -72,9 +118,14 @@ func (h *LogsHandler) HandleStream(w http.ResponseWriter, r *http.Request) {
 	ch, cancel := h.broker.Subscribe()
 	defer cancel()
 
-	// Señal inicial para confirmar apertura del stream.
 	fmt.Fprintf(w, ": connected\n\n")
 	flusher.Flush()
+
+	for _, entry := range h.broker.Since(since) {
+		if !writeSSEEvent(w, flusher, entry) {
+			return
+		}
+	}
 
 	for {
 		select {
@@ -84,13 +135,34 @@ func (h *LogsHandler) HandleStream(w http.ResponseWriter, r *http.Request) {
 			if !ok {
 				return
 			}
-			payload, err := json.Marshal(entry)
-			if err != nil {
-				continue
+			if !writeSSEEvent(w, flusher, entry) {
+				return
 			}
-			fmt.Fprintf(w, "id: %d\n", entry.ID)
-			fmt.Fprintf(w, "data: %s\n\n", payload)
-			flusher.Flush()
 		}
 	}
+}
+
+func parseSince(r *http.Request) (int64, error) {
+	if raw := r.URL.Query().Get("since"); raw != "" {
+		return strconv.ParseInt(raw, 10, 64)
+	}
+	if raw := r.Header.Get("Last-Event-ID"); raw != "" {
+		return strconv.ParseInt(raw, 10, 64)
+	}
+	return 0, nil
+}
+
+func writeSSEEvent(w http.ResponseWriter, flusher http.Flusher, entry logging.Entry) bool {
+	payload, err := json.Marshal(entry)
+	if err != nil {
+		return true
+	}
+	if _, err := fmt.Fprintf(w, "id: %d\n", entry.ID); err != nil {
+		return false
+	}
+	if _, err := fmt.Fprintf(w, "data: %s\n\n", payload); err != nil {
+		return false
+	}
+	flusher.Flush()
+	return true
 }

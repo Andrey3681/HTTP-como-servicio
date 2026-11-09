@@ -33,6 +33,7 @@ type Orchestrator struct {
 	repo         ports.Repository
 	domainZone   string
 	baseDiskPath string
+	logger       ports.EventLogger
 }
 
 // NewOrchestrator instancia el orquestador inyectando sus puertos colaboradores.
@@ -43,6 +44,7 @@ func NewOrchestrator(
 	repo ports.Repository,
 	domainZone string,
 	baseDiskPath string,
+	logger ports.EventLogger,
 ) *Orchestrator {
 	return &Orchestrator{
 		hypervisor:   hypervisor,
@@ -51,6 +53,13 @@ func NewOrchestrator(
 		repo:         repo,
 		domainZone:   domainZone,
 		baseDiskPath: baseDiskPath,
+		logger:       logger,
+	}
+}
+
+func (o *Orchestrator) log(level, message string, fields map[string]any) {
+	if o.logger != nil {
+		o.logger.Append(level, "orchestrator", message, fields)
 	}
 }
 
@@ -74,6 +83,7 @@ func (o *Orchestrator) Provision(ctx context.Context, req ProvisionRequest) (*do
 	}
 
 	log.Printf("[Orchestrator] Iniciando aprovisionamiento para host '%s'", trimmedName)
+	o.log("INFO", "Iniciando aprovisionamiento de instancia", map[string]any{"instancia": trimmedName})
 
 	// 4. Crear máquina virtual a partir del disco multiconexión base
 	inst, err := o.hypervisor.CreateInstanceFromBase(ctx, trimmedName, o.baseDiskPath)
@@ -88,6 +98,7 @@ func (o *Orchestrator) Provision(ctx context.Context, req ProvisionRequest) (*do
 	defer func() {
 		if err != nil {
 			log.Printf("[Rollback] Iniciando compensación tras fallo en host '%s': %v", trimmedName, err)
+			o.log("WARN", "Iniciando rollback de aprovisionamiento", map[string]any{"instancia": trimmedName, "error": err.Error()})
 			if dnsRegistered {
 				_ = o.dnsProvider.RemoveRecord(context.Background(), trimmedName)
 			}
@@ -111,6 +122,7 @@ func (o *Orchestrator) Provision(ctx context.Context, req ProvisionRequest) (*do
 	}
 
 	inst.IP = fmt.Sprintf("%s/24", ip.String())
+	o.log("INFO", "Dirección IP obtenida para la instancia", map[string]any{"instancia": trimmedName, "ip": inst.IP})
 
 	// 7. Registrar en servidor DNS Bind9
 	var record *domain.DnsRecord
@@ -123,6 +135,7 @@ func (o *Orchestrator) Provision(ctx context.Context, req ProvisionRequest) (*do
 		return nil, fmt.Errorf("fallo al registrar DNS en Bind9: %w", err)
 	}
 	dnsRegistered = true
+	o.log("INFO", "Registro DNS creado para la instancia", map[string]any{"instancia": trimmedName, "fqdn": inst.FQDN})
 
 	// 8. Desplegar paquete web .zip en Apache
 	if err = o.deployer.DeployWebZip(ctx, ip, req.ZipStream, req.ZipSize); err != nil {
@@ -139,6 +152,7 @@ func (o *Orchestrator) Provision(ctx context.Context, req ProvisionRequest) (*do
 
 	log.Printf("[Orchestrator] Instancia '%s' aprovisionada con éxito (IP: %s, FQDN: %s)",
 		inst.Name, inst.IP, inst.FQDN)
+	o.log("INFO", "Instancia aprovisionada con éxito", map[string]any{"instancia": inst.Name, "ip": inst.IP, "fqdn": inst.FQDN})
 
 	return inst, nil
 }

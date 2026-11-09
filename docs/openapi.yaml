@@ -239,7 +239,7 @@ paths:
     get:
       operationId: listLogs
       summary: Listar eventos de log recientes
-      description: Retorna los eventos recientes del anillo de logs en memoria.
+      description: Retorna los eventos recientes del anillo de logs en memoria, con filtros opcionales.
       parameters:
         - name: limit
           in: query
@@ -250,6 +250,27 @@ paths:
             maximum: 1000
             default: 200
           description: Número máximo de eventos a retornar (más recientes).
+        - name: nivel
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [DEBUG, INFO, WARN, ERROR]
+          description: Filtra por nivel de severidad.
+        - name: componente
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filtra por componente de origen.
+        - name: since
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+            minimum: 0
+          description: Cursor exclusivo; retorna eventos con id mayor al indicado.
       responses:
         '200':
           description: Eventos de log obtenidos exitosamente
@@ -277,12 +298,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorRespuesta'
+    delete:
+      operationId: clearLogs
+      summary: Limpiar el anillo de logs
+      description: Elimina los eventos almacenados en el anillo de logs en memoria del servidor.
+      responses:
+        '200':
+          description: Anillo de logs limpiado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: Registros de log limpiados
+        '405':
+          description: Método HTTP no permitido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
 
   /api/logs/stream:
     get:
       operationId: streamLogs
       summary: Stream de eventos de log en tiempo real
-      description: Entrega eventos de log mediante Server-Sent Events (SSE). Cada mensaje usa `data` con un objeto LogEntry en JSON.
+      description: Entrega eventos de log mediante Server-Sent Events (SSE). Cada mensaje usa `id` y `data` con un objeto LogEntry en JSON. Soporta reanudación mediante `Last-Event-ID` o `since`.
+      parameters:
+        - name: since
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+            minimum: 0
+          description: Cursor exclusivo para reanudar el stream desde un id conocido.
+        - name: Last-Event-ID
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Id del último evento recibido (mecanismo estándar SSE de reanudación).
       responses:
         '200':
           description: Stream SSE de eventos de log
@@ -290,7 +347,7 @@ paths:
             text/event-stream:
               schema:
                 type: string
-                description: "Flujo SSE; cada evento contiene data con un objeto LogEntry en JSON."
+                description: "Flujo SSE; cada evento contiene id y data con un objeto LogEntry en JSON."
         '405':
           description: Método HTTP no permitido
           content:

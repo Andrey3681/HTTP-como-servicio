@@ -23,21 +23,30 @@ type DnsAdapter struct {
 	serverIP string
 	zone     string
 	nsupdate string
+	logger   ports.EventLogger
 }
 
 // NewDnsAdapter crea una nueva instancia de DnsAdapter apuntando al servidor Bind9.
-func NewDnsAdapter(executor ports.Executor, serverIP string, zone string) *DnsAdapter {
+func NewDnsAdapter(executor ports.Executor, serverIP string, zone string, logger ports.EventLogger) *DnsAdapter {
 	return &DnsAdapter{
 		executor: executor,
 		serverIP: serverIP,
 		zone:     strings.Trim(zone, ".") + ".",
 		nsupdate: "nsupdate",
+		logger:   logger,
+	}
+}
+
+func (a *DnsAdapter) log(level, message string, fields map[string]any) {
+	if a.logger != nil {
+		a.logger.Append(level, "bind9", message, fields)
 	}
 }
 
 // AddRecord registra dinámicamente un registro tipo A mediante el protocolo RFC 2136 con nsupdate.
 func (a *DnsAdapter) AddRecord(ctx context.Context, record domain.DnsRecord) error {
 	log.Printf("[Bind9] Registrando host '%s' -> %s en zona %s", record.Name, record.IP, a.zone)
+	a.log("INFO", "Registrando registro DNS", map[string]any{"nombre": record.Name, "ip": record.IP, "zona": a.zone})
 
 	var script bytes.Buffer
 	fmt.Fprintf(&script, "server %s\n", a.serverIP)
@@ -64,6 +73,7 @@ func (a *DnsAdapter) RemoveRecord(ctx context.Context, hostname string) error {
 	fqdn := fmt.Sprintf("%s.%s", cleanName, a.zone)
 
 	log.Printf("[Bind9] Removiendo registro '%s' de zona %s", fqdn, a.zone)
+	a.log("INFO", "Eliminando registro DNS", map[string]any{"nombre": fqdn, "zona": a.zone})
 
 	var script bytes.Buffer
 	fmt.Fprintf(&script, "server %s\n", a.serverIP)

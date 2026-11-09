@@ -15,10 +15,11 @@ import (
 type DnsHandler struct {
 	dnsProvider ports.DnsProvider
 	zone        string
+	logger      ports.EventLogger
 }
 
 // NewDnsHandler crea un nuevo DnsHandler para la zona DNS indicada.
-func NewDnsHandler(dnsProvider ports.DnsProvider, zone string) *DnsHandler {
+func NewDnsHandler(dnsProvider ports.DnsProvider, zone string, logger ports.EventLogger) *DnsHandler {
 	cleanZone := strings.TrimSpace(zone)
 	if cleanZone != "" && !strings.HasSuffix(cleanZone, ".") {
 		cleanZone += "."
@@ -26,6 +27,7 @@ func NewDnsHandler(dnsProvider ports.DnsProvider, zone string) *DnsHandler {
 	return &DnsHandler{
 		dnsProvider: dnsProvider,
 		zone:        cleanZone,
+		logger:      logger,
 	}
 }
 

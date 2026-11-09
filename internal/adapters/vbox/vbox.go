@@ -20,15 +20,23 @@ type HypervisorAdapter struct {
 	executor   ports.Executor
 	vboxBinary string
 	domainZone string
+	logger     ports.EventLogger
 	mu         sync.Mutex // Serializa el acceso a VBoxSVC para evitar colisiones concurrentes
 }
 
 // NewHypervisorAdapter crea un nuevo adaptador de VirtualBox.
-func NewHypervisorAdapter(executor ports.Executor, domainZone string) *HypervisorAdapter {
+func NewHypervisorAdapter(executor ports.Executor, domainZone string, logger ports.EventLogger) *HypervisorAdapter {
 	return &HypervisorAdapter{
 		executor:   executor,
 		vboxBinary: "VBoxManage",
 		domainZone: domainZone,
+		logger:     logger,
+	}
+}
+
+func (h *HypervisorAdapter) log(level, message string, fields map[string]any) {
+	if h.logger != nil {
+		h.logger.Append(level, "vbox", message, fields)
 	}
 }
 
@@ -38,6 +46,7 @@ func (h *HypervisorAdapter) CreateInstanceFromBase(ctx context.Context, name str
 	defer h.mu.Unlock()
 
 	log.Printf("[VBox] Registrando máquina virtual '%s'", name)
+	h.log("INFO", "Creando máquina virtual", map[string]any{"instancia": name, "base_disk": baseDiskPath})
 	// 1. VBoxManage createvm --name <name> --ostype Debian_64 --register
 	_, _, err := h.executor.Execute(ctx, h.vboxBinary, "createvm", "--name", name, "--ostype", "Debian_64", "--register")
 	if err != nil {
@@ -122,6 +131,7 @@ func (h *HypervisorAdapter) GetIPAddress(ctx context.Context, vmName string) (ne
 				ip, parseErr := ParseGuestIP(string(stdout))
 				if parseErr == nil && ip.IsValid() && !ip.IsLoopback() {
 					log.Printf("[VBox] IP detectada para '%s': %s", vmName, ip.String())
+					h.log("INFO", "IP detectada en máquina virtual", map[string]any{"instancia": vmName, "ip": ip.String()})
 					return ip, nil
 				}
 			}

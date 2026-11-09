@@ -34,7 +34,7 @@ func (s *stubDnsProvider) ListRecords(_ context.Context) ([]domain.DnsRecord, er
 func TestDnsHandler_Health(t *testing.T) {
 	t.Parallel()
 
-	handler := handlers.NewDnsHandler(&stubDnsProvider{}, "cloud.local")
+	handler := handlers.NewDnsHandler(&stubDnsProvider{}, "cloud.local", nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/salud", nil)
 	rec := httptest.NewRecorder()
 
@@ -56,7 +56,7 @@ func TestDnsHandler_Health(t *testing.T) {
 func TestDnsHandler_Records(t *testing.T) {
 	t.Parallel()
 
-	handler := handlers.NewDnsHandler(&stubDnsProvider{}, "cloud.local")
+	handler := handlers.NewDnsHandler(&stubDnsProvider{}, "cloud.local", nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/dns/registros", nil)
 	rec := httptest.NewRecorder()
 
@@ -85,7 +85,7 @@ func TestDnsHandler_Records(t *testing.T) {
 func TestDnsHandler_RecordsMethodNotAllowed(t *testing.T) {
 	t.Parallel()
 
-	handler := handlers.NewDnsHandler(&stubDnsProvider{}, "cloud.local")
+	handler := handlers.NewDnsHandler(&stubDnsProvider{}, "cloud.local", nil)
 	req := httptest.NewRequest(http.MethodPost, "/api/dns/registros", nil)
 	rec := httptest.NewRecorder()
 
@@ -107,7 +107,7 @@ func TestDnsHandler_RecordsFromProvider(t *testing.T) {
 			IP:   "192.168.10.30",
 			TTL:  300,
 		}},
-	}, "cloud.local")
+	}, "cloud.local", nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/dns/registros", nil)
 	rec := httptest.NewRecorder()
 

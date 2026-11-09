@@ -15,10 +15,10 @@ func TestBroker_AppendAndRecent(t *testing.T) {
 	t.Parallel()
 
 	broker := logging.NewBroker(3)
-	broker.Append(logging.LevelInfo, "test", "first", nil)
-	second := broker.Append(logging.LevelWarn, "test", "second", map[string]any{"k": "v"})
-	broker.Append(logging.LevelError, "test", "third", nil)
-	broker.Append(logging.LevelInfo, "test", "fourth", nil)
+	broker.AppendEntry(string(logging.LevelInfo), "test", "first", nil)
+	second := broker.AppendEntry(string(logging.LevelWarn), "test", "second", map[string]any{"k": "v"})
+	broker.AppendEntry(string(logging.LevelError), "test", "third", nil)
+	broker.AppendEntry(string(logging.LevelInfo), "test", "fourth", nil)
 
 	entries := broker.Recent(10)
 	if len(entries) != 3 {
@@ -43,7 +43,7 @@ func TestBroker_RecentLimit(t *testing.T) {
 
 	broker := logging.NewBroker(10)
 	for i := 0; i < 5; i++ {
-		broker.Append(logging.LevelInfo, "test", "msg", nil)
+		broker.Append(string(logging.LevelInfo), "test", "msg", nil)
 	}
 
 	entries := broker.Recent(2)
@@ -73,6 +73,43 @@ func TestBroker_Subscribe(t *testing.T) {
 		}
 	}()
 
-	broker.Append(logging.LevelInfo, "stream", "live", nil)
+	broker.Append(string(logging.LevelInfo), "stream", "live", nil)
 	wg.Wait()
+}
+
+func TestBroker_Clear(t *testing.T) {
+	t.Parallel()
+
+	broker := logging.NewBroker(10)
+	broker.AppendEntry(string(logging.LevelInfo), "test", "one", nil)
+	broker.Clear()
+	if got := broker.Recent(10); len(got) != 0 {
+		t.Fatalf("expected empty ring after clear, got %d", len(got))
+	}
+	broker.AppendEntry(string(logging.LevelInfo), "test", "two", nil)
+	if got := broker.Recent(10); len(got) != 1 || got[0].Mensaje != "two" {
+		t.Fatalf("unexpected entries after clear+append: %#v", got)
+	}
+}
+
+func TestBroker_QueryFilters(t *testing.T) {
+	t.Parallel()
+
+	broker := logging.NewBroker(10)
+	broker.AppendEntry(string(logging.LevelInfo), "orchestrator", "a", nil)
+	target := broker.AppendEntry(string(logging.LevelError), "bind9", "b", nil)
+	broker.AppendEntry(string(logging.LevelInfo), "bind9", "c", nil)
+
+	byLevel := broker.Query(logging.QueryOptions{Level: string(logging.LevelError)})
+	if len(byLevel) != 1 || byLevel[0].Mensaje != "b" {
+		t.Fatalf("unexpected level filter result: %#v", byLevel)
+	}
+	byComponent := broker.Query(logging.QueryOptions{Component: "bind9"})
+	if len(byComponent) != 2 {
+		t.Fatalf("expected 2 bind9 entries, got %#v", byComponent)
+	}
+	since := broker.Query(logging.QueryOptions{Since: target.ID})
+	if len(since) != 1 || since[0].Mensaje != "c" {
+		t.Fatalf("unexpected since filter result: %#v", since)
+	}
 }

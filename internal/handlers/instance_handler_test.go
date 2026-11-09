@@ -5,10 +5,12 @@ package handlers_test
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
+	"strings"
 	"testing"
 	"time"
 
@@ -50,7 +52,8 @@ func (d *dummyDeployer) DeployWebZip(ctx context.Context, targetIP netip.Addr, z
 }
 
 type inMemoryRepo struct {
-	instances map[string]domain.Instance
+	instances  map[string]domain.Instance
+	findAllErr error
 }
 
 func (m *inMemoryRepo) Save(ctx context.Context, inst domain.Instance) error {
@@ -67,6 +70,9 @@ func (m *inMemoryRepo) FindByID(ctx context.Context, id string) (*domain.Instanc
 }
 
 func (m *inMemoryRepo) FindAll(ctx context.Context) ([]domain.Instance, error) {
+	if m.findAllErr != nil {
+		return nil, m.findAllErr
+	}
 	var list []domain.Instance
 	for _, v := range m.instances {
 		list = append(list, v)
@@ -98,9 +104,9 @@ func TestInstanceHandler_List(t *testing.T) {
 	dns := &dummyDnsProvider{}
 	dep := &dummyDeployer{}
 
-	orc := services.NewOrchestrator(hyp, dns, dep, repo, "cloud.local", "ApacheServer.vdi")
-	svc := services.NewInstanceService(repo, hyp, dns)
-	handler := handlers.NewInstanceHandler(orc, svc)
+	orc := services.NewOrchestrator(hyp, dns, dep, repo, "cloud.local", "ApacheServer.vdi", nil)
+	svc := services.NewInstanceService(repo, hyp, dns, nil)
+	handler := handlers.NewInstanceHandler(orc, svc, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/instancias", nil)
 	rec := httptest.NewRecorder()
@@ -118,9 +124,9 @@ func TestInstanceHandler_GetNotFound(t *testing.T) {
 	dns := &dummyDnsProvider{}
 	dep := &dummyDeployer{}
 
-	orc := services.NewOrchestrator(hyp, dns, dep, repo, "cloud.local", "ApacheServer.vdi")
-	svc := services.NewInstanceService(repo, hyp, dns)
-	handler := handlers.NewInstanceHandler(orc, svc)
+	orc := services.NewOrchestrator(hyp, dns, dep, repo, "cloud.local", "ApacheServer.vdi", nil)
+	svc := services.NewInstanceService(repo, hyp, dns, nil)
+	handler := handlers.NewInstanceHandler(orc, svc, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/instancias/no-existe", nil)
 	rec := httptest.NewRecorder()
@@ -129,5 +135,32 @@ func TestInstanceHandler_GetNotFound(t *testing.T) {
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("expected status 404, got %d", rec.Code)
+	}
+}
+
+func TestInstanceHandler_ListInternalError(t *testing.T) {
+	repo := &inMemoryRepo{instances: make(map[string]domain.Instance), findAllErr: errors.New("disk failure")}
+	hyp := &dummyHypervisor{}
+	dns := &dummyDnsProvider{}
+	dep := &dummyDeployer{}
+
+	orc := services.NewOrchestrator(hyp, dns, dep, repo, "cloud.local", "ApacheServer.vdi", nil)
+	svc := services.NewInstanceService(repo, hyp, dns, nil)
+	handler := handlers.NewInstanceHandler(orc, svc, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/instancias", nil)
+	rec := httptest.NewRecorder()
+
+	handler.HandleInstances(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d", rec.Code)
+	}
+	body := rec.Body.String()
+	if strings.Contains(body, "disk failure") {
+		t.Fatalf("expected sanitized 500 message, got %q", body)
+	}
+	if !strings.Contains(body, "Error interno") {
+		t.Fatalf("expected generic 500 message, got %q", body)
 	}
 }

@@ -19,7 +19,7 @@ func (d *dummyExecutor) Execute(ctx context.Context, command string, args ...str
 }
 
 func TestApacheDeployer_DeployWebZip(t *testing.T) {
-	dep := deployer.NewApacheDeployer(&dummyExecutor{})
+	dep := deployer.NewApacheDeployer(&dummyExecutor{}, nil)
 	data := []byte("PK\x05\x06" + string(make([]byte, 18))) // ZIP vacío válido
 
 	err := dep.DeployWebZip(context.Background(), netip.MustParseAddr("192.168.10.30"), bytes.NewReader(data), int64(len(data)))

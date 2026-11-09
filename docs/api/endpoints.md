@@ -20,8 +20,9 @@ Este documento identifica de forma exhaustiva los endpoints HTTP expuestos por e
 | 4 | `GET` | `/api/instancias/{id}` | Obtener detalle de una instancia por identificador/nombre. | path `id` | `200` `{datos:Instancia}` | `200`, `400`, `404`, `405`, `500` | Existe |
 | 5 | `DELETE` | `/api/instancias/{id}` | Eliminar instancia (VM, DNS, inventario). | path `id` | `200` `{mensaje}` | `200`, `400`, `404`, `405`, `500` | Existe |
 | 6 | `GET` | `/api/dns/registros` | Consultar registros A activos en la zona DNS administrada. | — | `200` `{zona, registros:[{nombre,tipo,ip,ttl}]}` | `200`, `405` | Existe (stub permitido) |
-| 7 | `GET` | `/api/logs` | Obtener eventos de log recientes (anillo en memoria). | query `limit` (opcional, acotado) | `200` `{datos:[LogEntry], total}` | `200`, `400`, `405` | Existe |
-| 8 | `GET` | `/api/logs/stream` | Stream de eventos de log en tiempo real (SSE). | — | `200` `text/event-stream` (`data: <LogEntry JSON>`) | `200`, `405`, `500` | Existe |
+| 7 | `GET` | `/api/logs` | Obtener eventos de log recientes (anillo en memoria, filtrable). | query `limit` (1–1000, def. 200), `nivel`, `componente`, `since` (id, exclusivo) | `200` `{datos:[LogEntry], total}` | `200`, `400`, `405` | Existe |
+| 8 | `GET` | `/api/logs/stream` | Stream de eventos de log en tiempo real (SSE), con reanudación. | query `since` o header `Last-Event-ID` | `200` `text/event-stream` (`id:` + `data: <LogEntry JSON>`) | `200`, `405`, `500` | Existe |
+| 9 | `DELETE` | `/api/logs` | Limpiar el anillo de logs del servidor. | — | `200` `{mensaje}` | `200`, `405` | Existe |
 
 ## Esquemas clave (resumen)
 
