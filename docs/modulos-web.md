@@ -196,17 +196,18 @@ Estos contratos deben cumplirse para considerar la interfaz “reconstruida” s
 
 ### 8.1 Shell y componentes compartidos (todas las páginas)
 - Cada página HTML de módulo (`index.html`, `dns.html`, `salud.html`, `detalle.html`, `vhosts.html`, `ayuda.html`) incluye: `lang="es"`, `<div id="site-header-mount"></div>`, `<div id="site-footer-mount"></div>`, y carga `js/common.js`, `js/components.js`, `js/logs-dock.js`, `js/router.js` y los módulos `js/pages/*.js` requeridos.
-- `components.js` expone `window.updateActiveNav` y renderiza nav con enlaces a `index.html`, `dns.html`, `salud.html`, `detalle.html`, `vhosts.html`, `ayuda.html`.
-- `logs-dock.js` expone `window.toggleLogsDock`, `window.openLogsDock`, `window.closeLogsDock` y monta toggle/dock (cierres deslizantes, sin cambio de opacidad).
+- `components.js` expone `window.updateActiveNav` y renderiza nav (`id="site-nav"`, `aria-label`) con enlaces a `index.html`, `dns.html`, `salud.html`, `detalle.html`, `vhosts.html`, `ayuda.html`. En anchos <1024px provee un control accesible de menú (`id="nav-toggle"`, `button`, `aria-expanded`, `aria-controls="site-nav"`); Escape/click fuera/enlace cierran el menú y el foco retorna al toggle.
+- **Verdad operativa del header:** `components.js` renderiza estado de salud (`id="header-health-pill"`, `data-health-state="ok|error|unknown|unreachable"`, `aria-live="polite"`) consultando `/api/salud`; **no** afirma “Online” sin evidencia. Estados desconocidos/inaccesibles se muestran explícitamente.
+- `logs-dock.js` expone `window.toggleLogsDock`, `window.openLogsDock`, `window.closeLogsDock` y monta toggle/dock (cierres deslizantes, sin cambio de opacidad). El toggle expone `aria-expanded` y `aria-controls="system-logs-dock"`; controles del dock son accesibles por teclado/nombre.
 - Cada `<body>` o `<main>` declara `data-page="<modulo>"` con el identificador del módulo (`index|dns|salud|detalle|vhosts|ayuda`).
 
 ### 8.2 Contratos por módulo (IDs/elementos mínimos)
-- **M1/index (`data-page="index"`):** `provisionForm`, `hostnameInput`, `zipInput`, `checkHostBtn`, `instancesList` (o tabla equivalente), `instancesCount`, `refreshInstancesBtn`, `delete-modal` (o equivalente), `loadingOverlay`, `statusMessage`.
+- **M1/index (`data-page="index"`):** `provisionForm`, `hostnameInput`, `zipInput`, `checkHostBtn`, `instancesList` (o tabla equivalente), `instancesCount`, `refreshInstancesBtn`, `delete-modal` (o equivalente, `role="dialog"`, `aria-modal="true"`, `aria-labelledby`, contenedor enfocable `tabindex="-1"`), `loadingOverlay` (`role="status"`, `aria-live`, sin `aria-hidden` contradictorio mientras visible), `statusMessage`. El flujo JS gestiona foco del modal (guardar/atrapar/restaurar) y estados pendientes de acciones async (`disabled`/`aria-busy` donde aplique).
 - **M2/detalle:** `instanceSelect` (o `detailInstanceSelect`), `loadBtn` (o `loadDetailBtn`), contenedor de detalle/estado vacío; acepta `?id=`.
 - **M3/dns:** `dnsTableBody`, `refreshDnsBtn`, `dnsZone`/etiqueta de zona.
 - **M4/salud:** `checkBtn`/`checkHealthBtn`, indicadores de estado general/VBoxManage/Bind9, `healthRaw`.
 - **M5/vhosts:** `vhostsTableBody`, `refreshVhostsBtn`.
-- **M6/logs (global):** `system-logs-dock` (inyectado), `toggle-logs-btn` (inyectado), `terminal-output-container` (inyectado).
+- **M6/logs (global):** `system-logs-dock` (inyectado), `toggle-logs-btn` (inyectado, con `aria-expanded` y `aria-controls="system-logs-dock"`), `terminal-output-container` (inyectado). Controles con nombre accesible; resize no depende solo de puntero.
 - **M7/ayuda:** contenido estático con reglas de hostname/patrón, referencia `.zip`, zona `cloud.local` y enlaces a módulos.
 
 ### 8.3 Reglas de reutilización

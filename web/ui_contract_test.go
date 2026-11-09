@@ -77,7 +77,7 @@ func TestModuleContracts(t *testing.T) {
 		page    string
 		needles []string
 	}{
-		{"index.html", []string{`id="provisionForm"`, `id="hostnameInput"`, `id="zipInput"`, `id="checkHostBtn"`, `id="instancesList"`, `id="instancesCount"`, `id="refreshInstancesBtn"`, `id="delete-modal"`, `id="loadingOverlay"`, `id="statusMessage"`}},
+		{"index.html", []string{`id="provisionForm"`, `id="hostnameInput"`, `id="zipInput"`, `id="zipDropZone"`, `id="checkHostBtn"`, `id="instancesList"`, `id="instancesCount"`, `id="refreshInstancesBtn"`, `id="delete-modal"`, `id="loadingOverlay"`, `id="statusMessage"`}},
 		{"detalle.html", []string{`id="instanceSelect"`, `id="loadBtn"`}},
 		{"dns.html", []string{`id="dnsTableBody"`, `id="refreshDnsBtn"`, `id="dnsZone"`}},
 		{"salud.html", []string{`id="checkBtn"`, `id="healthRaw"`, `id="h-overall"`, `id="h-vbox"`, `id="h-bind9"`}},
@@ -106,6 +106,45 @@ func TestReusableComponentAPIs(t *testing.T) {
 		if strings.Contains(logs, bad) {
 			t.Fatalf("js/logs-dock.js: no debe contener %q (dock limpio)", bad)
 		}
+	}
+}
+
+func TestA11yAndOperationalTruthContracts(t *testing.T) {
+	components := readFile(t, filepath.Join("js", "components.js"))
+	for _, needle := range []string{
+		`nav-toggle`, `aria-expanded`, `site-nav`, `aria-controls`,
+		`header-health-pill`, `data-health-state`, `/api/salud`,
+	} {
+		assertContains(t, components, needle, "js/components.js (nav accesible + verdad operativa)")
+	}
+	for _, bad := range []string{`Apache 2.4 + Bind9 Online`} {
+		if strings.Contains(components, bad) {
+			t.Fatalf("js/components.js: no debe afirmar estado estático engañoso %q", bad)
+		}
+	}
+
+	logs := readFile(t, filepath.Join("js", "logs-dock.js"))
+	for _, needle := range []string{`aria-expanded`, `aria-controls`, `system-logs-dock`} {
+		assertContains(t, logs, needle, "js/logs-dock.js (a11y toggle/dock)")
+	}
+
+	index := readFile(t, "index.html")
+	for _, needle := range []string{`role="dialog"`, `aria-modal="true"`, `aria-labelledby`, `role="status"`, `id="delete-modal-panel"`} {
+		assertContains(t, index, needle, "index.html (modal/loading a11y)")
+	}
+	common := readFile(t, filepath.Join("js", "common.js"))
+	for _, needle := range []string{`aria-hidden`, `aria-busy`, `loadingOverlay`} {
+		assertContains(t, common, needle, "js/common.js (loading semántica accesible)")
+	}
+
+	page := readFile(t, filepath.Join("js", "pages", "index.js"))
+	for _, needle := range []string{`focus`, `aria-busy`, `Escape`} {
+		assertContains(t, page, needle, "js/pages/index.js (gestión foco/estados pendientes)")
+	}
+
+	css := readFile(t, filepath.Join("css", "stitch.css"))
+	if !strings.Contains(css, `nav-toggle`) && !strings.Contains(css, `site-nav`) {
+		t.Fatalf("css/stitch.css: debe definir estilos para navegación accesible <1024px (nav-toggle/site-nav)")
 	}
 }
 

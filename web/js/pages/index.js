@@ -14,6 +14,8 @@
 
     var hostnameInput = document.getElementById('hostnameInput');
     var zipInput = document.getElementById('zipInput');
+    var zipDropZone = document.getElementById('zipDropZone');
+    var zipFileName = document.getElementById('zipFileName');
     var checkHostBtn = document.getElementById('checkHostBtn');
     var instancesList = document.getElementById('instancesList');
     var instancesCount = document.getElementById('instancesCount');
@@ -29,19 +31,76 @@
     var modalNsupdate = document.getElementById('modal-nsupdate');
     var allInstances = [];
     var pendingDelete = null;
+    var modalReturnFocus = null;
+
+    function setBusy(el, busy) {
+      if (!el) return;
+      el.disabled = !!busy;
+      el.setAttribute('aria-busy', busy ? 'true' : 'false');
+    }
+
+    function setZipUI(file, errText) {
+      if (!zipDropZone || !zipFileName) return;
+      zipDropZone.classList.toggle('has-file', !!file && !errText);
+      zipDropZone.classList.toggle('has-error', !!errText);
+      zipFileName.textContent = errText ? errText : (file ? file.name : 'Ningún archivo seleccionado');
+    }
+    function applyZipFile(file) {
+      if (!zipInput) return;
+      if (!file) { setZipUI(null); return; }
+      var ok = /\.zip$/i.test(file.name || '');
+      if (!ok) {
+        zipInput.value = '';
+        setZipUI(null, 'El archivo debe ser .zip');
+        showMsg('El archivo debe tener extensión .zip.', 'error');
+        return;
+      }
+      try {
+        var dt = new DataTransfer();
+        dt.items.add(file);
+        zipInput.files = dt.files;
+      } catch (e) { /* el navegador no permite asignar; el input ya puede tenerlo si vino por change */ }
+      setZipUI(file);
+    }
+    if (zipDropZone && zipInput && !zipDropZone.dataset.bound) {
+      zipDropZone.dataset.bound = '1';
+      zipDropZone.addEventListener('click', function (e) { if (e.target !== zipInput) zipInput.click(); });
+      zipDropZone.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); zipInput.click(); }
+      });
+      zipInput.addEventListener('change', function () {
+        var f = zipInput.files && zipInput.files[0];
+        if (f) applyZipFile(f); else setZipUI(null);
+      });
+      ['dragenter', 'dragover'].forEach(function (ev) {
+        zipDropZone.addEventListener(ev, function (e) { e.preventDefault(); e.stopPropagation(); zipDropZone.classList.add('is-dragover'); });
+      });
+      ['dragleave', 'dragend'].forEach(function (ev) {
+        zipDropZone.addEventListener(ev, function (e) { e.preventDefault(); e.stopPropagation(); zipDropZone.classList.remove('is-dragover'); });
+      });
+      zipDropZone.addEventListener('drop', function (e) {
+        e.preventDefault(); e.stopPropagation(); zipDropZone.classList.remove('is-dragover');
+        var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (f) applyZipFile(f);
+      });
+    }
+    provisionForm.addEventListener('reset', function () { setZipUI(null); });
 
     if (checkHostBtn) checkHostBtn.addEventListener('click', async function () {
       var hostname = (hostnameInput && hostnameInput.value || '').trim().toLowerCase();
       if (!hostname) { showMsg('Por favor ingrese un nombre de host.', 'error'); return; }
       if (!/^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$/.test(hostname)) { showMsg('El nombre debe tener 3–32 caracteres (minúsculas, números y guiones).', 'error'); return; }
+      setBusy(checkHostBtn, true);
       try {
         var res = await fetch('/api/instancias/' + encodeURIComponent(hostname));
         if (res.status === 404) showMsg('El nombre de host "' + hostname + '" está disponible.', 'success');
         else if (res.ok) showMsg('El nombre de host "' + hostname + '" ya está en uso.', 'error');
         else showMsg('No se pudo verificar la disponibilidad.', 'error');
       } catch (e) { showMsg('Backend no accesible. El formato de "' + hostname + '" es válido.', 'info'); }
+      finally { setBusy(checkHostBtn, false); }
     });
 
+    var submitBtn = provisionForm.querySelector('button[type="submit"]');
     provisionForm.addEventListener('submit', async function (e) {
       e.preventDefault();
       var hostname = (hostnameInput && hostnameInput.value || '').trim().toLowerCase();
@@ -51,6 +110,7 @@
       if (!file.name.toLowerCase().endsWith('.zip')) { showMsg('El archivo debe tener extensión .zip.', 'error'); return; }
       var fd = new FormData(); fd.append('nombre', hostname); fd.append('archivo', file);
       showLoad(true, 'Aprovisionando VM "' + hostname + '" y registrando DNS…'); hideMsg();
+      setBusy(submitBtn, true); setBusy(checkHostBtn, true);
       try {
         var res = await fetch('/api/instancias', { method: 'POST', body: fd });
         var result = await res.json().catch(function () { return {}; });
@@ -58,7 +118,7 @@
         showMsg('Instancia "' + hostname + '" aprovisionada con éxito.', 'success');
         provisionForm.reset(); fetchInstances();
       } catch (err) { showMsg('Error en el aprovisionamiento: ' + err.message, 'error'); }
-      finally { showLoad(false); }
+      finally { setBusy(submitBtn, false); setBusy(checkHostBtn, false); showLoad(false); }
     });
 
     function renderInstances(list) {
@@ -93,26 +153,67 @@
     if (instancesFilter) instancesFilter.addEventListener('input', applyFilter);
     async function fetchInstances() {
       if (!instancesList) return;
-      try { var res = await fetch('/api/instancias'); if (!res.ok) throw new Error(); var data = await res.json(); allInstances = Array.isArray(data.datos) ? data.datos : (Array.isArray(data)?data:[]); } catch(e){ allInstances=[]; }
+      setBusy(refreshInstancesBtn, true);
+      try {
+        var res = await fetch('/api/instancias');
+        if (!res.ok) throw new Error('estado ' + res.status);
+        var data = await res.json();
+        allInstances = Array.isArray(data.datos) ? data.datos : (Array.isArray(data) ? data : []);
+      } catch (e) {
+        allInstances = [];
+        showMsg('No se pudieron cargar las instancias (backend inaccesible o error).', 'error');
+      } finally { setBusy(refreshInstancesBtn, false); }
       applyFilter();
+    }
+
+    function modalFocusables() {
+      if (!deleteModal) return [];
+      return Array.prototype.slice.call(deleteModal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'))
+        .filter(function (el) { return !el.disabled && el.offsetParent !== null; });
     }
     function openDeleteModal(fqdn, host, id) {
       pendingDelete = { fqdn: fqdn, host: host, id: id || host };
       if (modalQuestion) modalQuestion.textContent = '¿Eliminar instancia ' + (fqdn || host) + '?';
       if (modalPath) modalPath.textContent = '/var/www/vhosts/' + (host || '') + '/';
       if (modalConf) modalConf.textContent = host || ''; if (modalNsupdate) modalNsupdate.textContent = host || '';
-      if (deleteModal) deleteModal.classList.remove('hidden');
+      if (deleteModal) {
+        modalReturnFocus = document.activeElement;
+        deleteModal.classList.remove('hidden');
+        var panel = document.getElementById('delete-modal-panel');
+        var focusTarget = deleteCancelBtn || (modalFocusables()[0]) || panel;
+        if (focusTarget && focusTarget.focus) focusTarget.focus();
+      }
     }
     window.openDeleteModal = openDeleteModal; window.deleteInstance = function(id){ openDeleteModal((id||'')+'.cloud.local', id, id); };
-    function closeDeleteModal(){ pendingDelete=null; if(deleteModal) deleteModal.classList.add('hidden'); }
+    function closeDeleteModal() {
+      pendingDelete = null;
+      if (deleteModal) deleteModal.classList.add('hidden');
+      var ret = modalReturnFocus; modalReturnFocus = null;
+      if (ret && ret.focus) try { ret.focus(); } catch (e) {}
+    }
     if (deleteCancelBtn) deleteCancelBtn.addEventListener('click', closeDeleteModal);
     if (deleteModal) deleteModal.addEventListener('click', function(e){ if(e.target===deleteModal) closeDeleteModal(); });
-    window.addEventListener('keydown', function(e){ if(e.key==='Escape') closeDeleteModal(); });
+    if (deleteModal) deleteModal.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { e.preventDefault(); closeDeleteModal(); return; }
+      if (e.key !== 'Tab') return;
+      var f = modalFocusables(); if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
+    window.addEventListener('keydown', function(e){ if (e.key === 'Escape' && deleteModal && !deleteModal.classList.contains('hidden')) closeDeleteModal(); });
     if (deleteConfirmBtn) deleteConfirmBtn.addEventListener('click', async function(){
-      var target=pendingDelete; closeDeleteModal(); if(!target) return;
-      showLoad(true, 'Destruyendo VM "'+target.host+'" y liberando DNS…');
-      try { var res=await fetch('/api/instancias/'+encodeURIComponent(target.id),{method:'DELETE'}); if(!res.ok){ var err=await res.json().catch(function(){return {};}); throw new Error(err.error||'Error al eliminar.'); } showMsg('Instancia "'+target.host+'" eliminada exitosamente.','success'); fetchInstances(); }
-      catch(err){ showMsg('Error al eliminar: '+err.message,'error'); } finally{ showLoad(false); }
+      var target = pendingDelete; closeDeleteModal(); if (!target) return;
+      showLoad(true, 'Destruyendo VM "' + target.host + '" y liberando DNS…');
+      setBusy(deleteConfirmBtn, true);
+      try {
+        var res = await fetch('/api/instancias/' + encodeURIComponent(target.id), { method: 'DELETE' });
+        if (!res.ok) { var err = await res.json().catch(function () { return {}; }); throw new Error(err.error || 'Error al eliminar.'); }
+        showMsg('Instancia "' + target.host + '" eliminada exitosamente.', 'success');
+        if (window.refreshHeaderHealth) window.refreshHeaderHealth();
+        fetchInstances();
+      } catch (err) { showMsg('Error al eliminar: ' + err.message, 'error'); }
+      finally { setBusy(deleteConfirmBtn, false); showLoad(false); }
     });
     if (refreshInstancesBtn) refreshInstancesBtn.addEventListener('click', fetchInstances);
     fetchInstances();

@@ -24,7 +24,11 @@
   function showLoading(show, text) {
     var ov = document.getElementById('loadingOverlay'), tx = document.getElementById('loadingText');
     if (tx) tx.textContent = text || 'Procesando operación…';
-    if (ov) ov.classList.toggle('open', !!show);
+    if (ov) {
+      ov.classList.toggle('open', !!show);
+      ov.setAttribute('aria-hidden', show ? 'false' : 'true');
+      ov.setAttribute('aria-busy', show ? 'true' : 'false');
+    }
   }
   window.HTTPaaS = { escapeHtml: escapeHtml, escapeAttr: escapeAttr, formatFecha: formatFecha, showMessage: showMessage, hideMessage: hideMessage, showLoading: showLoading };
 })();

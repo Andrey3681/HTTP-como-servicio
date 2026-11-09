@@ -50,8 +50,13 @@
                   <label class="text-sm text-on-surface font-semibold" for="zipInput">Contenido web (.zip) <span class="text-error">*</span></label>
                   <span class="text-[11px] text-outline mono">application/zip</span>
                 </div>
-                <input class="w-full border-standard rounded-xl bg-surface-container-lowest px-3 py-2 text-[13px] text-on-surface" id="zipInput" name="archivo" type="file" accept=".zip,application/zip" required>
-                <p class="mt-1.5 text-[12px] text-on-surface-variant">ZIP (HTML/CSS/JS estático). Se despliega en <span class="mono">/var/www/vhosts/&lt;host&gt;/</span>.</p>
+                <div id="zipDropZone" class="zip-dropzone" tabindex="0" role="button" aria-label="Seleccionar o arrastrar archivo .zip" aria-describedby="zipFileName">
+                  <input class="zip-dropzone-input" id="zipInput" name="archivo" type="file" accept=".zip,application/zip" required>
+                  <span class="material-symbols-outlined zip-dropzone-icon" aria-hidden="true">upload_file</span>
+                  <p class="zip-dropzone-title">Arrastra tu archivo .zip aquí</p>
+                  <p class="zip-dropzone-subtitle">o <span class="zip-dropzone-link">haz clic para seleccionar</span></p>
+                  <p id="zipFileName" class="zip-dropzone-file" aria-live="polite">Ningún archivo seleccionado</p>
+                </div>
               </div>
             </div>
             <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t-standard">
@@ -102,7 +107,7 @@
     </div>
     <!-- Modal de eliminación (Stitch) -->
     <div aria-labelledby="modal-title" aria-modal="true" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[rgba(31,35,40,0.4)] hidden" id="delete-modal" role="dialog">
-      <div class="w-full max-w-md bg-surface-container-lowest border-standard rounded-xl p-6 relative">
+      <div id="delete-modal-panel" class="w-full max-w-md bg-surface-container-lowest border-standard rounded-xl p-6 relative" tabindex="-1">
         <div class="flex items-start gap-3 pb-4 border-b-standard">
           <div class="w-9 h-9 rounded-xl bg-error-container border-standard flex items-center justify-center text-secondary shrink-0">
             <span class="material-symbols-outlined">warning</span>
@@ -124,9 +129,9 @@
       </div>
     </div>
 
-    <div id="loadingOverlay" class="loading-overlay" aria-hidden="true">
+    <div id="loadingOverlay" class="loading-overlay" role="status" aria-live="polite" aria-atomic="true" aria-hidden="true" aria-busy="false">
       <div class="bg-surface-container-lowest border-standard rounded-xl p-6 flex items-center gap-4 w-full max-w-md">
-        <span class="material-symbols-outlined text-primary-container">progress_activity</span>
+        <span class="material-symbols-outlined text-primary-container" aria-hidden="true">progress_activity</span>
         <p id="loadingText" class="text-on-surface text-[14px] m-0">Procesando operación…</p>
       </div>
     </div>
