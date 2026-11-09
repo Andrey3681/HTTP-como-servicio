@@ -235,6 +235,69 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorRespuesta'
 
+  /api/logs:
+    get:
+      operationId: listLogs
+      summary: Listar eventos de log recientes
+      description: Retorna los eventos recientes del anillo de logs en memoria.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 200
+          description: Número máximo de eventos a retornar (más recientes).
+      responses:
+        '200':
+          description: Eventos de log obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datos:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LogEntry'
+                  total:
+                    type: integer
+                    example: 2
+        '400':
+          description: Parámetro de consulta inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+        '405':
+          description: Método HTTP no permitido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+
+  /api/logs/stream:
+    get:
+      operationId: streamLogs
+      summary: Stream de eventos de log en tiempo real
+      description: Entrega eventos de log mediante Server-Sent Events (SSE). Cada mensaje usa `data` con un objeto LogEntry en JSON.
+      responses:
+        '200':
+          description: Stream SSE de eventos de log
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: "Flujo SSE; cada evento contiene data con un objeto LogEntry en JSON."
+        '405':
+          description: Método HTTP no permitido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+
   /api/salud:
     get:
       operationId: getSalud
@@ -292,6 +355,32 @@ components:
           type: string
           format: date-time
           example: '2026-04-22T17:02:03Z'
+
+    LogEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 42
+        ts:
+          type: string
+          format: date-time
+          example: '2026-04-22T17:02:03Z'
+        nivel:
+          type: string
+          enum: [DEBUG, INFO, WARN, ERROR]
+          example: INFO
+        componente:
+          type: string
+          example: orchestrator
+        mensaje:
+          type: string
+          example: Aprovisionamiento completado
+        campos:
+          type: object
+          additionalProperties: true
+          nullable: true
 
     ErrorRespuesta:
       type: object
