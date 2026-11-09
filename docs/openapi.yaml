@@ -297,6 +297,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorRespuesta'
+        '500':
+          description: El servidor no soporta streaming de eventos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
 
   /api/salud:
     get:

@@ -8,6 +8,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -22,6 +23,7 @@ import (
 	"github.com/Andrey3681/httpaas-orchestrator/internal/adapters/localproc"
 	"github.com/Andrey3681/httpaas-orchestrator/internal/adapters/vbox"
 	"github.com/Andrey3681/httpaas-orchestrator/internal/handlers"
+	"github.com/Andrey3681/httpaas-orchestrator/internal/logging"
 	"github.com/Andrey3681/httpaas-orchestrator/internal/services"
 )
 
@@ -33,6 +35,9 @@ func main() {
 	dataPath := flag.String("data", filepath.Join("data", "instances.json"), "Ruta del archivo de persistencia JSON")
 	webDir := flag.String("web", "web", "Directorio con los archivos estáticos de la interfaz web")
 	flag.Parse()
+
+	logBroker := logging.NewBroker(1000)
+	log.SetOutput(io.MultiWriter(os.Stderr, logBroker))
 
 	log.Println("================================================================")
 	log.Println("  HTTPaaS - Servicio Administrado de Servidores HTTP (2026-2)   ")
@@ -59,11 +64,14 @@ func main() {
 	// 5. Inicializar manejadores HTTP
 	instanceHandler := handlers.NewInstanceHandler(orchestrator, instanceService)
 	dnsHandler := handlers.NewDnsHandler(dns, *domainZone)
+	logsHandler := handlers.NewLogsHandler(logBroker)
 
 	// 6. Configurar enrutador y montar endpoints
 	mux := http.NewServeMux()
 
 	// API REST
+	mux.HandleFunc("/api/logs/stream", logsHandler.HandleStream)
+	mux.HandleFunc("/api/logs", logsHandler.HandleLogs)
 	mux.HandleFunc("/api/instancias/", instanceHandler.HandleInstance)
 	mux.HandleFunc("/api/instancias", instanceHandler.HandleInstances)
 	mux.HandleFunc("/api/dns/registros", dnsHandler.HandleRecords)
