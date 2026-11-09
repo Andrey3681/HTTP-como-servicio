@@ -1,36 +1,42 @@
 \section{Diseño de la Solución}
 
 \subsection{Arquitectura del Sistema}
-La solución se compone de tres capas arquitectónicas:
+La solución se compone de tres capas arquitectónicas, alineadas con el patrón hexagonal (puertos y adaptadores):
 \begin{enumerate}
-    \item \textbf{Capa Primaria (Controladores y Presentación):} Servidor HTTP en Go que expone una interfaz gráfica HTML/CSS/JS y una API REST compatible con OpenAPI 3.0.
-    \item \textbf{Capa de Aplicación y Dominio:} Servicios orquestadores transaccionales que coordinan la creación de recursos y gestionan fallos mediante rutinas de compensación (\textit{rollback}).
-    \item \textbf{Capa Secundaria (Adaptadores de Infraestructura):} Implementaciones concretas de los puertos que invocan la interfaz de línea de comandos de VirtualBox (\texttt{VBoxManage}), utilitarios DNS (\texttt{nsupdate} o SSH sobre Bind9) y utilidades de transferencia de archivos.
+    \item \textbf{Capa primaria (controladores y presentación):} servidor HTTP en Go que expone una API REST y sirve una interfaz web estática. Los \textit{handlers} validan y enrutan peticiones; la lógica de orquestación reside en servicios de aplicación.
+    \item \textbf{Capa de aplicación y dominio:} núcleo con modelos e invariantes (\texttt{internal/core/domain}) y contratos de puertos (\texttt{internal/core/ports}). Los servicios coordinan el aprovisionamiento transaccional y ejecutan compensaciones (\textit{rollback}) ante fallos.
+    \item \textbf{Capa secundaria (adaptadores de infraestructura):} implementaciones concretas que encapsulan la interacción con el host: \texttt{VBoxManage} (hipervisor), utilitarios DNS/Bind9 (\texttt{nsupdate}/consulta de zona), despliegue de contenido \texttt{.zip} y persistencia/repositorio. Toda ejecución de procesos externos se canaliza por el puerto \texttt{Executor}.
 \end{enumerate}
 
 \subsection{Topología de Red}
 Se define una red interna virtual (\texttt{cloudnet}) bajo el segmento IPv4 \texttt{192.168.10.0/24}:
 \begin{itemize}
-    \item \textbf{Host anfitrión:} \texttt{192.168.10.1} (interfaz Host-Only).
-    \item \textbf{Servidor DNS (\texttt{ns}):} \texttt{192.168.10.10/24}, administrando la zona \texttt{cloud.local.}.
-    \item \textbf{Instancias dinámicas:} Direcciones en el rango \texttt{192.168.10.30} a \texttt{192.168.10.254}.
+    \item \textbf{Host anfitrión:} ejecuta el orquestador HTTPaaS (por defecto en \texttt{localhost:8080}) y accede a las herramientas del entorno.
+    \item \textbf{Servidor DNS (\texttt{ns}):} \texttt{192.168.10.10/24}, administrando la zona \texttt{cloud.local.} con Bind9.
+    \item \textbf{Instancias dinámicas:} máquinas virtuales en \texttt{192.168.10.x} con FQDN \texttt{<host>.cloud.local}, creadas desde la plantilla Apache con disco base en modo multiconexión.
 \end{itemize}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\linewidth]{escenario.svg}
+\includegraphics[width=\linewidth]{escenario.pdf}
 \caption{Diagrama de escenario: topología de red y componentes del entorno HTTPaaS.}
 \label{fig:escenario}
 \end{figure}
 
+\subsection{Contrato API REST}
+La interfaz de gestión se sustenta en un contrato OpenAPI 3.0 (\texttt{docs/openapi.yaml}) que describe los recursos principales: \texttt{GET/POST /api/instancias}, \texttt{GET/DELETE /api/instancias/\{id\}}, \texttt{GET /api/dns/registros} y \texttt{GET /api/salud}. El aprovisionamiento recibe \texttt{multipart/form-data} con el nombre de host y el archivo \texttt{.zip}; el contrato establece validaciones de formato, respuestas y códigos de error, lo que permite desacoplar la evolución de la interfaz web del backend.
 
+\subsection{Diseño de la Interfaz Web}
+La interfaz se diseñó como una consola modular orientada a operación técnica, con páginas independientes y componentes reutilizables (sin duplicación de cabecera, pie y panel de eventos). Los módulos definidos son: consola de instancias/aprovisionamiento, detalle de instancia, DNS/zonas, salud/diagnóstico, VHosts/Apache (vista operativa), panel global de eventos (\textit{logs dock}) y ayuda/verificación operativa.
+
+La experiencia de usuario prioriza la automatización (la solicitud dispara el flujo transaccional sin pasos manuales intermedios), la retroalimentación de estados (carga, éxito, error, indisponibilidad), la confirmación de acciones destructivas y la \emph{verdad operativa}: los indicadores de estado de servicios se obtienen de la comprobación de salud (\texttt{/api/salud}) y no se presentan como disponibles sin evidencia. Se incorporan consideraciones de accesibilidad (etiquetas, \texttt{aria-live}/roles, gestión de foco en diálogos, navegación accesible en anchos reducidos y controles de teclado para el panel de eventos). \pendiente{Las capturas de la interfaz se incluirán cuando la presentación visual quede estabilizada.}
 
 \subsection{Vista de Procesos: Flujo de Aprovisionamiento}
 El aprovisionamiento se realiza de forma automatizada y transaccional, garantizando la coherencia entre los componentes de virtualización, DNS y despliegue web.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\linewidth]{secuencia.svg}
+\includegraphics[width=\linewidth]{secuencia.pdf}
 \caption{Diagrama de secuencia del flujo de aprovisionamiento de instancias HTTPaaS.}
 \label{fig:secuencia}
 \end{figure}
@@ -38,6 +44,6 @@ El aprovisionamiento se realiza de forma automatizada y transaccional, garantiza
 \subsection{Manejo de Compensaciones (Rollback)}
 Si alguna etapa del aprovisionamiento falla, el orquestador ejecuta rutinas de compensación inversa para mantener la infraestructura en un estado consistente:
 \begin{itemize}
-    \item Si falla el registro DNS: se destruye la máquina virtual creada en VirtualBox.
-    \item Si falla el despliegue del archivo \texttt{.zip}: se elimina el registro DNS correspondiente y se destruye la máquina virtual creada en VirtualBox.
+    \item Si falla la obtención de IP o el registro DNS: se revierte la creación de la máquina virtual en VirtualBox.
+    \item Si falla el despliegue del archivo \texttt{.zip} o el arranque verificable del servicio: se elimina el registro DNS asociado y se destruye la máquina virtual creada.
 \end{itemize}

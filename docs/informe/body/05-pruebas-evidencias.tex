@@ -1,36 +1,49 @@
 \section{Pruebas y Evidencias}
 
-\subsection{Pruebas Unitarias y de Integración}
-Siguiendo la metodología guiada por pruebas (TDD), se implementaron pruebas unitarias sobre los casos de uso principales utilizando dobles de prueba (\textit{fakes}) para los puertos del hipervisor y del DNS. Esto garantiza que la lógica de orquestación y las rutinas de compensación ante fallos se validen de forma continua e independiente de la infraestructura física.
+\subsection{Pruebas Automatizadas}
+Siguiendo la metodología guiada por pruebas (TDD), se implementaron pruebas unitarias sobre el dominio, los adaptadores, los \textit{handlers} HTTP y los servicios de aplicación. En la capa de orquestación se emplean dobles de prueba (\textit{fakes}/mocks) para los puertos de hipervisor, DNS, despliegue y persistencia, lo que permite validar la secuencia transaccional y las rutinas de compensación ante fallos sin depender de infraestructura física.
 
-\subsection{Evidencias de Despliegue en Entorno Real}
-A continuación se relacionan las evidencias del ciclo de vida de aprovisionamiento de las instancias solicitadas en la rúbrica del proyecto (\texttt{paisajes} y \texttt{negocios}):
+Adicionalmente, se definieron pruebas de contrato para la interfaz web (\texttt{web/ui\_contract\_test.go}), que verifican la estructura modular (páginas, \texttt{data-page}, \textit{mounts} de componentes), la disponibilidad de identificadores requeridos por cada módulo, la exposición de APIs reutilizables (navegación, panel de eventos) y condiciones de accesibilidad/operación (navegación accesible, atributos ARIA relevantes, gestión de estado de carga y ausencia de afirmaciones estáticas de disponibilidad sin respaldo).
+
+La ejecución de pruebas del proyecto se realiza con \texttt{go test ./...} (y tareas equivalentes definidas en \texttt{Taskfile.yml}). \pendiente{Registrar aquí el resultado consolidado de \texttt{task check} en el entorno final de entrega, junto con la fecha de ejecución.}
+
+\subsection{Verificación Funcional Planificada (Entorno de Laboratorio)}
+La verificación extremo a extremo requiere el laboratorio operativo (VirtualBox, plantilla con disco multiconexión, VM \texttt{ns} con Bind9 en \texttt{cloud.local.} y red \texttt{cloudnet}). El plan de evidencias incluye:
+\begin{itemize}
+    \item Estado base del entorno y comprobación de salud (\texttt{/api/salud}).
+    \item Aprovisionamiento de las instancias solicitadas (\texttt{paisajes} y \texttt{negocios}) a partir de archivos \texttt{.zip}, validando creación de VM, registro DNS tipo A y despliegue en Apache.
+    \item Resolución de nombres (\texttt{dig}/\texttt{nslookup}) y acceso HTTP por FQDN \texttt{<host>.cloud.local}.
+    \item Eliminación controlada de una instancia y verificación de limpieza (VM, DNS y contenido).
+\end{itemize}
+
+\subsection{Evidencias de Interfaz y Despliegue}
+\pendiente{Incluir capturas de pantalla cuando la interfaz esté estabilizada y el laboratorio esté ejecutándose. No se agregan capturas en esta versión del informe por indicación del equipo.}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.9\linewidth]{captura-dashboard-vacio.png}
-\caption{Panel de gestión inicial en estado vacío.}
+\fbox{\parbox[c][2.2cm][c]{0.88\linewidth}{\centering \pendiente{Captura: panel de gestión / estado inicial (sin SS por ahora).}}}
+\caption{Panel de gestión HTTPaaS (evidencia pendiente).}
 \label{fig:dashboard_vacio}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.9\linewidth]{captura-formulario-subida.png}
-\caption{Carga del archivo comprimido para la instancia \texttt{paisajes}.}
+\fbox{\parbox[c][2.2cm][c]{0.88\linewidth}{\centering \pendiente{Captura: formulario y carga de \texttt{.zip} para \texttt{paisajes}.}}}
+\caption{Solicitud de aprovisionamiento (evidencia pendiente).}
 \label{fig:form_subida}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.9\linewidth]{captura-instancia-paisajes.png}
-\caption{Instancia \texttt{paisajes} desplegada y visible en el panel.}
+\fbox{\parbox[c][2.2cm][c]{0.88\linewidth}{\centering \pendiente{Captura: instancia \texttt{paisajes} desplegada y accesible.}}}
+\caption{Instancia \texttt{paisajes} (evidencia pendiente).}
 \label{fig:instancia_paisajes}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.9\linewidth]{captura-instancia-negocios.png}
-\caption{Instancia \texttt{negocios} desplegada concurrentemente.}
+\fbox{\parbox[c][2.2cm][c]{0.88\linewidth}{\centering \pendiente{Captura: instancia \texttt{negocios} desplegada concurrentemente.}}}
+\caption{Instancia \texttt{negocios} (evidencia pendiente).}
 \label{fig:instancia_negocios}
 \end{figure}
-
+\FloatBarrier
