@@ -18,10 +18,12 @@
           '<div class="header-pill"><span class="w-2 h-2 rounded-full bg-[#16a34a]" style="box-shadow:0 0 4px #22c55e !important;"></span><span>Apache 2.4 + Bind9 Online</span></div>' +
         '</div>' +
         '<nav>' +
-          '<a' + active('index.html') + ' href="/index.html">Instancias HTTP</a>' +
-          '<a' + active('dns.html') + ' href="/dns.html">Zonas DNS Bind9</a>' +
-          '<a' + active('salud.html') + ' href="/salud.html">Salud</a>' +
+          '<a' + active('index.html') + ' href="/index.html">Instancias</a>' +
+          '<a' + active('dns.html') + ' href="/dns.html">DNS</a>' +
+          '<a' + active('vhosts.html') + ' href="/vhosts.html">VHosts</a>' +
           '<a' + active('detalle.html') + ' href="/detalle.html">Detalle</a>' +
+          '<a' + active('salud.html') + ' href="/salud.html">Salud</a>' +
+          '<a' + active('ayuda.html') + ' href="/ayuda.html">Ayuda</a>' +
         '</nav>' +
         '<div class="flex items-center gap-3">' +
           '<div class="hidden md:flex items-center gap-2 px-2.5 py-1 border border-blue-400/40 rounded-xl" style="background:linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.04) 100%);">' +

@@ -66,9 +66,9 @@ El diseño técnico (`arquitectura.md`/`diseno-solucion.md`) concreta el flujo t
 | M2. Detalle de instancia | `/detalle.html?id={id}` | Inspección de una instancia (datos, estado, VHost/DNS de referencia). | RF-05,09,10,12,13 | `GET /api/instancias/{id}` (+ futuro VHost/DNS por instancia) |
 | M3. DNS / Zonas | `/dns.html` | Visibilidad de registros A en `cloud.local.`. | RF-07,10,11,12 | `GET /api/dns/registros` |
 | M4. Salud / Diagnóstico | `/salud.html` | Estado de dependencias del entorno. | RF-08,10,11 | `GET /api/salud` |
-| M5. VHosts / Apache (vista operativa) | `/vhosts.html` *(propuesto)* | Visibilidad de VirtualHosts/ServerName/DocumentRoot por instancia (y estado lógico). | RF-13,12,10,11 | *futuro* `GET /api/vhosts` o derivado de instancias |
+| M5. VHosts / Apache (vista operativa) | `/vhosts.html` | Visibilidad de VirtualHosts/ServerName/DocumentRoot por instancia (y estado lógico). | RF-13,12,10,11 | *futuro* `GET /api/vhosts` o derivado de instancias |
 | M6. Operaciones / Eventos (logs) | componente `logs-dock` (global) *(extensible a `/eventos.html`)* | Observabilidad de eventos de aprovisionamiento/operación. | RF-14,10 | *futuro* `GET /api/eventos`/stream |
-| M7. Ayuda / Verificación operativa | `/ayuda.html` *(propuesto)* | Guía rápida: formato hostname/zip, zona/red, pasos de verificación (dig/curl) y resolución de errores comunes. | RF-03,08,10,12 (soporte a RF-02/06) | ninguno (estático, enlaza conceptos de `verificacion.md`) |
+| M7. Ayuda / Verificación operativa | `/ayuda.html` | Guía rápida: formato hostname/zip, zona/red, pasos de verificación (dig/curl) y resolución de errores comunes. | RF-03,08,10,12 (soporte a RF-02/06) | ninguno (estático, enlaza conceptos de `verificacion.md`) |
 
 Componentes transversales (presentes en todos los módulos, RNF-02/07/10): **header** (marca, nav, estado de servicios/nodo), **footer** (contexto zona/DocumentRoot/versiones + toggle de logs), **dock de logs** (M6), **router** (navegación sin recarga), utilidades comunes (escape, formato fecha, feedback/loading).
 
@@ -127,13 +127,14 @@ Componentes transversales (presentes en todos los módulos, RNF-02/07/10): **hea
 - **Elementos UI:** tarjetas de estado (general/VBoxManage/Bind9) con badges semánticos (ok/error/pendiente/sin datos), bloque `pre` con JSON de `/api/salud`, mensajes de error.
 - **Estados:** pendiente/sin comprobar, ok, degradado/error, backend inaccesible. Mapear explícitamente `null/false/true`.
 
-### M5. VHosts / Apache — vista operativa (`/vhosts.html`, propuesto)
+### M5. VHosts / Apache — vista operativa (`/vhosts.html`)
 - **Objetivo:** visibilidad por VHost (RF-13), complementando M1/M2, alineado al nav de diseño (“VHosts”).
 - **Trazabilidad:** RF-13,12,10,11; RNF-01,02,05,06,11,12.
 - **Funciones:** listar VHosts asociados a instancias (ServerName/FQDN, DocumentRoot, enlace, estado coherente con instancia); refrescar; navegar a detalle.
 - **Formulario:** ninguno de mutación. Filtro/búsqueda por ServerName.
 - **Botones/acciones:** `Actualizar`, `Ver detalle`, `Abrir sitio` (RF-09), filtro.
 - **Elementos UI:** tabla (ServerName, DocumentRoot `/var/www/vhosts/<host>/`, FQDN, estado, acciones), nota de origen de datos.
+- **Elementos/IDs requeridos (contrato):** `vhostsTableBody`, `refreshVhostsBtn`, `vhostsFilter` (opcional), `data-page="vhosts"`.
 - **Estados:** cargando, vacío, error. *Contrato futuro:* `GET /api/vhosts` o enriquecimiento de `/api/instancias`; mientras tanto, vista derivada del listado de instancias (datos de referencia reales: fqdn/estado/enlace).
 
 ### M6. Operaciones / Eventos — logs (componente global, extensible)
@@ -142,15 +143,17 @@ Componentes transversales (presentes en todos los módulos, RNF-02/07/10): **hea
 - **Funciones (actuales):** mostrar/ocultar dock con animación, limpiar, redimensionar (componente aislado persistente). **Funciones objetivo:** stream/lista de eventos por operación (aprov/eliminación), severidad, timestamp, fuente (VBox/Bind9/Apache/orquestador), correlación por instancia.
 - **Controles/botones:** `Logs del Sistema` (toggle en footer), `Cerrar`/deslizar, `Limpiar`; (objetivo) pausar stream, filtro por severidad/fuente/instancia.
 - **Elementos UI:** dock inferior persistente, área de salida monoespaciada, indicadores de conexión/estado.
+- **Contrato de componente (reutilizable):** `#logs-toggle-mount` (footer) y dock inyectado por `logs-dock.js`; API global `window.toggleLogsDock`/`openLogsDock`/`closeLogsDock`.
 - **Estados:** oculto, visible, conectado, desconectado/sin fuente. *Contrato futuro:* endpoint/stream de eventos; hoy interfaz preparada (RNF-11).
 
-### M7. Ayuda / Verificación operativa (`/ayuda.html`, propuesto)
+### M7. Ayuda / Verificación operativa (`/ayuda.html`)
 - **Objetivo:** reducir errores de entrada y apoyar diagnóstico (RF-03/08/10) con guía alineada a specs.
 - **Trazabilidad:** RF-03,08,10,12; RNF-01,02,05,08.
 - **Funciones:** presentar reglas de hostname/zip, contexto de red/zona, checklist de verificación (salud, `dig`, `curl`), interpretación de errores comunes (`400` duplicado, `404`, `500` rollback) y enlaces a módulos.
 - **Formulario:** ninguno (contenido estático). (Opcional) buscador local de ayuda.
-- **Botones/acciones:** enlaces a M1/M3/M4/M2, `Copiar` comandos de verificación.
-- **Elementos UI:** secciones/paneles colapsables, bloques de código (comandos de `verificacion.md`), lista de nombres reservados, notas de seguridad (zip/hostname).
+- **Botones/acciones:** enlaces a M1/M3/M4/M2/M5, `Copiar` comandos de verificación (recomendado).
+- **Elementos UI:** secciones/paneles, bloques de código (comandos de `verificacion.md`), lista de nombres reservados, notas de seguridad (zip/hostname).
+- **Elementos/IDs requeridos (contrato):** `data-page="ayuda"`, presencia de reglas hostname/patrón, zona `cloud.local`, referencia a `.zip` y enlaces de navegación.
 - **Estados:** estático; no depende del backend (RNF-11).
 
 ---
@@ -187,7 +190,31 @@ Componentes transversales (presentes en todos los módulos, RNF-02/07/10): **hea
 
 ---
 
-## 8. Recomendaciones de implementación (coherentes con RNF)
+## 8. Contratos de componentes reutilizables e interfaces (base para tests)
+
+Estos contratos deben cumplirse para considerar la interfaz “reconstruida” según esta especificación (TDD: los tests validan estos contratos).
+
+### 8.1 Shell y componentes compartidos (todas las páginas)
+- Cada página HTML de módulo (`index.html`, `dns.html`, `salud.html`, `detalle.html`, `vhosts.html`, `ayuda.html`) incluye: `lang="es"`, `<div id="site-header-mount"></div>`, `<div id="site-footer-mount"></div>`, y carga `js/common.js`, `js/components.js`, `js/logs-dock.js`, `js/router.js` y los módulos `js/pages/*.js` requeridos.
+- `components.js` expone `window.updateActiveNav` y renderiza nav con enlaces a `index.html`, `dns.html`, `salud.html`, `detalle.html`, `vhosts.html`, `ayuda.html`.
+- `logs-dock.js` expone `window.toggleLogsDock`, `window.openLogsDock`, `window.closeLogsDock` y monta toggle/dock (cierres deslizantes, sin cambio de opacidad).
+- Cada `<body>` o `<main>` declara `data-page="<modulo>"` con el identificador del módulo (`index|dns|salud|detalle|vhosts|ayuda`).
+
+### 8.2 Contratos por módulo (IDs/elementos mínimos)
+- **M1/index (`data-page="index"`):** `provisionForm`, `hostnameInput`, `zipInput`, `checkHostBtn`, `instancesList` (o tabla equivalente), `instancesCount`, `refreshInstancesBtn`, `delete-modal` (o equivalente), `loadingOverlay`, `statusMessage`.
+- **M2/detalle:** `instanceSelect` (o `detailInstanceSelect`), `loadBtn` (o `loadDetailBtn`), contenedor de detalle/estado vacío; acepta `?id=`.
+- **M3/dns:** `dnsTableBody`, `refreshDnsBtn`, `dnsZone`/etiqueta de zona.
+- **M4/salud:** `checkBtn`/`checkHealthBtn`, indicadores de estado general/VBoxManage/Bind9, `healthRaw`.
+- **M5/vhosts:** `vhostsTableBody`, `refreshVhostsBtn`.
+- **M6/logs (global):** `system-logs-dock` (inyectado), `toggle-logs-btn` (inyectado), `terminal-output-container` (inyectado).
+- **M7/ayuda:** contenido estático con reglas de hostname/patrón, referencia `.zip`, zona `cloud.local` y enlaces a módulos.
+
+### 8.3 Reglas de reutilización
+- Cero duplicación de header/footer/dock entre páginas (solo mounts + componentes).
+- Utilidades compartidas (`escapeHtml`, `formatFecha`, `showMessage/showLoading`) en `common.js` / `window.HTTPaaS`.
+- Inicializadores de página en `window.HTTPaaSPages.<modulo>` invocados por el router.
+
+## 9. Recomendaciones de implementación (coherentes con RNF)
 
 1. Mantener **componentes aislados** (`components.js`, `logs-dock.js`) y **módulos por página** (`pages/*.js`) + router; no duplicar markup/JS.
 2. Centralizar validación de hostname/zip (reglas de `diseno-solucion` §4) en util compartida cliente; tratar backend como autoridad.

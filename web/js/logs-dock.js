@@ -50,6 +50,10 @@
     document.body.appendChild(wrap.firstChild);
   }
 
+  var STORAGE_KEY = 'httpaas.logsDock.open';
+  function readOpen() { try { var v = localStorage.getItem(STORAGE_KEY); return v === null ? true : v === '1'; } catch (e) { return true; } }
+  function writeOpen(on) { try { localStorage.setItem(STORAGE_KEY, on ? '1' : '0'); } catch (e) {} }
+
   function bind() {
     var dock = document.getElementById('system-logs-dock');
     if (!dock || dock.dataset.bound) return;
@@ -60,17 +64,20 @@
     var chev = document.getElementById('dock-chevron-icon');
     var clearBtn = document.getElementById('logs-clear-btn');
     var term = document.getElementById('terminal-output-container');
-    var open = true, prevH = 260, dragging = false, startY = 0, startH = 260;
+    var open = readOpen(), prevH = 260, dragging = false, startY = 0, startH = 260;
 
-    function setOpen(on) {
+    function setOpen(on, persist) {
       open = !!on;
       dock.classList.toggle('logs-open', open);
       dock.classList.toggle('logs-closed', !open);
       if (chev) chev.textContent = open ? 'expand_more' : 'expand_less';
+      if (persist !== false) writeOpen(open);
     }
     window.toggleLogsDock = function () { setOpen(!open); };
     window.closeLogsDock = function () { setOpen(false); };
     window.openLogsDock = function () { setOpen(true); };
+    // Restaurar estado persistido (sin reescribir innecesariamente)
+    setOpen(open, false);
     if (toggleBtn) toggleBtn.addEventListener('click', window.toggleLogsDock);
     if (closeBtn) closeBtn.addEventListener('click', window.closeLogsDock);
     if (clearBtn) clearBtn.addEventListener('click', function () { if (term) term.innerHTML = ''; });

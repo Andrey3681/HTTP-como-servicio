@@ -1,13 +1,15 @@
 // router.js - Navegación sin recarga completa (intercambia <main>, preserva header/footer/dock).
 (function () {
-  var PAGE_SCRIPTS = ['/js/pages/index.js','/js/pages/dns.js','/js/pages/salud.js','/js/pages/detalle.js'];
+  var PAGE_SCRIPTS = ['/js/pages/index.js','/js/pages/dns.js','/js/pages/salud.js','/js/pages/detalle.js','/js/pages/vhosts.js','/js/pages/ayuda.js'];
 
   function pageKey(pathname) {
     var p = (pathname || location.pathname).split('?')[0].replace(/\/$/, '');
     if (p === '' || p === '/' || p.indexOf('index') !== -1) return 'index';
     if (p.indexOf('dns') !== -1) return 'dns';
+    if (p.indexOf('vhosts') !== -1) return 'vhosts';
     if (p.indexOf('salud') !== -1) return 'salud';
     if (p.indexOf('detalle') !== -1) return 'detalle';
+    if (p.indexOf('ayuda') !== -1) return 'ayuda';
     return 'index';
   }
 
