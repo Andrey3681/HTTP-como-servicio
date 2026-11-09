@@ -1,139 +1,153 @@
 <!DOCTYPE html>
-<html lang="es">
+<html class="h-full" lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HTTPaaS - Consola de Aprovisionamiento</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-            mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
-          },
-          colors: {
-            bg: '#ffffff',
-            surface: '#ffffff',
-            'surface-alt': '#f8f9fa',
-            border: '#d0d7de',
-            'border-strong': '#afb8c1',
-            'text-primary': '#1f2328',
-            'text-secondary': '#656d76',
-            primary: '#2563eb',
-            'primary-hover': '#1d4ed8',
-            'primary-active': '#1e40af',
-            danger: '#dc2626',
-            'danger-hover': '#b91c1c',
-            success: '#16a34a',
-            warning: '#f59e0b',
-          },
-          borderRadius: {
-            DEFAULT: '0.375rem',
-            md: '0.375rem',
-            lg: '0.5rem',
-            xl: '0.75rem',
-          }
-        }
-      }
-    }
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>HTTPaaS Console - Aprovisionamiento Apache &amp; Bind9</title>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+  <link href="/css/stitch.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script id="tailwind-config">
+    tailwind.config = {theme:{extend:{colors:{"on-primary-container":"#a3faef","on-surface":"#181c21","on-secondary-container":"#fffbff","surface-container-high":"#e5e8ef","secondary-fixed":"#ffdad6","on-secondary-fixed":"#410002","surface-bright":"#f8f9ff",outline:"#6e7977","surface-container-low":"#f1f4fb",primary:"#005c55","on-error":"#ffffff","on-tertiary":"#ffffff","surface-container-highest":"#e0e2e9","tertiary-fixed":"#ffdbce",error:"#ba1a1a","surface-tint":"#006a63","inverse-surface":"#2d3136",secondary:"#bb0112","secondary-fixed-dim":"#ffb4ab","on-tertiary-fixed-variant":"#72361b","tertiary-container":"#9c573a","primary-fixed-dim":"#80d5cb","on-primary-fixed":"#00201d","inverse-on-surface":"#eef1f8","outline-variant":"#bdc9c6","on-tertiary-container":"#ffe5db","surface-container":"#ebeef5","on-surface-variant":"#3e4947","on-primary-fixed-variant":"#00504a","surface-container-lowest":"#ffffff","inverse-primary":"#80d5cb","on-tertiary-fixed":"#370e00","surface-dim":"#d7dae1","surface-variant":"#e0e2e9",surface:"#f8f9ff","secondary-container":"#e02928","on-background":"#181c21",background:"#f8f9ff","error-container":"#ffdad6","primary-container":"#0f766e","tertiary-fixed-dim":"#ffb598","on-primary":"#ffffff","primary-fixed":"#9cf2e8",tertiary:"#7f4025","on-secondary":"#ffffff","on-error-container":"#93000a","on-secondary-fixed-variant":"#93000b"},borderRadius:{DEFAULT:"0.125rem",lg:"0.25rem",xl:"0.5rem",full:"0.75rem"},fontFamily:{headline:["Plus Jakarta Sans"],body:["Plus Jakarta Sans"],label:["JetBrains Mono"]}}}}
   </script>
-  <link rel="stylesheet" href="/css/design-tokens.css">
-  <link rel="stylesheet" href="/css/styles.css">
 </head>
-<body class="bg-white text-text-primary font-sans">
-  <div class="container mx-auto max-w-6xl px-4 py-8">
-    <header class="mb-8">
-      <div class="flex items-center justify-between mb-2">
-        <h1 class="text-2xl font-semibold text-text-primary">HTTPaaS - Consola de Aprovisionamiento</h1>
-        <span class="px-2 py-0.5 rounded text-xs font-medium border" style="background: linear-gradient(180deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%); border-color: #1e40af; color: white;">v2.4-b9</span>
-      </div>
-      <p class="text-text-secondary">Gestión automatizada de hosts virtuales Apache y registros DNS Bind9</p>
-    </header>
+<body data-page="index" class="h-full bg-surface-container-lowest text-on-surface antialiased flex flex-col text-[14px] selection:bg-primary-container selection:text-white">
+  <div id="site-header-mount"></div>
 
-    <div class="panel bg-surface border border-border rounded-lg p-6 mb-6">
-      <header class="panel-header mb-4">
-        <h2 class="text-lg font-semibold text-text-primary">Crear nueva instancia</h2>
-      </header>
-
-      <form id="provisionForm" class="provision-form" enctype="multipart/form-data">
-        <div class="form-row">
-          <label for="hostnameInput">Nombre del host</label>
-          <div class="input-group">
-            <div class="flex flex-1">
-              <input 
-                type="text" 
-                id="hostnameInput" 
-                name="nombre" 
-                placeholder="ej. paisajes" 
-                required
-                autocomplete="off"
-                pattern="^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$"
-                class="flex-1 px-3 py-2 border border-border rounded-l-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-              >
-              <span class="inline-flex items-center px-3 py-2 border border-l-0 border-border bg-surface-alt text-text-secondary rounded-r-md text-sm">.cloud.local</span>
+  <main class="flex-1 overflow-y-auto bg-surface-bright pb-64">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <!-- Crear nueva instancia -->
+        <section class="lg:col-span-2 bg-surface-container-lowest border-standard rounded-xl p-6 flex flex-col justify-between">
+          <div class="flex items-center justify-between pb-4 border-b-standard mb-6">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-xl bg-surface-container-low border-standard flex items-center justify-center text-primary-container">
+                <span class="material-symbols-outlined" data-icon="dns">dns</span>
+              </div>
+              <div>
+                <h2 class="text-[16px] font-semibold text-on-surface">Crear nueva instancia</h2>
+                <p class="text-[12px] text-on-surface-variant">Generación síncrona de directiva VHost y puntero A en Bind9</p>
+              </div>
             </div>
-            <button type="button" id="checkHostBtn" class="btn btn-secondary px-4 py-2 border border-border rounded-md hover:bg-surface-alt">Aceptar</button>
+            <span class="text-[11px] text-white font-semibold tracking-wider px-2.5 py-1 rounded-xl" style="background:rgb(15,92,98);border:1px solid rgb(8,51,56);">AUTO-VHOST-DNS</span>
+          </div>
+
+          <form class="space-y-6" id="provisionForm" enctype="multipart/form-data">
+            <div class="flex flex-col gap-6">
+              <div>
+                <div class="flex items-center justify-between mb-1.5">
+                  <label class="text-sm text-on-surface font-semibold" for="hostnameInput">Nombre de host <span class="text-error">*</span></label>
+                </div>
+                <div class="flex items-stretch border-standard rounded-xl bg-surface-container-lowest focus-within:ring-2 focus-within:ring-primary-container">
+                  <span class="inline-flex items-center px-3 border-r-standard bg-surface-container-low text-on-surface-variant text-[13px]">http://</span>
+                  <input class="flex-1 min-w-0 border-0 bg-transparent px-3 py-2 text-[13px] text-on-surface placeholder:text-outline focus:ring-0 focus:outline-none mono" id="hostnameInput" name="nombre" placeholder="ej. mi-app" required type="text" autocomplete="off" pattern="^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$">
+                  <span class="inline-flex items-center px-3 border-l-standard bg-surface-container-low text-on-surface text-[13px] font-semibold select-none mono">.cloud.local</span>
+                </div>
+                <p class="mt-1.5 text-[12px] text-on-surface-variant">El nombre definirá el FQDN en la zona local Bind9 y la directiva ServerName en Apache.</p>
+              </div>
+              <div>
+                <div class="flex items-center justify-between mb-1.5">
+                  <label class="text-sm text-on-surface font-semibold" for="zipInput">Contenido web (.zip) <span class="text-error">*</span></label>
+                  <span class="text-[11px] text-outline mono">application/zip</span>
+                </div>
+                <div id="zipDropZone" class="zip-dropzone" tabindex="0" role="button" aria-label="Seleccionar o arrastrar archivo .zip" aria-describedby="zipFileName">
+                  <input class="zip-dropzone-input" id="zipInput" name="archivo" type="file" accept=".zip,application/zip" required>
+                  <span class="material-symbols-outlined zip-dropzone-icon" aria-hidden="true">upload_file</span>
+                  <p class="zip-dropzone-title">Arrastra tu archivo .zip aquí</p>
+                  <p class="zip-dropzone-subtitle">o <span class="zip-dropzone-link">haz clic para seleccionar</span></p>
+                  <p id="zipFileName" class="zip-dropzone-file" aria-live="polite">Ningún archivo seleccionado</p>
+                </div>
+              </div>
+            </div>
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t-standard">
+              <div class="flex items-center gap-2 text-on-surface-variant text-[12px]">
+                <span class="material-symbols-outlined text-[16px]" data-icon="info">info</span>
+                <span>Recarga vía <span class="mono">systemctl reload apache2</span> y <span class="mono">rndc reload cloud.local</span></span>
+              </div>
+              <div class="flex items-center gap-2">
+                <button class="inline-flex items-center justify-center gap-2 px-4 py-2 border-standard rounded-xl text-on-surface text-[13px] font-medium hover:bg-surface-container-low" id="checkHostBtn" type="button">
+                  <span class="material-symbols-outlined text-[16px]">check_circle</span> Verificar
+                </button>
+                <button class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-white text-[13px] font-semibold rounded-xl transition-colors" style="background:rgb(15,118,110);border:1px solid rgb(13,95,88);" type="submit">
+                  <span class="material-symbols-outlined text-[16px]" data-icon="rocket_launch">rocket_launch</span> Aprovisionar
+                </button>
+              </div>
+            </div>
+            <div id="statusMessage" role="status" aria-live="polite"></div>
+          </form>
+        </section>
+
+        <!-- Instancias activas -->
+        <section class="lg:col-span-1 bg-surface-container-lowest border-standard rounded-xl overflow-hidden flex flex-col justify-between" id="instancias">
+          <div>
+            <div class="p-4 border-b-standard flex flex-col gap-3 bg-surface-container-lowest">
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                  <h2 class="text-[16px] font-semibold text-on-surface">Instancias activas</h2>
+                  <span class="px-2 py-0.5 rounded-xl border-standard bg-surface-container text-[11px] font-semibold text-on-surface mono" id="instancesCount">0</span>
+                </div>
+                <button class="px-2 py-1 border-standard rounded-xl bg-surface-container-lowest hover:bg-surface-container-low text-on-surface text-[12px] flex items-center gap-1" id="refreshInstancesBtn" title="Recargar" type="button">
+                  <span class="material-symbols-outlined text-[15px]" data-icon="refresh">refresh</span> <span class="text-[11px]">Sync</span>
+                </button>
+              </div>
+              <div class="relative w-full">
+                <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-outline text-[16px]" data-icon="search">search</span>
+                <input id="instancesFilter" class="w-full pl-8 pr-3 py-1 bg-surface-container-lowest border-standard rounded-xl text-[12px] text-on-surface placeholder:text-outline focus:ring-1 focus:ring-primary-container focus:outline-none" placeholder="Filtrar hostname o IP..." type="text">
+              </div>
+            </div>
+            <div class="divide-y divide-[#d0d7de]" id="instancesList">
+              <div class="p-4 text-center text-[13px] text-on-surface-variant">Cargando instancias…</div>
+            </div>
+          </div>
+          <div class="p-3 bg-surface-container-low border-t-standard flex flex-col gap-1 text-on-surface-variant text-[11px] mono">
+            <div class="flex justify-between items-center"><span id="instancesBindCount">Bind9: —</span><span>192.168.10.0/24</span></div>
+          </div>
+        </section>
+      </div>
+    </div>
+    <!-- Modal de eliminación (Stitch) -->
+    <div aria-labelledby="modal-title" aria-modal="true" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[rgba(31,35,40,0.4)] hidden" id="delete-modal" role="dialog">
+      <div id="delete-modal-panel" class="w-full max-w-md bg-surface-container-lowest border-standard rounded-xl p-6 relative" tabindex="-1">
+        <div class="flex items-start gap-3 pb-4 border-b-standard">
+          <div class="w-9 h-9 rounded-xl bg-error-container border-standard flex items-center justify-center text-secondary shrink-0">
+            <span class="material-symbols-outlined">warning</span>
+          </div>
+          <div>
+            <h3 class="text-[16px] font-semibold text-on-surface" id="modal-title">Confirmar eliminación</h3>
+            <p class="text-[12px] text-secondary font-medium mt-0.5">Operación destructiva de desaprovisionamiento</p>
           </div>
         </div>
-
-        <div class="form-row">
-          <label for="zipInput">Contenido web (.zip)</label>
-          <div class="input-group">
-            <input 
-              type="file" 
-              id="zipInput" 
-              name="archivo" 
-              accept=".zip" 
-              required
-              class="flex-1 px-3 py-2 border border-border rounded-md file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-surface-alt file:text-text-primary hover:file:bg-border"
-            >
-            <button type="submit" id="publishBtn" class="btn btn-primary-metallic px-5 py-2 rounded-md text-white font-medium flex items-center gap-2">
-              <span class="material-symbols-outlined text-sm">rocket_launch</span>
-              Aprovisionar instancia
-            </button>
-          </div>
+        <div class="py-4 space-y-3">
+          <p class="text-sm text-on-surface font-semibold" id="modal-question">¿Eliminar instancia?</p>
+          <p class="text-[12px] text-on-surface-variant leading-relaxed">Esta acción detendrá el host virtual Apache, eliminará el registro A en la zona Bind9 y purgará los archivos en <code class="text-[11px] bg-surface-container px-1 py-0.5 rounded border-standard text-on-surface font-semibold mono" id="modal-path">/var/www/vhosts/—/</code>.</p>
+          <div class="p-3 bg-surface-container-low border-standard rounded-xl text-on-surface-variant text-[11px]">Comandos síncronos ejecutados:<br><span class="text-on-surface mono">• a2dissite <span id="modal-conf">—</span>.conf</span><br><span class="text-on-surface mono">• nsupdate: update delete <span id="modal-nsupdate">—</span>.cloud.local A</span></div>
         </div>
-
-        <div id="statusMessage" class="status-message mt-3 text-sm" style="display: none;"></div>
-      </form>
-
-      <section class="instances-section">
-        <h2 class="text-lg font-semibold text-text-primary mb-4">Instancias activas</h2>
-        <div class="overflow-x-auto">
-          <table class="w-full border border-border rounded-lg overflow-hidden">
-            <thead class="bg-surface-alt">
-              <tr>
-                <th class="px-4 py-2 text-left text-xs font-medium text-text-secondary uppercase tracking-wider border-b border-border">Enlace Directo</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-text-secondary uppercase tracking-wider border-b border-border">Dirección IP</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-text-secondary uppercase tracking-wider border-b border-border">Nombre del Host</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-text-secondary uppercase tracking-wider border-b border-border">Fecha y Hora de Creación</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-text-secondary uppercase tracking-wider border-b border-border">Acción</th>
-              </tr>
-            </thead>
-            <tbody id="instancesTableBody" class="bg-surface">
-              <tr class="empty-row">
-                <td colspan="5" class="px-4 py-8 text-center text-text-secondary">No hay instancias aprovisionadas en este momento.</td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="flex items-center justify-end gap-3 pt-3 border-t-standard">
+          <button class="px-4 py-2 border-standard bg-surface-container-lowest hover:bg-surface-container-low text-on-surface text-[14px] rounded-xl font-medium" id="deleteCancelBtn" type="button">Cancelar</button>
+          <button class="px-4 py-2 bg-secondary-container hover:bg-[#b91c1c] text-white text-sm rounded-xl font-semibold flex items-center gap-1.5" id="deleteConfirmBtn" type="button"><span class="material-symbols-outlined text-[16px]">delete_forever</span> Eliminar</button>
         </div>
-      </section>
+      </div>
     </div>
-  </div>
 
-  <div id="loadingOverlay" class="loading-overlay fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center" style="display: none;">
-    <div class="spinner-card bg-surface border border-border rounded-lg p-6 flex items-center gap-4">
-      <div class="spinner animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      <p id="loadingText" class="text-text-primary">Aprovisionando instancia en VirtualBox y DNS...</p>
+    <div id="loadingOverlay" class="loading-overlay" role="status" aria-live="polite" aria-atomic="true" aria-hidden="true" aria-busy="false">
+      <div class="bg-surface-container-lowest border-standard rounded-xl p-6 flex items-center gap-4 w-full max-w-md">
+        <span class="material-symbols-outlined text-primary-container" aria-hidden="true">progress_activity</span>
+        <p id="loadingText" class="text-on-surface text-[14px] m-0">Procesando operación…</p>
+      </div>
     </div>
-  </div>
+  </main>
 
-  <script src="/js/app.js"></script>
+  <div id="site-footer-mount"></div>
+
+  <script src="/js/common.js"></script>
+  <script src="/js/components.js"></script>
+  <script src="/js/logs-dock.js"></script>
+  <script src="/js/pages/index.js"></script>
+  <script src="/js/pages/dns.js"></script>
+  <script src="/js/pages/salud.js"></script>
+  <script src="/js/pages/detalle.js"></script>
+  <script src="/js/pages/vhosts.js"></script>
+  <script src="/js/pages/ayuda.js"></script>
+  <script src="/js/router.js"></script>
 </body>
 </html>

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html class="h-full" lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>HTTPaaS - VHosts / Apache</title>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+  <link href="/css/stitch.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script>tailwind.config={theme:{extend:{colors:{"on-surface":"#181c21","on-surface-variant":"#3e4947","surface-bright":"#f8f9ff","surface-container-lowest":"#ffffff","surface-container-low":"#f1f4fb","surface-container":"#ebeef5","primary-container":"#0f766e","secondary-container":"#e02928",outline:"#6e7977",error:"#ba1a1a"},borderRadius:{xl:"0.5rem",full:"0.75rem"}}}};</script>
+</head>
+<body data-page="vhosts" class="h-full bg-surface-container-lowest text-on-surface antialiased flex flex-col text-[14px]">
+  <div id="site-header-mount"></div>
+
+  <main class="page-main">
+    <div class="page-container">
+      <div class="page-title">
+        <h1>VHosts / Apache</h1>
+        <p>VirtualHosts asociados a instancias (ServerName, DocumentRoot). Vista derivada de instancias; lista para conectar a <code class="mono">GET /api/vhosts</code> cuando exista (RF-13).</p>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div><h2>VirtualHosts</h2></div>
+          <div class="flex items-center gap-2">
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-outline text-[16px]">search</span>
+              <input id="vhostsFilter" class="border-standard rounded-xl pl-8 pr-3 py-1.5 text-[13px] bg-white" placeholder="Filtrar ServerName..." type="text">
+            </div>
+            <button class="btn-flat" id="refreshVhostsBtn" type="button"><span class="material-symbols-outlined text-[16px]">refresh</span> Actualizar</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="simple-table">
+            <thead><tr><th>ServerName</th><th>DocumentRoot</th><th>FQDN / Enlace</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <tbody id="vhostsTableBody"><tr><td colspan="5" class="empty-state">Cargando VHosts…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="site-footer-mount"></div>
+
+  <script src="/js/common.js"></script>
+  <script src="/js/components.js"></script>
+  <script src="/js/logs-dock.js"></script>
+  <script src="/js/pages/index.js"></script>
+  <script src="/js/pages/dns.js"></script>
+  <script src="/js/pages/salud.js"></script>
+  <script src="/js/pages/detalle.js"></script>
+  <script src="/js/pages/vhosts.js"></script>
+  <script src="/js/pages/ayuda.js"></script>
+  <script src="/js/router.js"></script>
+</body>
+</html>
