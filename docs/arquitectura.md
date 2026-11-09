@@ -69,7 +69,7 @@ type Hypervisor interface {
 
 ### 3.2 Proveedor DNS (`DnsProvider`)
 ```go
-// DnsProvider define la gestión dinámica de nombres en el servidor Bind9.
+// DnsProvider define la gestión y consulta de nombres en el servidor Bind9.
 type DnsProvider interface {
     // AddRecord registra un registro A en la zona DNS.
     AddRecord(ctx context.Context, record domain.DnsRecord) error
@@ -79,6 +79,9 @@ type DnsProvider interface {
     
     // Resolve verifica la resolución DNS directa del nombre indicado.
     Resolve(ctx context.Context, hostname string) (netip.Addr, error)
+
+    // ListRecords consulta los registros A de la zona administrada.
+    ListRecords(ctx context.Context) ([]domain.DnsRecord, error)
 }
 ```
 

@@ -75,6 +75,10 @@ func (f *fakeDnsProvider) Resolve(ctx context.Context, hostname string) (netip.A
 	return netip.MustParseAddr("192.168.10.30"), nil
 }
 
+func (f *fakeDnsProvider) ListRecords(ctx context.Context) ([]domain.DnsRecord, error) {
+	return nil, nil
+}
+
 type fakeDeployer struct {
 	deployedIPs []string
 	failDeploy  bool

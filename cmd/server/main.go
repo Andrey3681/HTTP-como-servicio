@@ -58,7 +58,7 @@ func main() {
 
 	// 5. Inicializar manejadores HTTP
 	instanceHandler := handlers.NewInstanceHandler(orchestrator, instanceService)
-	dnsHandler := handlers.NewDnsHandler(dns)
+	dnsHandler := handlers.NewDnsHandler(dns, *domainZone)
 
 	// 6. Configurar enrutador y montar endpoints
 	mux := http.NewServeMux()
@@ -66,6 +66,7 @@ func main() {
 	// API REST
 	mux.HandleFunc("/api/instancias/", instanceHandler.HandleInstance)
 	mux.HandleFunc("/api/instancias", instanceHandler.HandleInstances)
+	mux.HandleFunc("/api/dns/registros", dnsHandler.HandleRecords)
 	mux.HandleFunc("/api/salud", dnsHandler.HandleHealth)
 
 	// Servir archivos estáticos del dashboard (web/)

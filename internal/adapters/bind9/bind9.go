@@ -97,3 +97,46 @@ func (a *DnsAdapter) Resolve(ctx context.Context, hostname string) (netip.Addr, 
 
 	return netip.ParseAddr(ips[0])
 }
+
+// ListRecords consulta los registros A de la zona administrada mediante transferencia AXFR (dig).
+// Si la consulta no está disponible, retorna una lista vacía sin error para preservar el contrato de la API.
+func (a *DnsAdapter) ListRecords(ctx context.Context) ([]domain.DnsRecord, error) {
+	stdout, _, err := a.executor.Execute(ctx, "dig", "@"+a.serverIP, a.zone, "AXFR", "+noall", "+answer")
+	if err != nil || len(bytes.TrimSpace(stdout)) == 0 {
+		return []domain.DnsRecord{}, nil
+	}
+
+	var records []domain.DnsRecord
+	for _, line := range strings.Split(string(stdout), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, ";") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 5 {
+			continue
+		}
+		// nombre TTL [clase] tipo datos...
+		rrType := strings.ToUpper(fields[3])
+		if rrType != "A" {
+			// Some dig outputs: name TTL class type data
+			if len(fields) >= 5 && strings.ToUpper(fields[2]) == "IN" {
+				rrType = strings.ToUpper(fields[3])
+			}
+		}
+		if rrType != "A" {
+			continue
+		}
+		ip := fields[len(fields)-1]
+		ttl := 300
+		_, _ = fmt.Sscanf(fields[1], "%d", &ttl)
+		records = append(records, domain.DnsRecord{
+			Name: fields[0],
+			Zone: a.zone,
+			Type: "A",
+			IP:   ip,
+			TTL:  ttl,
+		})
+	}
+	return records, nil
+}

@@ -10,7 +10,7 @@ import (
 	"github.com/Andrey3681/httpaas-orchestrator/internal/core/domain"
 )
 
-// DnsProvider define la gestión dinámica de registros en el servidor DNS Bind9.
+// DnsProvider define la gestión y consulta de registros en el servidor DNS Bind9.
 type DnsProvider interface {
 	// AddRecord inserta un registro tipo A en la zona DNS.
 	AddRecord(ctx context.Context, record domain.DnsRecord) error
@@ -20,4 +20,7 @@ type DnsProvider interface {
 
 	// Resolve verifica la resolución directa del nombre de host consultando al DNS.
 	Resolve(ctx context.Context, hostname string) (netip.Addr, error)
+
+	// ListRecords consulta los registros A de la zona administrada.
+	ListRecords(ctx context.Context) ([]domain.DnsRecord, error)
 }

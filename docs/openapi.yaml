@@ -9,9 +9,13 @@ servers:
   - url: http://localhost:8080
     description: Servidor local de orquestación
 
+# API local sin autenticación; se declara explícitamente para satisfacer el contrato.
+security: []
+
 paths:
   /api/instancias:
     get:
+      operationId: listInstancias
       summary: Listar instancias activas
       description: Retorna la lista de todas las instancias de servidor HTTP aprovisionadas y en ejecución.
       responses:
@@ -30,6 +34,7 @@ paths:
                     type: integer
                     example: 2
     post:
+      operationId: createInstancia
       summary: Aprovisionar nueva instancia HTTP
       description: Crea una máquina virtual a partir del disco multiconexión, asigna red, registra el host en Bind9 y despliega el sitio web.
       requestBody:
@@ -79,6 +84,7 @@ paths:
 
   /api/instancias/{id}:
     get:
+      operationId: getInstancia
       summary: Obtener detalle de una instancia
       parameters:
         - name: id
@@ -104,6 +110,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorRespuesta'
     delete:
+      operationId: deleteInstancia
       summary: Eliminar una instancia
       description: Apaga y destruye la máquina virtual, elimina los diferenciales de disco y desvincula el registro DNS en Bind9.
       parameters:
@@ -139,8 +146,9 @@ paths:
 
   /api/dns/registros:
     get:
+      operationId: listDnsRecords
       summary: Consultar registros DNS de la zona
-      description: Retorna los registros de tipo A activos en la zona local cloud.local.
+      description: Retorna los registros de tipo A activos en la zona administrada (cloud.local.). Puede responder con una lista vacía cuando no hay registros o la integración de listado aún no está disponible.
       responses:
         '200':
           description: Lista de registros DNS
@@ -169,9 +177,16 @@ paths:
                         ttl:
                           type: integer
                           example: 300
+        '405':
+          description: Método HTTP no permitido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
 
   /api/salud:
     get:
+      operationId: getSalud
       summary: Comprobar salud del entorno
       description: Verifica la disponibilidad del comando VBoxManage y del servidor DNS Bind9.
       responses:
@@ -191,6 +206,12 @@ paths:
                   bind9:
                     type: boolean
                     example: true
+        '405':
+          description: Método HTTP no permitido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
 
 components:
   schemas:
