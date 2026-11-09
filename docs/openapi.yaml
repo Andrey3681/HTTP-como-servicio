@@ -3,6 +3,9 @@ info:
   title: HTTPaaS API - Orquestador de Servidores HTTP
   description: API REST para el aprovisionamiento automatizado de máquinas virtuales con Apache HTTP Server y DNS dinámico en Bind9.
   version: 1.0.0
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
   contact:
     name: Soporte HTTPaaS
 servers:
@@ -33,6 +36,18 @@ paths:
                   total:
                     type: integer
                     example: 2
+        '405':
+          description: Método HTTP no permitido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+        '500':
+          description: Error al consultar el listado de instancias
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
     post:
       operationId: createInstancia
       summary: Aprovisionar nueva instancia HTTP
@@ -75,6 +90,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorRespuesta'
+        '405':
+          description: Método HTTP no permitido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
         '500':
           description: Error en el aprovisionamiento (VM, DNS o despliegue)
           content:
@@ -103,8 +124,26 @@ paths:
                 properties:
                   datos:
                     $ref: '#/components/schemas/Instancia'
+        '400':
+          description: Identificador de instancia no especificado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
         '404':
           description: Instancia no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+        '405':
+          description: Método HTTP no permitido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+        '500':
+          description: Error al consultar la instancia
           content:
             application/json:
               schema:
@@ -131,8 +170,20 @@ paths:
                   mensaje:
                     type: string
                     example: Instancia eliminada exitosamente
+        '400':
+          description: Identificador de instancia no especificado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
         '404':
           description: Instancia no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+        '405':
+          description: Método HTTP no permitido
           content:
             application/json:
               schema:

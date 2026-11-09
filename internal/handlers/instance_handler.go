@@ -154,7 +154,7 @@ func (h *InstanceHandler) delete(w http.ResponseWriter, r *http.Request, id stri
 	err := h.instanceService.DeleteInstance(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, domain.ErrInstanceNotFound) {
-			Error(w, http.StatusNotFound, "La instancia no existe")
+			Error(w, http.StatusNotFound, "La instancia solicitada no existe")
 			return
 		}
 		Error(w, http.StatusInternalServerError, err.Error())
