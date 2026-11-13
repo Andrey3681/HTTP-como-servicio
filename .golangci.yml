@@ -1,35 +1,39 @@
+version: "2"
 run:
-  timeout: 5m
   tests: true
-
 linters:
   enable:
-    - errcheck
-    - govet
-    - unused
-    - gofumpt
     - revive
-    - ineffassign
-    - staticcheck
-
-linters-settings:
-  revive:
-    rules:
-      - name: exported
-        severity: warning
-      - name: blank-imports
-        severity: warning
-      - name: context-as-argument
-        severity: warning
-      - name: error-return
-        severity: warning
-      - name: error-strings
-        severity: warning
-      - name: error-naming
-        severity: warning
-
+  settings:
+    revive:
+      rules:
+        - name: exported
+          severity: warning
+        - name: blank-imports
+          severity: warning
+        - name: context-as-argument
+          severity: warning
+        - name: error-return
+          severity: warning
+        - name: error-strings
+          severity: warning
+        - name: error-naming
+          severity: warning
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
 issues:
-  exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0
-
+formatters:
+  enable:
+    - gofumpt
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

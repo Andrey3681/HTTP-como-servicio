@@ -118,7 +118,7 @@ func (h *LogsHandler) HandleStream(w http.ResponseWriter, r *http.Request) {
 	ch, cancel := h.broker.Subscribe()
 	defer cancel()
 
-	fmt.Fprintf(w, ": connected\n\n")
+	_, _ = fmt.Fprintf(w, ": connected\n\n")
 	flusher.Flush()
 
 	for _, entry := range h.broker.Since(since) {

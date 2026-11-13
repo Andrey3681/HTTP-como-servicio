@@ -115,7 +115,7 @@ func (h *InstanceHandler) provision(w http.ResponseWriter, r *http.Request) {
 		Error(w, http.StatusBadRequest, "El archivo comprimido 'archivo' es obligatorio")
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	if !strings.HasSuffix(strings.ToLower(header.Filename), ".zip") {
 		Error(w, http.StatusBadRequest, "El archivo debe tener extensión .zip")

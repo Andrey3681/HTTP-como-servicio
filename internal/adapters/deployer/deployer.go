@@ -45,8 +45,10 @@ func (d *ApacheDeployer) DeployWebZip(ctx context.Context, targetIP netip.Addr, 
 	if err != nil {
 		return fmt.Errorf("fallo al crear archivo temporal para carga: %w", err)
 	}
-	defer os.Remove(tmpFile.Name())
-	defer tmpFile.Close()
+	defer func() {
+		_ = tmpFile.Close()
+		_ = os.Remove(tmpFile.Name())
+	}()
 
 	if _, err := io.Copy(tmpFile, zipContent); err != nil {
 		return fmt.Errorf("fallo al escribir datos al archivo temporal: %w", err)
