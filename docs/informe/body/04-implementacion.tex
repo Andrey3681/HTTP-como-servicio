@@ -5,10 +5,11 @@ El backend se implementó en Go siguiendo arquitectura hexagonal y un flujo de t
 \begin{itemize}
     \item \texttt{cmd/server}: punto de entrada, configuración por \textit{flags}, ensamblado de dependencias (inyección en \texttt{main}) y exposición HTTP.
     \item \texttt{internal/core/domain}: modelos, normalización de nombres y reglas/invariantes del dominio (por ejemplo, validación de \textit{hostname}/FQDN).
-    \item \texttt{internal/core/ports}: contratos de infraestructura (\texttt{Executor}, \texttt{Hypervisor}, \texttt{DnsProvider}, \texttt{Deployer}, \texttt{Repository}).
+    \item \texttt{internal/core/ports}: contratos de infraestructura (\texttt{Executor}, \texttt{Hypervisor}, \texttt{DnsProvider}, \texttt{Deployer}, \texttt{Repository}) y el puerto transversal de observabilidad (\texttt{EventLogger}).
     \item \texttt{internal/adapters}: implementaciones concretas (\texttt{localproc} para ejecución de procesos, \texttt{vbox} para \texttt{VBoxManage}, \texttt{bind9} para registro/consulta DNS, \texttt{deployer} para despliegue y \texttt{filestore} para persistencia).
     \item \texttt{internal/services}: orquestación transaccional del aprovisionamiento/eliminación y políticas de compensación.
-    \item \texttt{internal/handlers}: adaptadores primarios HTTP (instancias, DNS, salud, middleware de \textit{logging}/CORS/recuperación y respuestas JSON).
+    \item \texttt{internal/handlers}: adaptadores primarios HTTP (instancias, DNS, salud, logs, middleware de \textit{logging}/CORS/recuperación y respuestas JSON).
+    \item \texttt{internal/logging}: modelo de eventos y \textit{broker} en memoria (anillo acotado y suscripción a canales) que implementa \texttt{ports.EventLogger} y sirve de puente con el paquete \texttt{log} estándar.
     \item \texttt{web}: interfaz de usuario estática servida por el orquestador.
 \end{itemize}
 
@@ -21,6 +22,13 @@ Las operaciones sobre VirtualBox se ejecutan mediante el adaptador \texttt{vbox}
 La interfaz en \texttt{web/} se implementó como un conjunto de páginas HTML (\texttt{index}, \texttt{detalle}, \texttt{dns}, \texttt{salud}, \texttt{vhosts}, \texttt{ayuda}) con componentes compartidos y reutilizables: montaje de cabecera/pie (\texttt{components.js}), panel global de eventos con estado persistido (\texttt{logs-dock.js}), utilidades comunes (\texttt{common.js}), enrutamiento por intercambio de \texttt{<main>} sin recarga completa (\texttt{router.js}) y lógica por módulo (\texttt{js/pages/*.js}).
 
 La consola de aprovisionamiento incluye validación/ayudas de \textit{hostname}, verificación de disponibilidad, carga de contenido mediante zona de arrastre/selección para archivos \texttt{.zip}, retroalimentación de estado y confirmación de eliminación. Se incorporaron mejoras de accesibilidad y operación: navegación accesible en anchos reducidos, gestión de foco/teclado en el diálogo de eliminación, estados \texttt{aria-busy}/deshabilitado en acciones asíncronas y visualización del estado de salud consumiendo \texttt{/api/salud} (sin afirmar disponibilidad sin evidencia).
+
+\subsection{Observabilidad: Logs Estructurados y Streaming}
+La observabilidad se implementó con un \textit{broker} en memoria (\texttt{internal/logging}) que conserva un anillo acotado de eventos y notifica a los suscriptores en tiempo real. Cada evento sigue un contrato estable (\texttt{id}, \texttt{ts}, \texttt{nivel}, \texttt{componente}, \texttt{mensaje}, \texttt{campos}) y se emite desde los servicios de orquestación y desde los adaptadores de infraestructura, además de capturar la salida del paquete \texttt{log} estándar mediante un puente \texttt{io.Writer}.
+
+Sobre ese núcleo se exponen tres operaciones: consulta filtrable del historial (\texttt{GET /api/logs} con \texttt{limit}, \texttt{nivel}, \texttt{componente} y cursor \texttt{since}), limpieza del anillo (\texttt{DELETE /api/logs}) y transmisión por Server-Sent Events (\texttt{GET /api/logs/stream}) con reanudación mediante \texttt{Last-Event-ID} o \texttt{since}, lo que evita pérdidas de eventos ante reconexiones del cliente. En el plano de seguridad, los errores internos se registran con su detalle en el \textit{broker} mientras la respuesta HTTP 500 expone un mensaje público estable, evitando filtrar trazas de infraestructura.
+
+En la interfaz, el \textit{dock} de eventos consume el historial al abrirse y mantiene una conexión \textit{EventSource} al flujo, deduplicando por identificador; su indicador de conexión refleja los estados conectando, en vivo y reconectando.
 
 \subsection{Calidad, Contratos y Automatización}
 El proyecto define su contrato HTTP en \texttt{docs/openapi.yaml} y documenta módulos web y requisitos en \texttt{docs/}. Las pruebas unitarias cubren dominio, adaptadores, servicios y \textit{handlers}; además, se incorporaron pruebas de contrato de la interfaz web (\texttt{web/ui\_contract\_test.go}) para validar presencia de componentes, identificadores, atributos de accesibilidad y comportamientos esperados del \textit{shell} compartido. Las tareas de formato, verificación y compilación del informe se centralizan en \texttt{Taskfile.yml}.

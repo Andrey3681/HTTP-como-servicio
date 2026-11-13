@@ -1,11 +1,13 @@
 \section{Pruebas y Evidencias}
 
 \subsection{Pruebas Automatizadas}
-Siguiendo la metodología guiada por pruebas (TDD), se implementaron pruebas unitarias sobre el dominio, los adaptadores, los \textit{handlers} HTTP y los servicios de aplicación. En la capa de orquestación se emplean dobles de prueba (\textit{fakes}/mocks) para los puertos de hipervisor, DNS, despliegue y persistencia, lo que permite validar la secuencia transaccional y las rutinas de compensación ante fallos sin depender de infraestructura física.
+Siguiendo la metodología guiada por pruebas (TDD), se implementaron pruebas unitarias sobre el dominio, los adaptadores, los \textit{handlers} HTTP y los servicios de aplicación. La suite comprende 39 funciones de prueba distribuidas en 10 paquetes, con cobertura en los módulos de mayor riesgo: dominio (84.6\%), \textit{broker} de logs (88.3\%), adaptador de despliegue (81.2\%), ejecución de procesos (88.9\%) y persistencia (76.1\%). En la capa de orquestación se emplean dobles de prueba (\textit{fakes}/mocks) para los puertos de hipervisor, DNS, despliegue y persistencia, lo que permite validar la secuencia transaccional y las rutinas de compensación ante fallos sin depender de infraestructura física.
+
+El sistema de observabilidad cuenta con pruebas propias sobre el anillo de eventos (capacidad, orden, limpieza y cursores), los filtros de consulta, la publicación/suscripción del \textit{broker}, los \textit{handlers} de \texttt{GET}/\texttt{DELETE} \texttt{/api/logs} y la reanudación del flujo SSE mediante \texttt{Last-Event-ID}.
 
 Adicionalmente, se definieron pruebas de contrato para la interfaz web (\texttt{web/ui\_contract\_test.go}), que verifican la estructura modular (páginas, \texttt{data-page}, \textit{mounts} de componentes), la disponibilidad de identificadores requeridos por cada módulo, la exposición de APIs reutilizables (navegación, panel de eventos) y condiciones de accesibilidad/operación (navegación accesible, atributos ARIA relevantes, gestión de estado de carga y ausencia de afirmaciones estáticas de disponibilidad sin respaldo).
 
-La ejecución de pruebas del proyecto se realiza con \texttt{go test ./...} (y tareas equivalentes definidas en \texttt{Taskfile.yml}). \pendiente{Registrar aquí el resultado consolidado de \texttt{task check} en el entorno final de entrega, junto con la fecha de ejecución.}
+La ejecución de pruebas del proyecto se realiza con \texttt{go test ./...} (y tareas equivalentes definidas en \texttt{Taskfile.yml}). La verificación del 13 de noviembre de 2026 reporta la totalidad de paquetes con pruebas en estado satisfactorio, junto con \texttt{gofumpt}, \texttt{go fmt}, \texttt{golangci-lint} y \texttt{go vet} sin hallazgos. \pendiente{Registrar la evidencia de ejecución (captura de terminal) en el entorno final de entrega.}
 
 \subsection{Verificación Funcional Planificada (Entorno de Laboratorio)}
 La verificación extremo a extremo requiere el laboratorio operativo (VirtualBox, plantilla con disco multiconexión, VM \texttt{ns} con Bind9 en \texttt{cloud.local.} y red \texttt{cloudnet}). El plan de evidencias incluye:

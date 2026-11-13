@@ -2,7 +2,7 @@
 
 > **Estado:** propuesta funcional/técnica para la interfaz web (`web/`).  
 > **Fuente normativa principal (enunciado):** `docs/specs/Nota parcial 3 - Computacion en la Nube.md` (HTTP como servicio / HTTPaaS).  
-> **Fuentes técnicas de soporte:** `docs/arquitectura.md`, `docs/diseno-solucion.md`, `docs/openapi.yaml`, `docs/verificacion.md`, `docs/TODO.md`.  
+> **Fuentes técnicas de soporte:** `docs/arquitectura.md`, `docs/diseno-solucion.md`, `docs/sistema-logs.md`, `docs/openapi.yaml`, `docs/verificacion.md`, `docs/TODO.md`.  
 > **Alcance:** define *qué módulos web deben existir* y *qué funciones, formularios, botones y elementos* debe tener cada uno, sustentado en requisitos funcionales (RF) y no funcionales (RNF). No se limita a lo ya implementado.
 
 ---
@@ -32,9 +32,9 @@ El diseño técnico (`arquitectura.md`/`diseno-solucion.md`) concreta el flujo t
 | RF-11 | Refrescar/sincronizar vistas de datos (instancias, DNS, salud) bajo demanda. | Necesidad operativa derivada de estado dinámico (`diseno-solucion`/`openapi`) |
 | RF-12 | Mostrar el contexto operativo relevante (zona DNS, red, DocumentRoot, FQDN `.cloud.local`) para orientar al usuario. | `Nota parcial 3`/`diseno-solucion` §1/§2; coherencia con `openapi` |
 | RF-13 | (Evolutivo, sustentado en specs) Visualizar el estado/configuración asociada a Apache VHost y al registro DNS de una instancia (referencia de `ServerName`/DocumentRoot y registro A) para diagnóstico. | `Nota parcial 3` (hostname único, directorio de contenido, despliegue por instancia); `arquitectura` §1; `diseno-solucion` §1/§2; nav Stitch (“VHosts”) |
-| RF-14 | (Evolutivo) Consultar eventos/logs de aprovisionamiento y operación (Apache/Bind9/orquestador) para observabilidad y soporte. | Observabilidad ante flujo transaccional/rollback (`arquitectura` §5); componente de logs en el diseño base |
+| RF-14 | Consultar eventos/logs de aprovisionamiento y operación (Apache/Bind9/orquestador) para observabilidad y soporte. | Observabilidad ante flujo transaccional/rollback (`arquitectura` §5); `docs/sistema-logs.md`; `GET/DELETE /api/logs`, `GET /api/logs/stream` |
 
-> Nota: RF-13 y RF-14 no tienen endpoint dedicado hoy en `openapi.yaml`; se especifican como módulos/vistas **preparados para conexión** (datos de referencia + contrato futuro), coherentes con la arquitectura.
+> Nota: RF-13 no tiene endpoint dedicado en `openapi.yaml` y se especifica como vista **preparada para conexión** (datos derivados de instancias + contrato futuro). RF-14 ya cuenta con contrato e implementación mediante `GET/DELETE /api/logs` y `GET /api/logs/stream` (ver `docs/sistema-logs.md`).
 
 ---
 
@@ -67,7 +67,7 @@ El diseño técnico (`arquitectura.md`/`diseno-solucion.md`) concreta el flujo t
 | M3. DNS / Zonas | `/dns.html` | Visibilidad de registros A en `cloud.local.`. | RF-07,10,11,12 | `GET /api/dns/registros` |
 | M4. Salud / Diagnóstico | `/salud.html` | Estado de dependencias del entorno. | RF-08,10,11 | `GET /api/salud` |
 | M5. VHosts / Apache (vista operativa) | `/vhosts.html` | Visibilidad de VirtualHosts/ServerName/DocumentRoot por instancia (y estado lógico). | RF-13,12,10,11 | *futuro* `GET /api/vhosts` o derivado de instancias |
-| M6. Operaciones / Eventos (logs) | componente `logs-dock` (global) *(extensible a `/eventos.html`)* | Observabilidad de eventos de aprovisionamiento/operación. | RF-14,10 | *futuro* `GET /api/eventos`/stream |
+| M6. Operaciones / Eventos (logs) | componente `logs-dock` (global) *(extensible a `/eventos.html`)* | Observabilidad de eventos de aprovisionamiento/operación. | RF-14,10 | `GET/DELETE /api/logs`, `GET /api/logs/stream` (SSE) |
 | M7. Ayuda / Verificación operativa | `/ayuda.html` | Guía rápida: formato hostname/zip, zona/red, pasos de verificación (dig/curl) y resolución de errores comunes. | RF-03,08,10,12 (soporte a RF-02/06) | ninguno (estático, enlaza conceptos de `verificacion.md`) |
 
 Componentes transversales (presentes en todos los módulos, RNF-02/07/10): **header** (marca, nav, estado de servicios/nodo), **footer** (contexto zona/DocumentRoot/versiones + toggle de logs), **dock de logs** (M6), **router** (navegación sin recarga), utilidades comunes (escape, formato fecha, feedback/loading).
@@ -185,8 +185,8 @@ Componentes transversales (presentes en todos los módulos, RNF-02/07/10): **hea
 
 ## 7. Contratos API usados y brechas (para conexión progresiva)
 
-- **Existentes (usar):** `GET/POST /api/instancias`, `GET/DELETE /api/instancias/{id}`, `GET /api/dns/registros`, `GET /api/salud` (`openapi.yaml`).
-- **Brechas/evolutivos (alineados a RF-13/14, no romper contrato):** detalle ampliado por instancia (metadatos VHost/DNS/VM), `GET /api/vhosts` (o derivado), `GET /api/eventos` o stream (SSE/WebSocket) para M6; verificación de disponibilidad explícita `HEAD/GET /api/instancias/{id}` ya sirve (RF-04) pero puede formalizarse.
+- **Existentes (usar):** `GET/POST /api/instancias`, `GET/DELETE /api/instancias/{id}`, `GET /api/dns/registros`, `GET /api/salud`, `GET/DELETE /api/logs`, `GET /api/logs/stream` (`openapi.yaml`).
+- **Brechas/evolutivos (alineados a RF-13, no romper contrato):** detalle ampliado por instancia (metadatos VHost/DNS/VM), `GET /api/vhosts` (o derivado); verificación de disponibilidad explícita `HEAD/GET /api/instancias/{id}` ya sirve (RF-04) pero puede formalizarse.
 - **Regla:** la UI debe funcionar con los endpoints actuales (RNF-11) y degradar con elegancia donde falte contrato futuro.
 
 ---

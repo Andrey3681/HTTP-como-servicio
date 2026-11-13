@@ -41,6 +41,7 @@ El sistema **HTTPaaS** adopta el patrón de **Arquitectura Hexagonal (Puertos y 
    - Implementan las interfaces de `ports`. Interactúan con herramientas externas (`VBoxManage`, `nsupdate`, `dig`, sistema de archivos).
 4. **Punto de Composición (`cmd/server/main.go`)**:
    - Es el único lugar donde se instancian los adaptadores concretos y se inyectan en los servicios de aplicación y controladores HTTP.
+   - También compone el broker de observabilidad (`internal/logging.Broker`), que se inyecta como `ports.EventLogger` en adaptadores, servicios y handlers.
 
 ---
 
@@ -50,20 +51,20 @@ El sistema **HTTPaaS** adopta el patrón de **Arquitectura Hexagonal (Puertos y 
 ```go
 // Hypervisor define las operaciones requeridas sobre el hipervisor VirtualBox.
 type Hypervisor interface {
-    // CreateInstanceFromBase crea una nueva VM a partir del disco base multiconexión.
-    CreateInstanceFromBase(ctx context.Context, name string, baseDiskPath string) (domain.Instance, error)
-    
-    // Start inicia la máquina virtual en modo headless.
-    Start(ctx context.Context, vmID string) error
-    
-    // GetIPAddress obtiene la dirección IP de la VM una vez que los servicios de red están activos.
-    GetIPAddress(ctx context.Context, vmID string) (netip.Addr, error)
-    
-    // Stop apaga la VM de forma controlada o forzada.
-    Stop(ctx context.Context, vmID string) error
-    
-    // Destroy desmantela la VM, liberando almacenamiento diferencial y registros en VirtualBox.
-    Destroy(ctx context.Context, vmID string) error
+    // CreateInstanceFromBase aprovisiona una nueva VM enlazando el disco multiconexión base.
+    CreateInstanceFromBase(ctx context.Context, name string, baseDiskPath string) (*domain.Instance, error)
+
+    // Start inicia la máquina virtual en modo desatendido (headless).
+    Start(ctx context.Context, vmName string) error
+
+    // GetIPAddress sondea la dirección IP asignada a la VM mediante Guest Additions.
+    GetIPAddress(ctx context.Context, vmName string) (netip.Addr, error)
+
+    // Stop apaga la máquina virtual.
+    Stop(ctx context.Context, vmName string) error
+
+    // Destroy desmantela la VM, desasocia el disco diferencial y elimina los archivos físicos.
+    Destroy(ctx context.Context, vmName string) error
 }
 ```
 
@@ -95,28 +96,27 @@ type EventLogger interface {
 ```
 `EventLogger` es un puerto transversal: servicios y adaptadores lo reciben por inyección (opcional en constructores cuando aplique) para emitir eventos estructurados sin acoplarse al broker/HTTP. La implementación concreta (`internal/logging.Broker`) se compone en `cmd/server/main.go`.
 
-### 3.3 Desplegador Web (`Deployer`)
+### 3.4 Desplegador Web (`Deployer`)
 ```go
 // Deployer transfiere y descomprime los paquetes web en la instancia Apache.
 type Deployer interface {
-    // DeployWebZip descomprime el archivo .zip en /var/www/html/ de la VM objetivo.
-    DeployWebZip(ctx context.Context, targetIP netip.Addr, zipReader io.Reader) error
+    // DeployWebZip transfiere y descomprime el contenido web en /var/www/html/ de la máquina virtual objetivo.
+    DeployWebZip(ctx context.Context, targetIP netip.Addr, zipContent io.Reader, size int64) error
 }
 ```
 
-### 3.4 Repositorio de Persistencia (`Repository`)
+### 3.5 Repositorio de Persistencia (`Repository`)
 ```go
-// Repository administra el inventario de instancias aprovisionadas.
+// Repository administra la persistencia del inventario de instancias aprovisionadas.
 type Repository interface {
     Save(ctx context.Context, instance domain.Instance) error
-    FindByID(ctx context.Context, id string) (domain.Instance, error)
-    FindByName(ctx context.Context, name string) (domain.Instance, error)
+    FindByID(ctx context.Context, id string) (*domain.Instance, error)
     FindAll(ctx context.Context) ([]domain.Instance, error)
     Delete(ctx context.Context, id string) error
 }
 ```
 
-### 3.5 Ejecutor de Comandos en el Host (`Executor`)
+### 3.6 Ejecutor de Comandos en el Host (`Executor`)
 ```go
 // Executor abstrae la invocación de procesos del sistema operativo host.
 type Executor interface {

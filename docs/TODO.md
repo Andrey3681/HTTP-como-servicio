@@ -43,18 +43,28 @@ Diseñar e implementar un entorno local automatizado para el aprovisionamiento y
 ## 5. Adaptadores Primarios e Interfaz Web
 - [x] Implementar handlers REST (`internal/handlers/instance_handler.go`, `dns_handler.go`).
 - [x] Implementar middleware de logging, CORS y recuperación ante pánicos.
+- [x] Implementar sistema de logs estructurado (`internal/logging`, `ports.EventLogger`): anillo en memoria, `GET/DELETE /api/logs`, SSE en `/api/logs/stream` con reanudación por `Last-Event-ID`, y sanitización de mensajes `500`.
 - [x] Construir panel web estático en `web/` (HTML, CSS y JS).
   - [x] Formulario de carga con campo de texto y selector de `.zip`.
   - [x] Validación asíncrona de disponibilidad de subdominio.
   - [x] Tabla de instancias activas con enlace `http://<host>.cloud.local` (target="_blank").
   - [x] Botón rojo para eliminar instancia con diálogo de confirmación.
+  - [x] Dock global de logs conectado a `/api/logs` y `/api/logs/stream`.
 
 ## 6. Documentación e Informe Académico
 - [x] Crear especificación arquitectónica (`docs/arquitectura.md`).
 - [x] Crear especificación de diseño (`docs/diseno-solucion.md`).
 - [x] Crear especificación OpenAPI (`docs/openapi.yaml`).
+- [x] Crear inventario de endpoints (`docs/api/endpoints.md`).
+- [x] Documentar módulos web y sistema de logs (`docs/modulos-web.md`, `docs/sistema-logs.md`).
 - [x] Crear diagramas PlantUML (`docs/diagramas/`).
 - [x] Plantilla del informe IEEEtran en LaTeX (`docs/informe/`).
+- [x] Compilar informe en PDF (`task informe`, `docs/informe/main.pdf`).
+- [x] Migrar `.golangci.yml` al esquema v2 (golangci-lint 2.x) y resolver los hallazgos de `errcheck`.
 - [ ] Redactar detalles finales del informe tras desplegar el laboratorio físico.
 - [ ] Tomar capturas de pantalla de evidencias y almacenarlas en `docs/informe/images/`.
-- [ ] Compilar informe final en PDF (`task informe`).
+
+## 7. Brechas Conocidas (aceptadas)
+- [ ] `/api/salud` reporta `bind9: true` de forma estática; el contrato OpenAPI indica verificación real. Pendiente de decisión: sondear el proveedor DNS (requiere docs → tests → implementación) o ajustar el contrato.
+- [ ] `GET /api/vhosts` no existe: la vista M5 deriva sus datos del listado de instancias.
+- [ ] Logs solo en memoria (sin persistencia en disco ni exportación).

@@ -1,6 +1,8 @@
 # Sistema de logs — HTTPaaS
 
-Este documento define el diseño del sistema de logs del orquestador HTTPaaS. Es la referencia previa a la implementación (flujo **docs → tests → implementación**). El contrato HTTP de los endpoints de logs se refleja también en [`docs/api/endpoints.md`](api/endpoints.md) y [`docs/openapi.yaml`](../openapi.yaml) cuando se implementen.
+Este documento define el diseño del sistema de logs del orquestador HTTPaaS y su estado de implementación actual. El contrato HTTP de los endpoints de logs se refleja en [`docs/api/endpoints.md`](api/endpoints.md) y [`docs/openapi.yaml`](../openapi.yaml); el código reside en `internal/logging` (modelo y broker) y `internal/handlers/logs_handler.go`.
+
+> **Estado:** implementado e integrado en la interfaz web (dock «Logs del Sistema»). Ver §6 y §7.
 
 ## 1. Objetivos
 
@@ -44,7 +46,7 @@ Representación JSON (contrato):
   - **Ring buffer** acotado (p. ej. 1000–5000 entradas) para historial reciente.
   - **Suscripción** para observadores en tiempo real (canales/notificación no bloqueante con descarte controlado ante consumidores lentos).
 - **Integración con `log` estándar**: puente para capturar salidas existentes (`log.Printf/Println`) durante la migración, etiquetándolas con componente/nivel inferido cuando sea posible.
-- **Emisor estructurado**: API interna (p. ej. `logging.Info(componente, mensaje, campos)`) para nuevos eventos; reemplaza gradualmente `log.Printf` en puntos críticos.
+- **Emisor estructurado**: API interna (`Append`/`AppendEntry`/`Logf` sobre `ports.EventLogger`) para nuevos eventos; convive con `log.Printf` heredado en adaptadores, capturado por el puente `Write`.
 - **Middleware HTTP**: registra solicitudes/respuestas (método, ruta, código, duración, remoto) como eventos `http`.
 
 ### 3.2 Reglas de diseño
@@ -75,15 +77,16 @@ Notas:
 - `WARN`: condición recuperable o degradada (nsupdate no disponible, advertencias de limpieza).
 - `ERROR`: fallo de operación, pánico recuperado, error HTTP 5xx relevante.
 
-## 6. Plan de implementación (incremental)
+## 6. Implementación por etapas
 
-1. **Docs/contrato** (este documento) + `docs/openapi.yaml` y `docs/api/endpoints.md`.
-2. **Tests**: modelo/evento, ring buffer (capacidad/orden/limpieza/cursor), filtros, broker pub/sub, handlers `GET/DELETE /api/logs` y SSE (resume).
-3. **Implementación**: `internal/logging`/broker, puerto `EventLogger` inyectado en servicios/adaptadores para eventos estructurados, handlers/rutas, sanitización de mensajes `500` (detalle a logs, mensaje público estable).
-4. **Integración UI**: conectar `logs-dock.js` (rama UI) al stream/consulta — trabajo coordinado con la rama de interfaz.
+1. **Docs/contrato** (este documento) + `docs/openapi.yaml` y `docs/api/endpoints.md`. — Completado.
+2. **Tests**: modelo/evento, ring buffer (capacidad/orden/limpieza/cursor), filtros, broker pub/sub, handlers `GET/DELETE /api/logs` y SSE (resume). — Completado (`internal/logging/broker_test.go`, `internal/handlers/logs_handler_test.go`).
+3. **Implementación**: `internal/logging`/broker, puerto `EventLogger` inyectado en servicios/adaptadores para eventos estructurados, handlers/rutas, sanitización de mensajes `500` (detalle a logs, mensaje público estable). — Completado.
+4. **Integración UI**: conectar `logs-dock.js` al stream/consulta. — Completado (`web/js/logs-dock.js`: historial vía `/api/logs`, tiempo real vía `EventSource` sobre `/api/logs/stream`, deduplicación por `id`).
 
-## 7. Criterios de aceptación (fase inicial)
+## 7. Criterios de aceptación
 
-- Los endpoints de logs existen y cumplen el contrato (aunque el volumen inicial sea limitado).
-- Los eventos tienen forma JSON estable (`id,ts,nivel,componente,mensaje,campos`).
-- `task fmt`, `task test`, `go vet ./...` y validación OpenAPI pasan antes de commit.
+- Los endpoints de logs existen y cumplen el contrato. — Cumplido.
+- Los eventos tienen forma JSON estable (`id,ts,nivel,componente,mensaje,campos`). — Cumplido.
+- Las operaciones lentas del orquestador (VM, DNS, despliegue) emiten eventos con componente y campos de contexto. — Cumplido.
+- `task fmt`, `task lint` (`golangci-lint`), `task test`, `go vet ./...` y validación OpenAPI pasan antes de commit. — Cumplido.

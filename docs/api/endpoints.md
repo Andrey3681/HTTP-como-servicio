@@ -8,7 +8,6 @@ Este documento identifica de forma exhaustiva los endpoints HTTP expuestos por e
 - **Formato**: JSON (`application/json; charset=utf-8`) salvo creación de instancias, que usa `multipart/form-data`.
 - **Errores**: formato estándar `{"error":"<mensaje>","codigo":<HTTP>}` (ver `internal/handlers/respuesta.go`).
 - **Nombres de contrato**: rutas y campos JSON en español (p. ej. `instancias`, `registros`, `datos`, `nombre`); identificadores Go en inglés con etiquetas `json`.
-- **Estado "existe (stub)"**: el endpoint está registrado y responde con la forma del contrato, pero puede devolver datos simulados/vacíos hasta que la integración real esté completa.
 
 ## Inventario
 
@@ -19,7 +18,7 @@ Este documento identifica de forma exhaustiva los endpoints HTTP expuestos por e
 | 3 | `POST` | `/api/instancias` | Aprovisionar una instancia HTTP (VM + DNS + despliegue web). | `multipart/form-data`: `nombre` (subdominio), `archivo` (`.zip`, máx. 55 MB en handler / 50 MB validación de dominio) | `201` `{mensaje, datos:Instancia}` | `201`, `400`, `405`, `500` | Existe |
 | 4 | `GET` | `/api/instancias/{id}` | Obtener detalle de una instancia por identificador/nombre. | path `id` | `200` `{datos:Instancia}` | `200`, `400`, `404`, `405`, `500` | Existe |
 | 5 | `DELETE` | `/api/instancias/{id}` | Eliminar instancia (VM, DNS, inventario). | path `id` | `200` `{mensaje}` | `200`, `400`, `404`, `405`, `500` | Existe |
-| 6 | `GET` | `/api/dns/registros` | Consultar registros A activos en la zona DNS administrada. | — | `200` `{zona, registros:[{nombre,tipo,ip,ttl}]}` | `200`, `405` | Existe (stub permitido) |
+| 6 | `GET` | `/api/dns/registros` | Consultar registros A activos en la zona DNS administrada. | — | `200` `{zona, registros:[{nombre,tipo,ip,ttl}]}` | `200`, `405` | Existe |
 | 7 | `GET` | `/api/logs` | Obtener eventos de log recientes (anillo en memoria, filtrable). | query `limit` (1–1000, def. 200), `nivel`, `componente`, `since` (id, exclusivo) | `200` `{datos:[LogEntry], total}` | `200`, `400`, `405` | Existe |
 | 8 | `GET` | `/api/logs/stream` | Stream de eventos de log en tiempo real (SSE), con reanudación. | query `since` o header `Last-Event-ID` | `200` `text/event-stream` (`id:` + `data: <LogEntry JSON>`) | `200`, `405`, `500` | Existe |
 | 9 | `DELETE` | `/api/logs` | Limpiar el anillo de logs del servidor. | — | `200` `{mensaje}` | `200`, `405` | Existe |
@@ -33,6 +32,6 @@ Este documento identifica de forma exhaustiva los endpoints HTTP expuestos por e
 
 ## Notas de rigor
 
-- `GET /api/dns/registros` debe existir aunque la integración real de listado Bind9 no esté implementada; en ese caso responde con la estructura del contrato y `registros` vacío.
+- `GET /api/dns/registros` consulta la zona mediante transferencia AXFR (`dig`) a través de `DnsProvider.ListRecords`; si la consulta no está disponible responde `200` con `registros` vacío para preservar el contrato (degradación explícita, no error).
 - Los handlers validan método HTTP y responden `405` cuando no aplica; los middlewares globales aplican CORS, logging y recuperación de pánicos.
 - Cualquier ampliación del contrato se realiza primero en `docs/openapi.yaml` y en este inventario, luego en pruebas y finalmente en implementación (flujo **docs → tests → implementación**).

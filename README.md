@@ -62,6 +62,12 @@ task lint
 # Validación integral antes de commit
 task check
 
+# Regenerar documentación Markdown de paquetes Go
+task doc
+
+# Compilar el informe LaTeX (docs/informe/main.pdf)
+task informe
+
 # Compilar binario de producción
 task build
 ```
@@ -72,11 +78,12 @@ Organizado bajo **Arquitectura Hexagonal (Puertos y Adaptadores)**:
 
 - `cmd/server/`: Punto de entrada (`main.go`) y composición de dependencias.
 - `internal/core/domain/`: Entidades de negocio (`Instance`, `DnsRecord`, etc.) e invariantes.
-- `internal/core/ports/`: Interfaces de puertos desacoplados (`Hypervisor`, `DnsProvider`, `Deployer`, `Repository`, `Executor`).
+- `internal/core/ports/`: Interfaces de puertos desacoplados (`Hypervisor`, `DnsProvider`, `Deployer`, `Repository`, `Executor`, `EventLogger`).
 - `internal/adapters/`: Implementaciones concretas (`vbox`, `bind9`, `deployer`, `filestore`, `localproc`).
-- `internal/services/`: Casos de uso de la aplicación (`Orchestrator`, `InstanceService`, `DnsService`).
-- `internal/handlers/`: Controladores HTTP REST.
-- `web/`: Frontend con panel de control web responsivo.
+- `internal/logging/`: Modelo de eventos y broker en memoria (anillo + suscripción SSE) que implementa `ports.EventLogger`.
+- `internal/services/`: Casos de uso de la aplicación (`Orchestrator`, `InstanceService`).
+- `internal/handlers/`: Controladores HTTP REST (instancias, DNS, salud, logs) y middleware.
+- `web/`: Frontend modular (páginas, componentes compartidos, router y dock de logs).
 - `docs/`: Documentación técnica, diagramas PlantUML y reporte en LaTeX.
 - `.agents/skills/`: Reglas y contexto técnico para agentes inteligentes.
 

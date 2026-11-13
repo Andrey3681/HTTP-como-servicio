@@ -51,7 +51,9 @@ tasks:
   doc:
     desc: Regenerar documentación Markdown de la API Go con gomarkdoc
     cmds:
-      - gomarkdoc -o "docs/api/{{.Dir}}.md" ./internal/...
+      # Las llaves se escapan con {{"{{"}}/{{"}}"}} para que Task no las
+      # evalúe como variable propia y gomarkdoc reciba {{.Dir}}.
+      - gomarkdoc -o 'docs/api/{{"{{"}}.Dir{{"}}"}}.md' ./internal/...
       - gomarkdoc -o docs/api/main.md ./cmd/...
     ignore_error: true
 
