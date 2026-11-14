@@ -269,3 +269,18 @@ func TestInspectNormalizesVersion(t *testing.T) {
 		t.Errorf("expected a normalized version, got %q", status.VBoxVersion)
 	}
 }
+
+func TestStartSeedBootRejectsRunningVM(t *testing.T) {
+	exec := &fakeExecutor{responses: map[string]string{
+		"VBoxManage showvminfo ns --machinereadable": "VMState=\"running\"\n",
+	}}
+	prov := provisioner.NewProvisioner(exec)
+
+	err := prov.StartSeedBoot(context.Background(), setupConfig(), "ns", "/seeds/ns-seed.iso")
+	if err == nil {
+		t.Fatal("expected an error for a running VM")
+	}
+	if !strings.Contains(err.Error(), "Reiniciar") {
+		t.Errorf("expected an actionable hint, got: %v", err)
+	}
+}

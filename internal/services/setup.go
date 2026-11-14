@@ -242,6 +242,12 @@ func (s *SetupService) ActualizarDeteccion(ctx context.Context) error {
 	s.markIf(s.state.Imagen != "", domain.SetupStepISO, "Imagen lista en "+s.state.Imagen)
 	s.markIf(status.HostOnlyInterface != "", domain.SetupStepNetwork, "Interfaz "+status.HostOnlyInterface+" · "+s.network.CIDR)
 	s.markIf(status.BaseDiskMultiattach, domain.SetupStepMultiattach, "Disco base en modo multiconexión")
+	// Los pasos de creación no se heredan entre reinicios: son idempotentes y
+	// garantizan que la VM y su semilla existan antes de continuar.
+	if !status.Ready {
+		delete(s.completed, domain.SetupStepDNSVM)
+		delete(s.completed, domain.SetupStepBaseVM)
+	}
 	if status.BaseDiskPath != "" {
 		s.baseDisk = status.BaseDiskPath
 	}

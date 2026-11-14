@@ -237,6 +237,10 @@ func (p *Provisioner) CreateSeedISO(ctx context.Context, cfg domain.SetupConfig,
 
 // StartSeedBoot conecta la ISO semilla y arranca la máquina en headless.
 func (p *Provisioner) StartSeedBoot(ctx context.Context, _ domain.SetupConfig, vmName, seedISO string) error {
+	out, err := p.vbox(ctx, "showvminfo", vmName, "--machinereadable")
+	if err == nil && strings.Contains(out, `VMState="running"`) {
+		return fmt.Errorf("la máquina %s sigue en ejecución con una preparación anterior; usa Reiniciar para recrearla", vmName)
+	}
 	if _, err := p.vbox(ctx, "storageattach", vmName,
 		"--storagectl", "SATA",
 		"--port", "1",
