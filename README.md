@@ -48,7 +48,7 @@ La consola permanece **bloqueada** hasta que el laboratorio esté preparado: una
 1. Pide el **usuario y la contraseña** del invitado; se usan en las semillas cloud-init.
 2. Descarga la imagen cloud oficial de Debian 13 (`debian-13-generic-amd64.raw`, ~3 GB) si no existe en el directorio de datos.
 3. Convierte la imagen a VDI con `VBoxManage convertfromraw` y redimensiona el disco.
-4. Genera una ISO semilla por VM (`genisoimage`, volumen `cidata`) desde `scripts/seeds/`.
+4. Genera una ISO semilla por VM (`genisoimage`, volumen `cidata`) desde `scripts/seeds/`; las VM base llevan una NIC NAT para descargar paquetes.
 5. Arranca **`ns`** y la plantilla **`ApacheServer`**; cloud-init crea el usuario, instala los paquetes y Guest Additions.
 6. Ejecuta `scripts/guest-bind9.sh` y `scripts/guest-apache.sh` para la zona DNS y el vhost.
 7. Marca el disco de la plantilla en `multiattach` y guarda su ruta para los diferenciales.

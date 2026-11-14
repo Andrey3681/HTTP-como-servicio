@@ -146,6 +146,8 @@ func (p *Provisioner) ensureDHCP(ctx context.Context, network domain.NetworkConf
 		"--netmask=" + network.Netmask,
 		"--lower-ip=" + network.DHCPLower,
 		"--upper-ip=" + network.DHCPUpper,
+		"--suppress-opt=3", // sin puerta de enlace en la red host-only
+		"--suppress-opt=6", // sin DNS: los invitados usan la NIC NAT durante la preparación
 		"--enable",
 	}
 	if !exists {
@@ -170,6 +172,7 @@ func (p *Provisioner) CreateVM(ctx context.Context, cfg domain.SetupConfig, vmNa
 		"--cpus", "1",
 		"--nic1", "hostonly",
 		"--hostonlyadapter1", netInterface,
+		"--nic2", "nat",
 		"--audio", "none",
 		"--usb", "off",
 		"--graphicscontroller", "vmsvga",

@@ -20,7 +20,7 @@ Una sola imagen base: `debian-13-generic-amd64.raw`. Se descarga solo si no exis
 ## 2. Flujo
 
 1. **Imagen:** descarga la `.raw` oficial (~3 GB) en `<app-dir>/raw/`. Si ya está, se reutiliza.
-2. **Red:** reutiliza la interfaz host-only de VirtualBox y configura DHCP en su subred (sin privilegios).
+2. **Red:** reutiliza la interfaz host-only de VirtualBox y configura DHCP en su subred. El DHCP no anuncia puerta de enlace ni DNS; las VM base llevan además una NIC NAT para descargar paquetes durante la preparación.
 3. **VM `ns`:** convierte la imagen a VDI, redimensiona el disco, crea la ISO semilla NoCloud y arranca.
 4. **Primer arranque de `ns`:** cloud-init crea el usuario, instala los paquetes y Guest Additions.
 5. **Configuración de Bind9:** el orquestador ejecuta `scripts/guest-bind9.sh` con la IP del DNS y el CIDR derivados.
@@ -131,6 +131,7 @@ La aplicación no lee ni escribe fuera de este directorio.
 - `genisoimage` o `mkisofs` para crear las semillas.
 - Internet la primera vez (imagen y paquetes).
 - Sin privilegios de administrador: no se reconfiguran interfaces del host.
+- Las VM base usan una NIC NAT temporal para instalar paquetes; las instancias aprovisionadas solo llevan la NIC host-only.
 
 ---
 

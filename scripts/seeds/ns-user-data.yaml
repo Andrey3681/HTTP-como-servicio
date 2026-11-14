@@ -29,6 +29,8 @@ packages:
 # 4. COMANDOS FINALES
 runcmd:
   - systemctl enable --now named
+  # Cabeceras del kernel en ejecución (necesarias para compilar Guest Additions)
+  - apt-get install -y "linux-headers-$(uname -r)" || true
   # Instalación de Guest Additions
   - mkdir -p /mnt/cdrom
   - mount -o loop /usr/share/virtualbox/VBoxGuestAdditions.iso /mnt/cdrom

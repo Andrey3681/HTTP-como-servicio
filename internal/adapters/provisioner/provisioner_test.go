@@ -114,6 +114,9 @@ func TestEnsureNetworkDerivesFromExistingInterface(t *testing.T) {
 	if !exec.contains("--lower-ip=192.168.57.100 --upper-ip=192.168.57.199") {
 		t.Errorf("expected derived DHCP range, got %v", exec.calls)
 	}
+	if !exec.contains("--suppress-opt=3") || !exec.contains("--suppress-opt=6") {
+		t.Errorf("expected gateway/DNS suppression on the host-only DHCP, got %v", exec.calls)
+	}
 }
 
 func TestNetworkFailsWithoutProjectInterface(t *testing.T) {
@@ -143,7 +146,7 @@ func TestCreateVMCommands(t *testing.T) {
 	}
 	for _, fragment := range []string{
 		"createvm --name ns --ostype Debian13_64 --register",
-		"--nic1 hostonly --hostonlyadapter1 vboxnet1",
+		"--nic1 hostonly --hostonlyadapter1 vboxnet1 --nic2 nat",
 		"storagectl ns --name SATA",
 		"convertfromraw /raw/debian.raw /home/user/VMs/ns/ns.vdi --format VDI",
 		"modifymedium disk /home/user/VMs/ns/ns.vdi --resize 8192",
