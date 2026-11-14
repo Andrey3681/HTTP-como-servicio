@@ -7,6 +7,7 @@ package provisioner
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -157,8 +158,42 @@ func (p *Provisioner) ensureDHCP(ctx context.Context, network domain.NetworkConf
 	return err
 }
 
-// CreateVM registra la VM, convierte la imagen base a VDI y conecta el disco.
-func (p *Provisioner) CreateVM(ctx context.Context, cfg domain.SetupConfig, vmName, netInterface, rawPath string) (string, error) {
+// ConvertToBaseVDI convierte la imagen raw en un VDI base reutilizable una sola
+// vez. Si el VDI ya existe, no hace nada.
+func (p *Provisioner) ConvertToBaseVDI(ctx context.Context, _ domain.SetupConfig, rawPath, baseVDI string, progress ports.ProgressFunc) error {
+	if _, err := os.Stat(baseVDI); err == nil {
+		return nil
+	}
+	if progress != nil {
+		progress(-1, "Convirtiendo la imagen base a VDI (una sola vez)")
+	}
+	if _, err := p.vbox(ctx, "convertfromraw", rawPath, baseVDI, "--format", "VDI"); err != nil {
+		return fmt.Errorf("fallo convirtiendo la imagen a VDI: %w", err)
+	}
+	return nil
+}
+
+// copyFile duplica un archivo completo.
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = in.Close() }()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(out, in); err != nil {
+		_ = out.Close()
+		return err
+	}
+	return out.Close()
+}
+
+// CreateVM registra la VM, duplica el VDI base y conecta el disco.
+func (p *Provisioner) CreateVM(ctx context.Context, cfg domain.SetupConfig, vmName, netInterface, baseVDI string) (string, error) {
 	if vmExists(ctx, p, vmName) {
 		return p.vmDiskPath(ctx, vmName)
 	}
@@ -195,8 +230,8 @@ func (p *Provisioner) CreateVM(ctx context.Context, cfg domain.SetupConfig, vmNa
 		return "", err
 	}
 	diskPath := filepath.Join(folder, vmName+".vdi")
-	if _, err := p.vbox(ctx, "convertfromraw", rawPath, diskPath, "--format", "VDI"); err != nil {
-		return "", fmt.Errorf("fallo convirtiendo la imagen a VDI: %w", err)
+	if err := copyFile(baseVDI, diskPath); err != nil {
+		return "", fmt.Errorf("fallo duplicando el VDI base: %w", err)
 	}
 	if _, err := p.vbox(ctx, "modifymedium", "disk", diskPath, "--resize", strconv.Itoa(cfg.DiskMB)); err != nil {
 		return "", fmt.Errorf("fallo redimensionando el disco: %w", err)

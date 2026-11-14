@@ -26,9 +26,13 @@ type SetupProvisioner interface {
 	// Network describe la red host-only existente sin modificarla.
 	Network(ctx context.Context) (domain.NetworkConfig, error)
 
-	// CreateVM registra una máquina virtual, convierte la imagen base a VDI y
-	// conecta el disco. Retorna la ruta del disco creado.
-	CreateVM(ctx context.Context, cfg domain.SetupConfig, vmName, netInterface, rawPath string) (string, error)
+	// CreateVM registra una máquina virtual, duplica el VDI base y conecta el
+	// disco. Retorna la ruta del disco creado.
+	CreateVM(ctx context.Context, cfg domain.SetupConfig, vmName, netInterface, baseVDI string) (string, error)
+
+	// ConvertToBaseVDI convierte la imagen raw en un VDI base reutilizable, una
+	// sola vez. Si ya existe, no hace nada.
+	ConvertToBaseVDI(ctx context.Context, cfg domain.SetupConfig, rawPath, baseVDI string, progress ProgressFunc) error
 
 	// CreateSeedISO genera la ISO NoCloud con user-data y meta-data.
 	CreateSeedISO(ctx context.Context, cfg domain.SetupConfig, vmName, userData, metaData string) (string, error)

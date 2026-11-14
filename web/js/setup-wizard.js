@@ -233,7 +233,7 @@
   }
 
   function resetSetup() {
-    if (!window.confirm('Se eliminarán las VMs ns y ApacheServer y se reiniciará la preparación. La imagen descargada se conserva. ¿Continuar?')) return;
+    if (!window.confirm('Se eliminarán las VMs ns y ApacheServer y se reiniciará la preparación. La imagen y el VDI base se conservan. ¿Continuar?')) return;
     var btn = document.getElementById('setup-reset-btn');
     if (btn) btn.disabled = true;
     fetch('/api/setup/reiniciar', { method: 'POST', headers: { 'Accept': 'application/json' } })

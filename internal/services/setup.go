@@ -226,11 +226,14 @@ func (s *SetupService) ActualizarDeteccion(ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// La imagen base se busca solo en el directorio de datos de HTTPaaS.
-	if path, ok := s.images.Locate(ctx, s.cfg.RawDir); ok {
-		s.state.Imagen = path
-	} else {
-		s.state.Imagen = ""
+	// La imagen base se busca solo en el directorio de datos de HTTPaaS; el
+	// VDI reutilizable se deriva de la raw.
+	s.state.Imagen = ""
+	if raw, ok := s.images.Locate(ctx, s.cfg.RawDir); ok {
+		base := strings.TrimSuffix(raw, ".raw") + ".vdi"
+		if _, err := os.Stat(base); err == nil {
+			s.state.Imagen = base
+		}
 	}
 	if network, err := s.prov.Network(ctx); err == nil {
 		s.network = network
@@ -239,12 +242,12 @@ func (s *SetupService) ActualizarDeteccion(ctx context.Context) error {
 
 	s.state.Pasos = setupSteps()
 	s.markIf(status.VBoxAvailable, domain.SetupStepVerify, "VirtualBox "+status.VBoxVersion)
-	s.markIf(s.state.Imagen != "", domain.SetupStepISO, "Imagen lista en "+s.state.Imagen)
 	s.markIf(status.HostOnlyInterface != "", domain.SetupStepNetwork, "Interfaz "+status.HostOnlyInterface+" · "+s.network.CIDR)
 	s.markIf(status.BaseDiskMultiattach, domain.SetupStepMultiattach, "Disco base en modo multiconexión")
 	// Los pasos de creación no se heredan entre reinicios: son idempotentes y
 	// garantizan que la VM y su semilla existan antes de continuar.
 	if !status.Ready {
+		delete(s.completed, domain.SetupStepISO)
 		delete(s.completed, domain.SetupStepDNSVM)
 		delete(s.completed, domain.SetupStepBaseVM)
 	}
@@ -366,7 +369,7 @@ func (s *SetupService) run(parent context.Context) {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(parent), timeout*3)
 	defer cancel()
 
-	var rawPath string
+	var baseVDI string
 	var network domain.NetworkConfig
 
 	for _, step := range setupSteps() {
@@ -374,7 +377,7 @@ func (s *SetupService) run(parent context.Context) {
 			continue
 		}
 		s.track(step.ID, domain.StepRunning, 0, "En curso")
-		if err := s.runStep(ctx, step.ID, &rawPath, &network); err != nil {
+		if err := s.runStep(ctx, step.ID, &baseVDI, &network); err != nil {
 			s.fail(step.ID, err)
 			return
 		}
@@ -454,7 +457,7 @@ func (s *SetupService) progressFor(id domain.SetupStepID) ports.ProgressFunc {
 }
 
 // runStep ejecuta un paso concreto de la preparación.
-func (s *SetupService) runStep(ctx context.Context, id domain.SetupStepID, rawPath *string, network *domain.NetworkConfig) error {
+func (s *SetupService) runStep(ctx context.Context, id domain.SetupStepID, baseVDI *string, network *domain.NetworkConfig) error {
 	cfg := s.cfg
 
 	switch id {
@@ -469,20 +472,12 @@ func (s *SetupService) runStep(ctx context.Context, id domain.SetupStepID, rawPa
 		return nil
 
 	case domain.SetupStepISO:
-		if *rawPath == "" {
-			if path, ok := s.images.Locate(ctx, cfg.RawDir); ok {
-				*rawPath = path
-			}
-		}
-		if *rawPath == "" {
-			path, err := s.images.Download(ctx, cfg.RawURL, cfg.RawDir, s.progressFor(id))
-			if err != nil {
-				return fmt.Errorf("no se pudo descargar la imagen de Debian: %w", err)
-			}
-			*rawPath = path
+		resolved, err := s.resolveBaseVDI(ctx, baseVDI, s.progressFor(id))
+		if err != nil {
+			return err
 		}
 		s.mu.Lock()
-		s.state.Imagen = *rawPath
+		s.state.Imagen = resolved
 		s.persistLocked()
 		s.broadcastLocked()
 		s.mu.Unlock()
@@ -502,7 +497,12 @@ func (s *SetupService) runStep(ctx context.Context, id domain.SetupStepID, rawPa
 		if err != nil {
 			return err
 		}
-		if _, err := s.prov.CreateVM(ctx, cfg, cfg.DNSVMName, net.Interface, *rawPath); err != nil {
+		base, err := s.resolveBaseVDI(ctx, baseVDI)
+		if err != nil {
+			return err
+		}
+		*baseVDI = base
+		if _, err := s.prov.CreateVM(ctx, cfg, cfg.DNSVMName, net.Interface, *baseVDI); err != nil {
 			return err
 		}
 		return s.createSeed(ctx, cfg.DNSVMName)
@@ -528,7 +528,12 @@ func (s *SetupService) runStep(ctx context.Context, id domain.SetupStepID, rawPa
 		if err != nil {
 			return err
 		}
-		if _, err := s.prov.CreateVM(ctx, cfg, cfg.BaseVMName, net.Interface, *rawPath); err != nil {
+		base, err := s.resolveBaseVDI(ctx, baseVDI)
+		if err != nil {
+			return err
+		}
+		*baseVDI = base
+		if _, err := s.prov.CreateVM(ctx, cfg, cfg.BaseVMName, net.Interface, *baseVDI); err != nil {
 			return err
 		}
 		return s.createSeed(ctx, cfg.BaseVMName)
@@ -616,6 +621,33 @@ func (s *SetupService) renderSeed(vmName string) (string, string, error) {
 // seedPath retorna la ruta de la ISO semilla de una VM.
 func (s *SetupService) seedPath(vmName string) string {
 	return filepath.Join(s.cfg.SeedDir, vmName+"-seed.iso")
+}
+
+// resolveBaseVDI asegura la imagen raw y su VDI base. La conversión se hace una
+// sola vez; el VDI se conserva entre reinicios.
+func (s *SetupService) resolveBaseVDI(ctx context.Context, base *string, progress ...ports.ProgressFunc) (string, error) {
+	if *base != "" {
+		return *base, nil
+	}
+	emit := ports.ProgressFunc(nil)
+	if len(progress) > 0 {
+		emit = progress[0]
+	}
+
+	raw, ok := s.images.Locate(ctx, s.cfg.RawDir)
+	if !ok {
+		path, err := s.images.Download(ctx, s.cfg.RawURL, s.cfg.RawDir, emit)
+		if err != nil {
+			return "", fmt.Errorf("no se pudo descargar la imagen de Debian: %w", err)
+		}
+		raw = path
+	}
+	path := strings.TrimSuffix(raw, ".raw") + ".vdi"
+	if err := s.prov.ConvertToBaseVDI(ctx, s.cfg, raw, path, emit); err != nil {
+		return "", err
+	}
+	*base = path
+	return path, nil
 }
 
 // resolveNet recupera o crea la red host-only de forma idempotente.

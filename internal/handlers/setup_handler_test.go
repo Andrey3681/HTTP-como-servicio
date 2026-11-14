@@ -48,6 +48,10 @@ func stubNetwork() domain.NetworkConfig {
 	}
 }
 
+func (s *stubProvisioner) ConvertToBaseVDI(context.Context, domain.SetupConfig, string, string, ports.ProgressFunc) error {
+	return nil
+}
+
 func (s *stubProvisioner) CreateVM(context.Context, domain.SetupConfig, string, string, string) (string, error) {
 	return "/vms/disk.vdi", nil
 }

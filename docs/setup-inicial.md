@@ -21,19 +21,22 @@ Una sola imagen base: `debian-13-generic-amd64.raw`. Se descarga solo si no exis
 
 1. **Imagen:** descarga la `.raw` oficial (~3 GB) en `<app-dir>/raw/`. Si ya está, se reutiliza.
 2. **Red:** reutiliza la interfaz host-only de VirtualBox y configura DHCP en su subred. El DHCP no anuncia puerta de enlace ni DNS; las VM base llevan además una NIC NAT para descargar paquetes durante la preparación.
-3. **VM `ns`:** convierte la imagen a VDI, redimensiona el disco, crea la ISO semilla NoCloud y arranca.
+3. **VM `ns`:** duplica el VDI base (convertido una sola vez), redimensiona el disco, crea la ISO semilla NoCloud y arranca.
 4. **Primer arranque de `ns`:** cloud-init crea el usuario, instala los paquetes y Guest Additions.
 5. **Configuración de Bind9:** el orquestador ejecuta `scripts/guest-bind9.sh` con la IP del DNS y el CIDR derivados.
 6. **VM plantilla:** mismo proceso con su propia semilla.
 7. **Disco multiconexión:** desconecta, marca `multiattach`, reconecta y guarda la ruta.
 8. **Verificación final.**
 
-La conversión se hace con:
+La imagen se convierte **una sola vez** a un VDI base reutilizable y cada VM recibe una copia:
 
 ```bash
-VBoxManage convertfromraw debian-13-generic-amd64.raw <vm>.vdi --format VDI
+VBoxManage convertfromraw debian-13-generic-amd64.raw debian-13-generic-amd64.vdi --format VDI
+# por VM: copiar el VDI base y redimensionar la copia
 VBoxManage modifymedium disk <vm>.vdi --resize 8192
 ```
+
+Reiniciar la preparación elimina solo las copias y las semillas; el `.raw` y el VDI base se conservan.
 
 ---
 

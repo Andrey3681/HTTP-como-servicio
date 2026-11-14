@@ -70,6 +70,11 @@ func fakeNetwork() domain.NetworkConfig {
 	}
 }
 
+func (f *fakeProvisioner) ConvertToBaseVDI(_ context.Context, _ domain.SetupConfig, _, _ string, _ ports.ProgressFunc) error {
+	f.record("convert")
+	return nil
+}
+
 func (f *fakeProvisioner) CreateVM(_ context.Context, _ domain.SetupConfig, name, _, _ string) (string, error) {
 	f.record("create:" + name)
 	return "/vms/" + name + ".vdi", f.createErr
@@ -241,9 +246,6 @@ func TestSetupService_DetectionReady(t *testing.T) {
 	}
 
 	state := svc.Estado()
-	if state.Imagen != "/isos/debian.iso" {
-		t.Errorf("expected detected image, got %q", state.Imagen)
-	}
 	if state.RequiereConfiguracion || !state.Completado {
 		t.Fatalf("expected a completed environment, got %+v", state)
 	}
@@ -281,7 +283,7 @@ func TestSetupService_RunsFullPipeline(t *testing.T) {
 	}
 
 	wantCalls := []string{
-		"inspect", "network", "create:ns", "seed:ns", "reserve:ns:192.168.57.10", "boot:ns", "wait:ns",
+		"inspect", "convert", "network", "create:ns", "seed:ns", "reserve:ns:192.168.57.10", "boot:ns", "wait:ns",
 		"script:ns:guest-bind9.sh", "create:ApacheServer", "seed:ApacheServer", "boot:ApacheServer",
 		"wait:ApacheServer", "script:ApacheServer:guest-apache.sh", "multiattach:ApacheServer",
 	}

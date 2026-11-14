@@ -448,7 +448,7 @@ paths:
     post:
       operationId: reiniciarSetup
       summary: Reiniciar la preparación del laboratorio
-      description: Elimina las VMs base (ns y ApacheServer) y sus semillas, limpia el progreso y vuelve a detectar el entorno. Conserva la imagen descargada y la red.
+      description: Elimina las VMs base (ns y ApacheServer) y sus semillas, limpia el progreso y vuelve a detectar el entorno. Conserva la imagen, el VDI base y la red.
       responses:
         '200':
           description: Preparación reiniciada

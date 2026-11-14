@@ -131,25 +131,33 @@ func TestNetworkFailsWithoutProjectInterface(t *testing.T) {
 }
 
 func TestCreateVMCommands(t *testing.T) {
+	folder := t.TempDir()
+	base := filepath.Join(t.TempDir(), "base.vdi")
+	if err := os.WriteFile(base, []byte("vdi"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	exec := &fakeExecutor{responses: map[string]string{
 		"VBoxManage list vms":                        "",
-		"VBoxManage showvminfo ns --machinereadable": "CfgFile=\"/home/user/VMs/ns/ns.vbox\"\n",
+		"VBoxManage showvminfo ns --machinereadable": "CfgFile=\"" + filepath.Join(folder, "ns.vbox") + "\"\n",
 	}}
 	prov := provisioner.NewProvisioner(exec)
 
-	disk, err := prov.CreateVM(context.Background(), setupConfig(), "ns", "vboxnet1", "/raw/debian.raw")
+	disk, err := prov.CreateVM(context.Background(), setupConfig(), "ns", "vboxnet1", base)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if disk != "/home/user/VMs/ns/ns.vdi" {
+	want := filepath.Join(folder, "ns.vdi")
+	if disk != want {
 		t.Errorf("unexpected disk path: %q", disk)
+	}
+	if _, err := os.Stat(want); err != nil {
+		t.Errorf("expected the base VDI to be duplicated: %v", err)
 	}
 	for _, fragment := range []string{
 		"createvm --name ns --ostype Debian13_64 --register",
 		"--nic1 hostonly --hostonlyadapter1 vboxnet1 --nic2 nat",
 		"storagectl ns --name SATA",
-		"convertfromraw /raw/debian.raw /home/user/VMs/ns/ns.vdi --format VDI",
-		"modifymedium disk /home/user/VMs/ns/ns.vdi --resize 8192",
+		"modifymedium disk " + want + " --resize 8192",
 		"storageattach ns --storagectl SATA",
 	} {
 		if !exec.contains(fragment) {
