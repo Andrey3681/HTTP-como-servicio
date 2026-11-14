@@ -156,6 +156,7 @@ func TestCreateVMCommands(t *testing.T) {
 	for _, fragment := range []string{
 		"createvm --name ns --ostype Debian13_64 --register",
 		"--nic1 hostonly --hostonlyadapter1 vboxnet1 --nic2 nat",
+		"--boot1 disk --boot2 dvd",
 		"storagectl ns --name SATA",
 		"modifymedium disk " + want + " --resize 8192",
 		"storageattach ns --storagectl SATA",
@@ -290,5 +291,35 @@ func TestStartSeedBootRejectsRunningVM(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "Reiniciar") {
 		t.Errorf("expected an actionable hint, got: %v", err)
+	}
+}
+
+func TestCreateVMRepairsVMWithoutDisk(t *testing.T) {
+	folder := t.TempDir()
+	base := filepath.Join(t.TempDir(), "base.vdi")
+	if err := os.WriteFile(base, []byte("vdi"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	exec := &fakeExecutor{responses: map[string]string{
+		"VBoxManage list vms":                        `"ns" {uuid}`,
+		"VBoxManage showvminfo ns --machinereadable": "CfgFile=\"" + filepath.Join(folder, "ns.vbox") + "\"\nVMState=\"poweroff\"\n",
+	}}
+	prov := provisioner.NewProvisioner(exec)
+
+	disk, err := prov.CreateVM(context.Background(), setupConfig(), "ns", "vboxnet1", base)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if disk != filepath.Join(folder, "ns.vdi") {
+		t.Errorf("unexpected disk path: %q", disk)
+	}
+	if exec.contains("createvm") {
+		t.Error("should repair the existing VM instead of creating another")
+	}
+	if !exec.contains("storageattach ns --storagectl SATA") {
+		t.Errorf("expected the disk to be attached, got %v", exec.calls)
+	}
+	if _, err := os.Stat(disk); err != nil {
+		t.Errorf("expected the base VDI to be duplicated: %v", err)
 	}
 }

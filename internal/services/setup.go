@@ -372,16 +372,34 @@ func (s *SetupService) run(parent context.Context) {
 	var baseVDI string
 	var network domain.NetworkConfig
 
-	for _, step := range setupSteps() {
-		if s.isCompleted(step.ID) {
-			continue
-		}
-		s.track(step.ID, domain.StepRunning, 0, "En curso")
-		if err := s.runStep(ctx, step.ID, &baseVDI, &network); err != nil {
-			s.fail(step.ID, err)
+	// Fase secuencial: entorno, imagen y red.
+	for _, id := range []domain.SetupStepID{domain.SetupStepVerify, domain.SetupStepISO, domain.SetupStepNetwork} {
+		if err := s.runSteps(ctx, []domain.SetupStepID{id}, &baseVDI, &network); err != nil {
 			return
 		}
-		s.track(step.ID, domain.StepCompleted, 100, "")
+	}
+	// Resolver una vez los valores compartidos antes de las fases en paralelo.
+	if _, err := s.resolveBaseVDI(ctx, &baseVDI); err != nil {
+		s.fail(domain.SetupStepISO, err)
+		return
+	}
+	if _, err := s.resolveNet(ctx, &network); err != nil {
+		s.fail(domain.SetupStepNetwork, err)
+		return
+	}
+
+	// Fases paralelas: DNS y plantilla avanzan a la vez.
+	phases := [][]domain.SetupStepID{
+		{domain.SetupStepDNSVM, domain.SetupStepBaseVM},
+		{domain.SetupStepDNSInstall, domain.SetupStepBaseInstall},
+		{domain.SetupStepDNSConfig, domain.SetupStepBaseConfig},
+		{domain.SetupStepMultiattach},
+		{domain.SetupStepFinal},
+	}
+	for _, phase := range phases {
+		if err := s.runSteps(ctx, phase, &baseVDI, &network); err != nil {
+			return
+		}
 	}
 
 	if err := s.ActualizarDeteccion(ctx); err != nil {
@@ -389,6 +407,47 @@ func (s *SetupService) run(parent context.Context) {
 		return
 	}
 	s.log("INFO", "Configuración inicial completada", nil)
+}
+
+// runSteps ejecuta los pasos pendientes indicados, en paralelo cuando hay más
+// de uno. Los valores compartidos ya deben estar resueltos.
+func (s *SetupService) runSteps(ctx context.Context, ids []domain.SetupStepID, baseVDI *string, network *domain.NetworkConfig) error {
+	type result struct {
+		id  domain.SetupStepID
+		err error
+	}
+
+	var pending []domain.SetupStepID
+	for _, id := range ids {
+		if !s.isCompleted(id) {
+			pending = append(pending, id)
+		}
+	}
+	if len(pending) == 0 {
+		return nil
+	}
+
+	results := make(chan result, len(pending))
+	for _, id := range pending {
+		go func(stepID domain.SetupStepID) {
+			s.track(stepID, domain.StepRunning, 0, "En curso")
+			results <- result{id: stepID, err: s.runStep(ctx, stepID, baseVDI, network)}
+		}(id)
+	}
+
+	var firstErr error
+	for range pending {
+		res := <-results
+		if res.err != nil {
+			s.fail(res.id, res.err)
+			if firstErr == nil {
+				firstErr = res.err
+			}
+			continue
+		}
+		s.track(res.id, domain.StepCompleted, 100, "")
+	}
+	return firstErr
 }
 
 func (s *SetupService) isCompleted(id domain.SetupStepID) bool {

@@ -287,12 +287,13 @@ func TestSetupService_RunsFullPipeline(t *testing.T) {
 		"script:ns:guest-bind9.sh", "create:ApacheServer", "seed:ApacheServer", "boot:ApacheServer",
 		"wait:ApacheServer", "script:ApacheServer:guest-apache.sh", "multiattach:ApacheServer",
 	}
-	if len(prov.calls) < len(wantCalls) {
-		t.Fatalf("expected at least %d calls, got %v", len(wantCalls), prov.calls)
+	seen := make(map[string]int, len(prov.calls))
+	for _, call := range prov.calls {
+		seen[call]++
 	}
-	for i, want := range wantCalls {
-		if prov.calls[i] != want {
-			t.Fatalf("call %d: expected %q, got %q", i, want, prov.calls[i])
+	for _, want := range wantCalls {
+		if seen[want] == 0 {
+			t.Errorf("expected call %q, got %v", want, prov.calls)
 		}
 	}
 }

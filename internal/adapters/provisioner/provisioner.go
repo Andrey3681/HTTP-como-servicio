@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -27,6 +28,7 @@ var vboxVersionPattern = regexp.MustCompile(`^\d+(?:\.\d+){1,2}`)
 // Provisioner ejecuta la configuración inicial del entorno mediante VBoxManage.
 type Provisioner struct {
 	executor ports.Executor
+	mu       sync.Mutex // serializa cada invocación a VBoxSVC
 }
 
 // NewProvisioner crea el aprovisionador con el ejecutor de procesos indicado.
@@ -35,6 +37,9 @@ func NewProvisioner(executor ports.Executor) *Provisioner {
 }
 
 func (p *Provisioner) vbox(ctx context.Context, args ...string) (string, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	stdout, stderr, err := p.executor.Execute(ctx, vboxBinary, args...)
 	if err != nil {
 		detail := strings.TrimSpace(string(stderr))
@@ -192,17 +197,44 @@ func copyFile(src, dst string) error {
 	return out.Close()
 }
 
-// CreateVM registra la VM, duplica el VDI base y conecta el disco.
+// CreateVM registra la VM, duplica el VDI base y conecta el disco. Es
+// idempotente y repara VMs creadas a medias (por ejemplo, sin disco).
 func (p *Provisioner) CreateVM(ctx context.Context, cfg domain.SetupConfig, vmName, netInterface, baseVDI string) (string, error) {
 	if vmExists(ctx, p, vmName) {
-		return p.vmDiskPath(ctx, vmName)
+		disk, err := p.vmDiskPath(ctx, vmName)
+		if err != nil {
+			return "", err
+		}
+		if disk != "" {
+			// Reaplica la configuración (red, orden de arranque) si está apagada.
+			if !p.vmRunning(ctx, vmName) {
+				_ = p.configureVM(ctx, cfg, vmName, netInterface)
+			}
+			return disk, nil
+		}
+		// VM a medio crear: apagarla, completar la configuración y el disco.
+		_ = p.stopVM(ctx, vmName)
+		if err := p.configureVM(ctx, cfg, vmName, netInterface); err != nil {
+			return "", err
+		}
+		_ = p.ensureSATA(ctx, vmName)
+		return p.attachBaseDisk(ctx, cfg, vmName, baseVDI)
 	}
 
 	if _, err := p.vbox(ctx, "createvm", "--name", vmName, "--ostype", "Debian13_64", "--register"); err != nil {
 		return "", err
 	}
+	if err := p.configureVM(ctx, cfg, vmName, netInterface); err != nil {
+		return "", err
+	}
+	if err := p.ensureSATA(ctx, vmName); err != nil {
+		return "", err
+	}
+	return p.attachBaseDisk(ctx, cfg, vmName, baseVDI)
+}
 
-	if _, err := p.vbox(ctx, "modifyvm", vmName,
+func (p *Provisioner) configureVM(ctx context.Context, cfg domain.SetupConfig, vmName, netInterface string) error {
+	_, err := p.vbox(ctx, "modifyvm", vmName,
 		"--memory", strconv.Itoa(cfg.MemoryMB),
 		"--cpus", "1",
 		"--nic1", "hostonly",
@@ -212,31 +244,41 @@ func (p *Provisioner) CreateVM(ctx context.Context, cfg domain.SetupConfig, vmNa
 		"--usb", "off",
 		"--graphicscontroller", "vmsvga",
 		"--vram", "16",
-	); err != nil {
-		return "", err
-	}
+		"--boot1", "disk",
+		"--boot2", "dvd",
+		"--boot3", "none",
+		"--boot4", "none",
+	)
+	return err
+}
 
-	if _, err := p.vbox(ctx, "storagectl", vmName,
+func (p *Provisioner) ensureSATA(ctx context.Context, vmName string) error {
+	_, err := p.vbox(ctx, "storagectl", vmName,
 		"--name", "SATA",
 		"--add", "sata",
 		"--controller", "IntelAHCI",
 		"--portcount", "2",
-	); err != nil {
-		return "", err
-	}
+	)
+	// Si el controlador ya existe VBoxManage devuelve error; el attach posterior
+	// confirmará si realmente está disponible.
+	_ = err
+	return nil
+}
 
+func (p *Provisioner) attachBaseDisk(ctx context.Context, cfg domain.SetupConfig, vmName, baseVDI string) (string, error) {
 	folder, err := p.vmFolder(ctx, vmName)
 	if err != nil {
 		return "", err
 	}
 	diskPath := filepath.Join(folder, vmName+".vdi")
-	if err := copyFile(baseVDI, diskPath); err != nil {
-		return "", fmt.Errorf("fallo duplicando el VDI base: %w", err)
+	if _, statErr := os.Stat(diskPath); statErr != nil {
+		if err := copyFile(baseVDI, diskPath); err != nil {
+			return "", fmt.Errorf("fallo duplicando el VDI base: %w", err)
+		}
 	}
 	if _, err := p.vbox(ctx, "modifymedium", "disk", diskPath, "--resize", strconv.Itoa(cfg.DiskMB)); err != nil {
 		return "", fmt.Errorf("fallo redimensionando el disco: %w", err)
 	}
-
 	if _, err := p.vbox(ctx, "storageattach", vmName,
 		"--storagectl", "SATA",
 		"--port", "0",
@@ -247,6 +289,12 @@ func (p *Provisioner) CreateVM(ctx context.Context, cfg domain.SetupConfig, vmNa
 		return "", err
 	}
 	return diskPath, nil
+}
+
+// vmRunning indica si la máquina está en ejecución.
+func (p *Provisioner) vmRunning(ctx context.Context, vmName string) bool {
+	out, err := p.vbox(ctx, "showvminfo", vmName, "--machinereadable")
+	return err == nil && strings.Contains(out, `VMState="running"`)
 }
 
 // CreateSeedISO genera la ISO NoCloud con user-data y meta-data.
@@ -272,8 +320,7 @@ func (p *Provisioner) CreateSeedISO(ctx context.Context, cfg domain.SetupConfig,
 
 // StartSeedBoot conecta la ISO semilla y arranca la máquina en headless.
 func (p *Provisioner) StartSeedBoot(ctx context.Context, _ domain.SetupConfig, vmName, seedISO string) error {
-	out, err := p.vbox(ctx, "showvminfo", vmName, "--machinereadable")
-	if err == nil && strings.Contains(out, `VMState="running"`) {
+	if p.vmRunning(ctx, vmName) {
 		return fmt.Errorf("la máquina %s sigue en ejecución con una preparación anterior; usa Reiniciar para recrearla", vmName)
 	}
 	if _, err := p.vbox(ctx, "storageattach", vmName,
