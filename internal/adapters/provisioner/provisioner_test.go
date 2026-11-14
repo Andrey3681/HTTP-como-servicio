@@ -185,7 +185,12 @@ func TestCreateSeedISOAndBoot(t *testing.T) {
 	if !strings.HasSuffix(seed, "ns-seed.iso") {
 		t.Errorf("unexpected seed path: %q", seed)
 	}
-	for _, fragment := range []string{"-volid cidata", "ns-user-data", "ns-meta-data"} {
+	for _, name := range []string{"user-data", "meta-data"} {
+		if _, err := os.Stat(filepath.Join(cfg.SeedDir, "ns", name)); err != nil {
+			t.Errorf("expected %s inside the staging directory: %v", name, err)
+		}
+	}
+	for _, fragment := range []string{"-volid cidata", filepath.Join(cfg.SeedDir, "ns", "user-data"), filepath.Join(cfg.SeedDir, "ns", "meta-data")} {
 		if !execFake.contains(fragment) {
 			t.Errorf("expected command containing %q, got %v", fragment, execFake.calls)
 		}

@@ -644,12 +644,17 @@ func (s *SetupService) createSeed(ctx context.Context, vmName string) error {
 	return err
 }
 
-// ensureSeed reconstruye la semilla si el archivo no existe (por ejemplo, al
-// reanudar tras un fallo o un reinicio de la preparación).
+// ensureSeed reconstruye la semilla si falta la ISO o sus archivos internos
+// (por ejemplo, al reanudar tras un fallo o un cambio de formato).
 func (s *SetupService) ensureSeed(ctx context.Context, vmName string) (string, error) {
 	path := s.seedPath(vmName)
+	staging := filepath.Join(s.cfg.SeedDir, vmName)
 	if _, err := os.Stat(path); err == nil {
-		return path, nil
+		if _, errUser := os.Stat(filepath.Join(staging, "user-data")); errUser == nil {
+			if _, errMeta := os.Stat(filepath.Join(staging, "meta-data")); errMeta == nil {
+				return path, nil
+			}
+		}
 	}
 	if err := s.createSeed(ctx, vmName); err != nil {
 		return "", err

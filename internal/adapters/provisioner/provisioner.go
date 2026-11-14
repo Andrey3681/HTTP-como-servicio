@@ -280,13 +280,15 @@ func (p *Provisioner) vmRunning(ctx context.Context, vmName string) bool {
 	return err == nil && strings.Contains(out, `VMState="running"`)
 }
 
-// CreateSeedISO genera la ISO NoCloud con user-data y meta-data.
+// CreateSeedISO genera la ISO NoCloud con user-data y meta-data. dentro de la
+// ISO los archivos deben llamarse exactamente así; la ISO puede tener otro nombre.
 func (p *Provisioner) CreateSeedISO(ctx context.Context, cfg domain.SetupConfig, vmName, userData, metaData string) (string, error) {
-	if err := os.MkdirAll(cfg.SeedDir, 0o755); err != nil {
+	stagingDir := filepath.Join(cfg.SeedDir, vmName)
+	if err := os.MkdirAll(stagingDir, 0o755); err != nil {
 		return "", err
 	}
-	userDataPath := filepath.Join(cfg.SeedDir, vmName+"-user-data")
-	metaDataPath := filepath.Join(cfg.SeedDir, vmName+"-meta-data")
+	userDataPath := filepath.Join(stagingDir, "user-data")
+	metaDataPath := filepath.Join(stagingDir, "meta-data")
 	if err := os.WriteFile(userDataPath, []byte(userData), 0o644); err != nil {
 		return "", err
 	}
@@ -295,7 +297,7 @@ func (p *Provisioner) CreateSeedISO(ctx context.Context, cfg domain.SetupConfig,
 	}
 
 	isoPath := filepath.Join(cfg.SeedDir, vmName+"-seed.iso")
-	if err := buildSeedISO(ctx, p.executor, cfg.SeedDir, isoPath, []string{userDataPath, metaDataPath}); err != nil {
+	if err := buildSeedISO(ctx, p.executor, stagingDir, isoPath, []string{userDataPath, metaDataPath}); err != nil {
 		return "", fmt.Errorf("fallo generando la ISO semilla: %w", err)
 	}
 	return isoPath, nil
@@ -483,6 +485,7 @@ func (p *Provisioner) ResetEnvironment(ctx context.Context, cfg domain.SetupConf
 		for _, suffix := range []string{"-seed.iso", "-user-data", "-meta-data"} {
 			_ = os.Remove(filepath.Join(cfg.SeedDir, vmName+suffix))
 		}
+		_ = os.RemoveAll(filepath.Join(cfg.SeedDir, vmName))
 	}
 	return nil
 }

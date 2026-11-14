@@ -50,10 +50,12 @@ Las plantillas viven en `scripts/seeds/`:
 El orquestador sustituye `@@USUARIO@@` y `@@CONTRASENA@@` con los datos del formulario y genera:
 
 ```
-<app-dir>/seeds/<vm>-user-data
-<app-dir>/seeds/<vm>-meta-data
+<app-dir>/seeds/<vm>/user-data     # nombre obligatorio dentro de la ISO
+<app-dir>/seeds/<vm>/meta-data
 <app-dir>/seeds/<vm>-seed.iso      # NoCloud, volumen "cidata"
 ```
+
+Dentro de la ISO los archivos deben llamarse exactamente `user-data` y `meta-data` (el nombre de la ISO es libre); el volumen debe ser `cidata` para que cloud-init lo detecte.
 
 `meta-data`:
 
@@ -65,7 +67,7 @@ local-hostname: <hostname>
 La ISO se construye con `genisoimage` (o `mkisofs` si el primero no está):
 
 ```bash
-genisoimage -quiet -output <vm>-seed.iso -volid cidata -joliet -rock <vm>-user-data <vm>-meta-data
+genisoimage -quiet -output <vm>-seed.iso -volid cidata -joliet -rock <vm>/user-data <vm>/meta-data
 ```
 
 ### 3.1 Paquetes
