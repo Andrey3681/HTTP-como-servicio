@@ -19,6 +19,7 @@ type NetworkConfig struct {
 	Netmask   string `json:"mascara"`
 	CIDR      string `json:"cidr"`
 	DNSIP     string `json:"ip_dns"`
+	BaseIP    string `json:"ip_plantilla"`
 	DHCPLower string `json:"dhcp_inicio"`
 	DHCPUpper string `json:"dhcp_fin"`
 }
@@ -46,6 +47,7 @@ func DeriveNetwork(iface, hostIP, netmask string) (NetworkConfig, error) {
 		Netmask:   netmask,
 		CIDR:      masked.String(),
 		DNSIP:     netip.AddrFrom4([4]byte{base[0], base[1], base[2], 10}).String(),
+		BaseIP:    netip.AddrFrom4([4]byte{base[0], base[1], base[2], 11}).String(),
 		DHCPLower: netip.AddrFrom4([4]byte{base[0], base[1], base[2], 100}).String(),
 		DHCPUpper: netip.AddrFrom4([4]byte{base[0], base[1], base[2], 199}).String(),
 	}, nil

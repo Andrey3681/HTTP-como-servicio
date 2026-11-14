@@ -34,7 +34,7 @@ Este documento identifica de forma exhaustiva los endpoints HTTP expuestos por e
 - **Registro DNS**: `nombre` (FQDN), `tipo` (`A`), `ip`, `ttl`.
 - **LogEntry**: `id`, `ts` (RFC3339), `nivel` (`DEBUG|INFO|WARN|ERROR`), `componente`, `mensaje`, `campos` (objeto opcional).
 - **SetupInput**: `usuario` y `contrasena`.
-- **SetupEstado**: `requiere_configuracion`, `ejecutando`, `completado`, `error`, `configuracion` (`usuario`, `lista`), `imagen`, `red` (`interfaz`, `ip_anfitrion`, `mascara`, `cidr`, `ip_dns`, `dhcp_inicio`, `dhcp_fin`), `actualizado_en` y `pasos[]` con `id`, `nombre`, `descripcion`, `estado` (`PENDIENTE|EN_CURSO|COMPLETADO|ERROR|OMITIDO`), `progreso` (0–100; `-1` indeterminado) y `mensaje`.
+- **SetupEstado**: `requiere_configuracion`, `ejecutando`, `completado`, `error`, `configuracion` (`usuario`, `lista`), `imagen`, `red` (`interfaz`, `ip_anfitrion`, `mascara`, `cidr`, `ip_dns`, `ip_plantilla`, `dhcp_inicio`, `dhcp_fin`), `actualizado_en` y `pasos[]` con `id`, `nombre`, `descripcion`, `estado` (`PENDIENTE|EN_CURSO|COMPLETADO|ERROR|OMITIDO`), `progreso` (0–100; `-1` indeterminado) y `mensaje`.
 - **ErrorRespuesta**: `error`, `codigo`.
 
 ## Notas de rigor

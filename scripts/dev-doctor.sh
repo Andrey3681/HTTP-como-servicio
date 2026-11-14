@@ -23,6 +23,8 @@ check_cmd "VBoxManage" "CLI de Oracle VirtualBox"
 check_cmd "dig" "Herramienta de consulta DNS (bind-utils / dnsutils)"
 check_cmd "gofumpt" "Formateador estricto gofumpt"
 check_cmd "golangci-lint" "Linter de Go"
+check_cmd "ssh" "Cliente SSH"
+check_cmd "ssh-keygen" "Generador de claves SSH"
 
 echo "=== Fin de la verificación ==="
 

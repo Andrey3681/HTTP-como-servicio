@@ -58,6 +58,15 @@ type SetupProvisioner interface {
 	// ResetEnvironment elimina las VMs base y sus semillas para reiniciar la
 	// preparación. No borra la imagen descargada ni la red.
 	ResetEnvironment(ctx context.Context, cfg domain.SetupConfig) error
+
+	// EnsureSSHKey crea el par de claves si falta y retorna la clave pública.
+	EnsureSSHKey(ctx context.Context, cfg domain.SetupConfig) (string, error)
+
+	// WaitSSH espera a que el invitado acepte conexiones SSH con la clave.
+	WaitSSH(ctx context.Context, host, user, keyPath string, timeout time.Duration) error
+
+	// RunSSH ejecuta un comando por SSH y retorna la salida combinada.
+	RunSSH(ctx context.Context, host, user, keyPath, command string) (string, error)
 }
 
 // NetworkInfoProvider expone la red host-only ya detectada.

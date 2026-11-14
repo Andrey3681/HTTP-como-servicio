@@ -49,16 +49,17 @@ type SetupService struct {
 	logger    ports.EventLogger
 	stateFile string
 
-	mu          sync.Mutex
-	state       domain.SetupState
-	running     bool
-	input       domain.SetupInput
-	network     domain.NetworkConfig
-	completed   map[domain.SetupStepID]bool
-	baseDisk    string
-	progressLog map[domain.SetupStepID]time.Time
-	subs        map[int]chan domain.SetupState
-	nextSub     int
+	mu           sync.Mutex
+	state        domain.SetupState
+	running      bool
+	input        domain.SetupInput
+	network      domain.NetworkConfig
+	sshPublicKey string
+	completed    map[domain.SetupStepID]bool
+	baseDisk     string
+	progressLog  map[domain.SetupStepID]time.Time
+	subs         map[int]chan domain.SetupState
+	nextSub      int
 }
 
 // NewSetupService crea el servicio de la preparación con el estado inicial pendiente.
@@ -369,6 +370,15 @@ func (s *SetupService) run(parent context.Context) {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(parent), timeout*3)
 	defer cancel()
 
+	pubKey, err := s.prov.EnsureSSHKey(ctx, cfg)
+	if err != nil {
+		s.fail(domain.SetupStepVerify, err)
+		return
+	}
+	s.mu.Lock()
+	s.sshPublicKey = pubKey
+	s.mu.Unlock()
+
 	var baseVDI string
 	var network domain.NetworkConfig
 
@@ -577,10 +587,17 @@ func (s *SetupService) runStep(ctx context.Context, id domain.SetupStepID, baseV
 		if err := s.prov.StartSeedBoot(ctx, cfg, cfg.DNSVMName, seed); err != nil {
 			return err
 		}
+		sshOK, err := s.monitorCloudInitSSH(ctx, id, cfg, cfg.DNSVMName, network.DNSIP)
+		if err != nil {
+			return err
+		}
 		if err := s.prov.WaitGuestReady(ctx, cfg.DNSVMName, cfg.InstallTimeout, s.progressFor(id)); err != nil {
 			return err
 		}
-		return s.verifyCloudInit(ctx, id, cfg, cfg.DNSVMName)
+		if !sshOK {
+			return s.verifyCloudInit(ctx, id, cfg, cfg.DNSVMName)
+		}
+		return nil
 
 	case domain.SetupStepDNSConfig:
 		out, err := s.prov.RunGuestScript(ctx, cfg, cfg.DNSVMName, filepath.Join("scripts", "guest-bind9.sh"), network.DNSIP, network.CIDR)
@@ -603,6 +620,9 @@ func (s *SetupService) runStep(ctx context.Context, id domain.SetupStepID, baseV
 		return s.createSeed(ctx, cfg.BaseVMName)
 
 	case domain.SetupStepBaseInstall:
+		if err := s.prov.ReserveDHCPAddress(ctx, cfg, cfg.BaseVMName, network.BaseIP); err != nil {
+			return err
+		}
 		seed, err := s.ensureSeed(ctx, cfg.BaseVMName)
 		if err != nil {
 			return err
@@ -610,10 +630,17 @@ func (s *SetupService) runStep(ctx context.Context, id domain.SetupStepID, baseV
 		if err := s.prov.StartSeedBoot(ctx, cfg, cfg.BaseVMName, seed); err != nil {
 			return err
 		}
+		sshOK, err := s.monitorCloudInitSSH(ctx, id, cfg, cfg.BaseVMName, network.BaseIP)
+		if err != nil {
+			return err
+		}
 		if err := s.prov.WaitGuestReady(ctx, cfg.BaseVMName, cfg.InstallTimeout, s.progressFor(id)); err != nil {
 			return err
 		}
-		return s.verifyCloudInit(ctx, id, cfg, cfg.BaseVMName)
+		if !sshOK {
+			return s.verifyCloudInit(ctx, id, cfg, cfg.BaseVMName)
+		}
+		return nil
 
 	case domain.SetupStepBaseConfig:
 		out, err := s.prov.RunGuestScript(ctx, cfg, cfg.BaseVMName, filepath.Join("scripts", "guest-apache.sh"))
@@ -688,6 +715,10 @@ func (s *SetupService) renderSeed(vmName string) (string, string, error) {
 	userData := strings.ReplaceAll(string(raw), "@@USUARIO@@", s.cfg.GuestUser)
 	password := strings.ReplaceAll(s.cfg.GuestPassword, "'", "''")
 	userData = strings.ReplaceAll(userData, "@@CONTRASENA@@", password)
+	s.mu.Lock()
+	publicKey := s.sshPublicKey
+	s.mu.Unlock()
+	userData = strings.ReplaceAll(userData, "@@SSH_KEY@@", publicKey)
 	metaData := fmt.Sprintf("instance-id: iid-%s-01\nlocal-hostname: %s\n", host, host)
 	return userData, metaData, nil
 }
@@ -722,6 +753,33 @@ func (s *SetupService) resolveBaseVDI(ctx context.Context, base *string, progres
 	}
 	*base = path
 	return path, nil
+}
+
+// monitorCloudInitSSH se conecta por SSH en cuanto el invitado la acepta, espera
+// a que cloud-init termine y publica su estado y registro. Retorna false si SSH
+// no está disponible (se usará Guest Additions como respaldo).
+func (s *SetupService) monitorCloudInitSSH(ctx context.Context, _ domain.SetupStepID, cfg domain.SetupConfig, vmName, ip string) (bool, error) {
+	keyPath := cfg.SSHKeyPath
+	if keyPath == "" {
+		keyPath = filepath.Join(cfg.SSHDir, "id_ed25519")
+	}
+	if err := s.prov.WaitSSH(ctx, ip, cfg.GuestUser, keyPath, 10*time.Minute); err != nil {
+		s.log("WARN", "SSH no disponible en "+ip+"; se continúa con Guest Additions: "+err.Error(), map[string]any{"instancia": vmName})
+		return false, nil
+	}
+	s.log("INFO", "SSH disponible en "+ip, map[string]any{"instancia": vmName})
+
+	// Bloquea hasta que cloud-init termine dentro del invitado.
+	_, _ = s.prov.RunSSH(ctx, ip, cfg.GuestUser, keyPath, "cloud-init status --wait")
+	statusOut, _ := s.prov.RunSSH(ctx, ip, cfg.GuestUser, keyPath, "cloud-init status --long")
+	s.logGuestOutput(statusOut)
+	logOut, _ := s.prov.RunSSH(ctx, ip, cfg.GuestUser, keyPath, "tail -n 60 /var/log/cloud-init-output.log")
+	s.logGuestOutput(logOut)
+
+	if strings.Contains(statusOut, "status: error") {
+		return true, fmt.Errorf("cloud-init terminó con error en %s; revisa el registro", vmName)
+	}
+	return true, nil
 }
 
 // verifyCloudInit espera a que cloud-init termine y publica su registro.

@@ -80,6 +80,21 @@ func (s *stubProvisioner) ResetEnvironment(context.Context, domain.SetupConfig) 
 	return nil
 }
 
+func (s *stubProvisioner) EnsureSSHKey(context.Context, domain.SetupConfig) (string, error) {
+	return "ssh-ed25519 AAAAC3Nza test", nil
+}
+
+func (s *stubProvisioner) WaitSSH(context.Context, string, string, string, time.Duration) error {
+	return nil
+}
+
+func (s *stubProvisioner) RunSSH(_ context.Context, _, _, _, command string) (string, error) {
+	if strings.Contains(command, "status --long") {
+		return "status: done", nil
+	}
+	return "", nil
+}
+
 func (s *stubProvisioner) MarkBaseMultiattach(context.Context, domain.SetupConfig, string) (string, error) {
 	return "/media/ApacheServer.vdi", nil
 }

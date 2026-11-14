@@ -102,6 +102,8 @@ func (s SetupState) Step(id SetupStepID) (SetupStep, bool) {
 type SetupConfig struct {
 	RawDir           string
 	SeedDir          string
+	SSHDir           string
+	SSHKeyPath       string
 	SeedTemplatesDir string
 	RawURL           string
 

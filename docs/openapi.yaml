@@ -684,6 +684,9 @@ components:
             ip_dns:
               type: string
               example: 192.168.57.10
+            ip_plantilla:
+              type: string
+              example: 192.168.57.11
             dhcp_inicio:
               type: string
               example: 192.168.57.100

@@ -22,7 +22,7 @@ Una sola imagen base: `debian-13-generic-amd64.raw`. Se descarga solo si no exis
 1. **Imagen:** descarga la `.raw` oficial (~3 GB) en `<app-dir>/raw/`. Si ya está, se reutiliza.
 2. **Red:** reutiliza la interfaz host-only de VirtualBox y configura DHCP en su subred. El DHCP no anuncia puerta de enlace ni DNS; las VM base llevan además una NIC NAT para descargar paquetes durante la preparación.
 3. **VM `ns`:** duplica el VDI base (convertido una sola vez), redimensiona el disco, crea la ISO semilla NoCloud y arranca.
-4. **Primer arranque de `ns`:** cloud-init crea el usuario, instala los paquetes y Guest Additions.
+4. **Primer arranque de `ns`:** cloud-init crea el usuario (con clave SSH), instala los paquetes y Guest Additions. El orquestador espera SSH y ejecuta `cloud-init status --wait`, publicando el estado y el final de `/var/log/cloud-init-output.log`.
 5. **Configuración de Bind9:** el orquestador ejecuta `scripts/guest-bind9.sh` con la IP del DNS y el CIDR derivados.
 6. **VM plantilla:** mismo proceso con su propia semilla.
 7. **Disco multiconexión:** desconecta, marca `multiattach`, reconecta y guarda la ruta.
@@ -47,7 +47,7 @@ Las plantillas viven en `scripts/seeds/`:
 - `ns-user-data.yaml`
 - `apache-user-data.yaml`
 
-El orquestador sustituye `@@USUARIO@@` y `@@CONTRASENA@@` con los datos del formulario y genera:
+El orquestador sustituye `@@USUARIO@@`, `@@CONTRASENA@@` y `@@SSH_KEY@@` (clave pública generada en `<app-dir>/ssh/id_ed25519.pub`) y genera:
 
 ```
 <app-dir>/seeds/<vm>/user-data     # nombre obligatorio dentro de la ISO
@@ -84,7 +84,7 @@ La semilla configura **ambos adaptadores por DHCP** (`enp0s3` host-only y `enp0s
 Las semillas además:
 
 - habilitan `contrib` y `non-free` para el paquete de Guest Additions;
-- crean el usuario con `sudo` sin contraseña (requisito de `guestcontrol`);
+- crean el usuario con `sudo` sin contraseña (requisito de `guestcontrol`) y la clave SSH autorizada;
 - dejan la red en DHCP (la reserva de IP se hace por MAC desde el host).
 
 ---
@@ -139,6 +139,7 @@ La aplicación no lee ni escribe fuera de este directorio.
 - Internet la primera vez (imagen y paquetes).
 - Sin privilegios de administrador: no se reconfiguran interfaces del host.
 - Las VM base usan una NIC NAT temporal para instalar paquetes; las instancias aprovisionadas solo llevan la NIC host-only.
+- `ssh` y `ssh-keygen` en el host para el seguimiento temprano de cloud-init.
 
 ---
 

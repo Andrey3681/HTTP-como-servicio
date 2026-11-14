@@ -79,6 +79,8 @@ func main() {
 	setupCfg := domain.SetupConfig{
 		RawDir:           layout.RawDir,
 		SeedDir:          layout.SeedDir,
+		SSHDir:           layout.SSHDir,
+		SSHKeyPath:       filepath.Join(layout.SSHDir, "id_ed25519"),
 		SeedTemplatesDir: filepath.Join("scripts", "seeds"),
 		RawURL:           *rawURL,
 		DNSVMName:        "ns",

@@ -23,6 +23,7 @@ type Layout struct {
 	ISODir         string
 	RawDir         string
 	SeedDir        string
+	SSHDir         string
 	InstancesFile  string
 	SetupStateFile string
 }
@@ -55,10 +56,11 @@ func EnsureLayout(base string) (Layout, error) {
 		ISODir:         filepath.Join(base, "iso"),
 		RawDir:         filepath.Join(base, "raw"),
 		SeedDir:        filepath.Join(base, "seeds"),
+		SSHDir:         filepath.Join(base, "ssh"),
 		InstancesFile:  filepath.Join(base, "instances.json"),
 		SetupStateFile: filepath.Join(base, "setup-estado.json"),
 	}
-	for _, dir := range []string{layout.Base, layout.ISODir, layout.RawDir, layout.SeedDir} {
+	for _, dir := range []string{layout.Base, layout.ISODir, layout.RawDir, layout.SeedDir, layout.SSHDir} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return Layout{}, fmt.Errorf("no se pudo crear %s: %w", dir, err)
 		}

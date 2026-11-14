@@ -39,6 +39,7 @@ Proyecto correspondiente a la **Nota Parcial #3 de Computación en la Nube (2026
 - **Oracle VirtualBox**: 7.0+ (con herramienta `VBoxManage` en el PATH)
 - **Task**: Administrador de tareas `task`
 - **VM Base**: Máquina virtual Debian 13 CLI con Apache instalado y su disco virtual configurado en modo `multiattach` (`ApacheServer.vdi`)
+- **SSH**: `ssh` y `ssh-keygen` en el host (seguimiento de cloud-init y acceso de soporte).
 - **VM DNS**: Máquina virtual Debian 13 (`ns`) con Bind9 en la IP derivada de la red host-only (`.10`) para la zona `cloud.local.`
 
 ## 🧭 Preparación inicial del laboratorio
