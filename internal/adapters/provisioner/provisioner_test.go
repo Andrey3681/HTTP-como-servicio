@@ -329,7 +329,7 @@ func TestCreateVMRepairsVMWithoutDisk(t *testing.T) {
 	}
 }
 
-func TestCreateVMFixesDuplicateUUIDOnExistingDisk(t *testing.T) {
+func TestCreateVMReplacesStaleDisk(t *testing.T) {
 	folder := t.TempDir()
 	base := filepath.Join(t.TempDir(), "base.vdi")
 	if err := os.WriteFile(base, []byte("vdi"), 0o600); err != nil {
@@ -348,7 +348,10 @@ func TestCreateVMFixesDuplicateUUIDOnExistingDisk(t *testing.T) {
 	if _, err := prov.CreateVM(context.Background(), setupConfig(), "ns", "vboxnet1", base); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !exec.contains("internalcommands sethduuid " + disk) {
-		t.Errorf("expected a new UUID for the copied disk, got %v", exec.calls)
+	if !exec.contains("closemedium disk " + disk) {
+		t.Errorf("expected the stale disk to be unregistered, got %v", exec.calls)
+	}
+	if !exec.contains("clonemedium disk " + base + " " + disk) {
+		t.Errorf("expected a fresh clone, got %v", exec.calls)
 	}
 }

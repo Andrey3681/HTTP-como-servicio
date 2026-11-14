@@ -251,13 +251,16 @@ func (p *Provisioner) attachBaseDisk(ctx context.Context, cfg domain.SetupConfig
 		return "", err
 	}
 	diskPath := filepath.Join(folder, vmName+".vdi")
-	if _, statErr := os.Stat(diskPath); statErr != nil {
-		if _, err := p.vbox(ctx, "clonemedium", "disk", baseVDI, diskPath, "--format", "VDI"); err != nil {
-			return "", fmt.Errorf("fallo duplicando el VDI base: %w", err)
+	if _, statErr := os.Stat(diskPath); statErr == nil {
+		// Copia previa (posiblemente registrada o con UUID duplicado): se
+		// desregistra y se descarta; el clon nuevo recibe un UUID propio.
+		_, _ = p.vbox(ctx, "closemedium", "disk", diskPath)
+		if err := os.Remove(diskPath); err != nil {
+			return "", fmt.Errorf("no se pudo reemplazar el disco previo: %w", err)
 		}
-	} else {
-		// Copia previa con el UUID de la base: asignar uno propio antes de registrar.
-		_, _ = p.vbox(ctx, "internalcommands", "sethduuid", diskPath)
+	}
+	if _, err := p.vbox(ctx, "clonemedium", "disk", baseVDI, diskPath, "--format", "VDI"); err != nil {
+		return "", fmt.Errorf("fallo duplicando el VDI base: %w", err)
 	}
 	if _, err := p.vbox(ctx, "modifymedium", "disk", diskPath, "--resize", strconv.Itoa(cfg.DiskMB)); err != nil {
 		return "", fmt.Errorf("fallo redimensionando el disco: %w", err)
