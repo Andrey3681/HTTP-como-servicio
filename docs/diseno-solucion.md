@@ -2,16 +2,16 @@
 
 ## 1. Vista de Despliegue y Topología de Red
 
-El laboratorio se ejecuta sobre el hipervisor **Oracle VirtualBox** utilizando una red interna denominada `cloudnet` con direccionamiento privado `192.168.10.0/24`.
+El laboratorio se ejecuta sobre el hipervisor **Oracle VirtualBox** utilizando una red host-only cuya subred asigna VirtualBox (por ejemplo `192.168.57.0/24`); no se impone un direccionamiento fijo.
 
 ```text
 Host (Equipo Anfitrión)
- └── IP Host-Only: 192.168.10.1
- └── Orquestador Go: http://localhost:8080 (o http://192.168.10.1:8080)
+ └── IP host-only: la asignada por VirtualBox (p. ej. 192.168.57.1)
+ └── Orquestador Go: http://localhost:8080
 
 VM DNS (ns)
  └── SO: Debian 13.0 CLI
- └── IP fija: 192.168.10.10/24
+ └── IP: subred de la interfaz + .10 (p. ej. 192.168.57.10)
  └── Servicio: Bind9 (named)
  └── Zona: cloud.local.
  └── Servidor de Nombres: ns.cloud.local.
@@ -22,7 +22,7 @@ VM Base (Plantilla / ApacheServer.vdi)
 
 Instancias Dinámicas (ej. paisajes, negocios)
  └── Disco diferencial anclado a ApacheServer.vdi
- └── IPs dinámicas o asignadas: 192.168.10.30, 192.168.10.31, ...
+ └── IPs dinámicas dentro de la subred (p. ej. 192.168.57.100, .101, ...)
  └── Apache sirviendo contenido en /var/www/html/
  └── Hostname y FQDN: <host>.cloud.local.
 ```
@@ -43,7 +43,7 @@ Instancias Dinámicas (ej. paisajes, negocios)
    |                           |                         |<- 5. VM creada ------|                   |                    |
    |                           |                         |-- 6. Iniciar VM ---> |                   |                    |
    |                           |                         |-- 7. Esperar IP ---> |                   |                    |
-   |                           |                         |<- 8. IP 192.168.10.x |                   |                    |
+   |                           |                         |<- 8. IP de la subred |                   |                    |
    |                           |                         |-- 9. Registrar DNS --------------------> |                    |
    |                           |                         |<- 10. DNS OK ---------------------------|                    |
    |                           |                         |-- 11. Desplegar .zip ---------------------------------------> |
@@ -65,7 +65,7 @@ Instancias Dinámicas (ej. paisajes, negocios)
 - `ID`: Identificador único (UUID o slug normalizado).
 - `Hostname`: Nombre único dentro del dominio (ej. `paisajes`).
 - `FQDN`: Nombre de dominio completamente cualificado (ej. `paisajes.cloud.local`).
-- `IP`: Dirección IPv4 asignada (`192.168.10.x`).
+- `IP`: Dirección IPv4 asignada por DHCP dentro de la subred de la interfaz.
 - `URL`: Enlace directo de acceso (`http://paisajes.cloud.local`).
 - `Status`: Estado de la instancia (`CREATING`, `RUNNING`, `ERROR`, `TERMINATED`).
 - `CreatedAt`: Marca temporal de creación.

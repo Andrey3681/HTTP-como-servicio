@@ -15,9 +15,21 @@ Package domain define las entidades centrales del modelo de negocio, reglas de d
 - [func ValidateHostname\(name string\) error](<#ValidateHostname>)
 - [type DnsRecord](<#DnsRecord>)
   - [func NewARecord\(name string, zone string, ip netip.Addr, ttl int\) \(\*DnsRecord, error\)](<#NewARecord>)
+- [type EnvironmentStatus](<#EnvironmentStatus>)
 - [type Instance](<#Instance>)
   - [func NewInstance\(name string, domainZone string\) \(\*Instance, error\)](<#NewInstance>)
 - [type InstanceStatus](<#InstanceStatus>)
+- [type NetworkConfig](<#NetworkConfig>)
+  - [func DeriveNetwork\(iface, hostIP, netmask string\) \(NetworkConfig, error\)](<#DeriveNetwork>)
+- [type SetupConfig](<#SetupConfig>)
+- [type SetupConfiguracion](<#SetupConfiguracion>)
+- [type SetupInput](<#SetupInput>)
+  - [func \(in SetupInput\) Validate\(\) error](<#SetupInput.Validate>)
+- [type SetupState](<#SetupState>)
+  - [func \(s SetupState\) Step\(id SetupStepID\) \(SetupStep, bool\)](<#SetupState.Step>)
+- [type SetupStep](<#SetupStep>)
+- [type SetupStepID](<#SetupStepID>)
+- [type SetupStepStatus](<#SetupStepStatus>)
 - [type WebPackage](<#WebPackage>)
   - [func ValidateZipPackage\(reader io.ReaderAt, size int64\) \(\*WebPackage, error\)](<#ValidateZipPackage>)
 
@@ -89,6 +101,27 @@ func NewARecord(name string, zone string, ip netip.Addr, ttl int) (*DnsRecord, e
 
 NewARecord construye y valida un registro de tipo A para la zona DNS local.
 
+<a name="EnvironmentStatus"></a>
+## type [EnvironmentStatus](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/setup.go#L121-L133>)
+
+EnvironmentStatus resume lo que ya existe en el host antes de configurar.
+
+```go
+type EnvironmentStatus struct {
+    VBoxAvailable       bool     `json:"vbox_disponible"`
+    VBoxVersion         string   `json:"vbox_version,omitempty"`
+    ExistingVMs         []string `json:"vms_existentes,omitempty"`
+    HostOnlyInterface   string   `json:"interfaz_hostonly,omitempty"`
+    HostOnlyIP          string   `json:"interfaz_ip,omitempty"`
+    HasDNSVM            bool     `json:"vm_ns"`
+    HasBaseVM           bool     `json:"vm_base"`
+    BaseDiskPath        string   `json:"disco_base,omitempty"`
+    BaseDiskMultiattach bool     `json:"disco_multiatach"`
+    FreeDiskGB          int64    `json:"disco_libre_gb"`
+    Ready               bool     `json:"listo"`
+}
+```
+
 <a name="Instance"></a>
 ## type [Instance](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/instance.go#L31-L39>)
 
@@ -139,6 +172,182 @@ const (
 
     // StatusTerminated indica que la instancia ha sido apagada y desmantelada.
     StatusTerminated InstanceStatus = "ELIMINADA"
+)
+```
+
+<a name="NetworkConfig"></a>
+## type [NetworkConfig](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/network.go#L16-L24>)
+
+NetworkConfig describe la red host\-only real del laboratorio. Se deriva de la dirección que VirtualBox asigna a la interfaz, sin imponer una subred fija.
+
+```go
+type NetworkConfig struct {
+    Interface string `json:"interfaz"`
+    HostIP    string `json:"ip_anfitrion"`
+    Netmask   string `json:"mascara"`
+    CIDR      string `json:"cidr"`
+    DNSIP     string `json:"ip_dns"`
+    DHCPLower string `json:"dhcp_inicio"`
+    DHCPUpper string `json:"dhcp_fin"`
+}
+```
+
+<a name="DeriveNetwork"></a>
+### func [DeriveNetwork](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/network.go#L28>)
+
+```go
+func DeriveNetwork(iface, hostIP, netmask string) (NetworkConfig, error)
+```
+
+DeriveNetwork calcula la configuración del laboratorio a partir de la IP y la máscara de la interfaz host\-only \(se admite /24, el valor habitual de VirtualBox\).
+
+<a name="SetupConfig"></a>
+## type [SetupConfig](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/setup.go#L102-L118>)
+
+SetupConfig agrupa los parámetros del entorno real que prepara la preparación.
+
+```go
+type SetupConfig struct {
+    RawDir           string
+    SeedDir          string
+    SeedTemplatesDir string
+    RawURL           string
+
+    DNSVMName    string
+    BaseVMName   string
+    DNSHostname  string
+    BaseHostname string
+
+    GuestUser      string
+    GuestPassword  string
+    MemoryMB       int
+    DiskMB         int
+    InstallTimeout time.Duration
+}
+```
+
+<a name="SetupConfiguracion"></a>
+## type [SetupConfiguracion](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/setup.go#L73-L76>)
+
+SetupConfiguracion es la parte pública \(sin contraseña\) del formulario.
+
+```go
+type SetupConfiguracion struct {
+    Usuario string `json:"usuario"`
+    Lista   bool   `json:"lista"`
+}
+```
+
+<a name="SetupInput"></a>
+## type [SetupInput](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/setup.go#L56-L59>)
+
+SetupInput es la entrada del formulario de la preparación.
+
+```go
+type SetupInput struct {
+    Usuario    string `json:"usuario"`
+    Contrasena string `json:"contrasena"`
+}
+```
+
+<a name="SetupInput.Validate"></a>
+### func \(SetupInput\) [Validate](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/setup.go#L62>)
+
+```go
+func (in SetupInput) Validate() error
+```
+
+Validate comprueba las reglas del formulario de la preparación.
+
+<a name="SetupState"></a>
+## type [SetupState](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/setup.go#L79-L89>)
+
+SetupState es la instantánea completa de la preparación, apta para SSE y JSON.
+
+```go
+type SetupState struct {
+    RequiereConfiguracion bool               `json:"requiere_configuracion"`
+    Ejecutando            bool               `json:"ejecutando"`
+    Completado            bool               `json:"completado"`
+    Error                 string             `json:"error,omitempty"`
+    Configuracion         SetupConfiguracion `json:"configuracion"`
+    Red                   NetworkConfig      `json:"red"`
+    Imagen                string             `json:"imagen,omitempty"`
+    Pasos                 []SetupStep        `json:"pasos"`
+    ActualizadoEn         time.Time          `json:"actualizado_en"`
+}
+```
+
+<a name="SetupState.Step"></a>
+### func \(SetupState\) [Step](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/setup.go#L92>)
+
+```go
+func (s SetupState) Step(id SetupStepID) (SetupStep, bool)
+```
+
+Step devuelve el paso con el identificador indicado y un indicador de existencia.
+
+<a name="SetupStep"></a>
+## type [SetupStep](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/setup.go#L46-L53>)
+
+SetupStep representa un paso visible del configuración inicial.
+
+```go
+type SetupStep struct {
+    ID          SetupStepID     `json:"id"`
+    Nombre      string          `json:"nombre"`
+    Descripcion string          `json:"descripcion"`
+    Estado      SetupStepStatus `json:"estado"`
+    Progreso    int             `json:"progreso"`
+    Mensaje     string          `json:"mensaje,omitempty"`
+}
+```
+
+<a name="SetupStepID"></a>
+## type [SetupStepID](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/setup.go#L16>)
+
+SetupStepID identifica un paso del configuración inicial.
+
+```go
+type SetupStepID string
+```
+
+<a name="SetupStepVerify"></a>Identificadores de los pasos de la preparación, en el orden en que se ejecutan.
+
+```go
+const (
+    SetupStepVerify      SetupStepID = "verificar"
+    SetupStepISO         SetupStepID = "iso"
+    SetupStepNetwork     SetupStepID = "red"
+    SetupStepDNSVM       SetupStepID = "vm-ns"
+    SetupStepDNSInstall  SetupStepID = "instalar-ns"
+    SetupStepDNSConfig   SetupStepID = "config-ns"
+    SetupStepBaseVM      SetupStepID = "vm-base"
+    SetupStepBaseInstall SetupStepID = "instalar-base"
+    SetupStepBaseConfig  SetupStepID = "config-base"
+    SetupStepMultiattach SetupStepID = "multiatach"
+    SetupStepFinal       SetupStepID = "final"
+)
+```
+
+<a name="SetupStepStatus"></a>
+## type [SetupStepStatus](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/setup.go#L34>)
+
+SetupStepStatus describe el estado de un paso de la preparación.
+
+```go
+type SetupStepStatus string
+```
+
+<a name="StepPending"></a>Estados posibles de un paso.
+
+```go
+const (
+    StepPending   SetupStepStatus = "PENDIENTE"
+    StepRunning   SetupStepStatus = "EN_CURSO"
+    StepCompleted SetupStepStatus = "COMPLETADO"
+    StepError     SetupStepStatus = "ERROR"
+    StepSkipped   SetupStepStatus = "OMITIDO"
 )
 ```
 

@@ -4,6 +4,8 @@ Esta guía contiene las instrucciones detalladas para inicializar, estructurar y
 
 El nuevo proyecto adopta y refina el estándar de ingeniería, calidad y automatización de `vm-console-automation`, aplicando **Arquitectura Hexagonal en Go**, ciclo de desarrollo **Docs → Tests → Implementación (TDD)**, gestión automatizada con **Taskfile**, documentación técnica en **Markdown + PlantUML + OpenAPI**, informe académico formal en **LaTeX (IEEEtran)** y un conjunto de **Skills para Agentes de IA (`.agents/skills`)** adaptadas al hipervisor VirtualBox con discos multiconexión y al servidor DNS Bind9.
 
+> **Nota:** las direcciones `192.168.10.x` de esta guía son ilustrativas. La implementación deriva la subred de la interfaz host-only que asigna VirtualBox (DNS en `.10`, DHCP en `.100–.199`).
+
 ---
 
 ## 1. Contexto del Proyecto Destino (HTTPaaS)

@@ -22,16 +22,23 @@ Este documento identifica de forma exhaustiva los endpoints HTTP expuestos por e
 | 7 | `GET` | `/api/logs` | Obtener eventos de log recientes (anillo en memoria, filtrable). | query `limit` (1–1000, def. 200), `nivel`, `componente`, `since` (id, exclusivo) | `200` `{datos:[LogEntry], total}` | `200`, `400`, `405` | Existe |
 | 8 | `GET` | `/api/logs/stream` | Stream de eventos de log en tiempo real (SSE), con reanudación. | query `since` o header `Last-Event-ID` | `200` `text/event-stream` (`id:` + `data: <LogEntry JSON>`) | `200`, `405`, `500` | Existe |
 | 9 | `DELETE` | `/api/logs` | Limpiar el anillo de logs del servidor. | — | `200` `{mensaje}` | `200`, `405` | Existe |
+| 10 | `GET` | `/api/setup/estado` | Obtener el estado del configuración inicial. | — | `200` `SetupEstado` | `200`, `405` | Existe |
+| 11 | `POST` | `/api/setup/configuracion` | Guardar los datos del formulario (usuario y contraseña). | JSON `SetupInput` | `200` `{mensaje}` | `200`, `400`, `405` | Existe |
+| 12 | `POST` | `/api/setup/reiniciar` | Eliminar las VMs base y reiniciar la preparación (conserva imagen y red). | — | `200` `{mensaje}` | `200`, `405`, `409`, `500` | Existe |
+| 13 | `POST` | `/api/setup/iniciar` | Arrancar la preparación automática (ISO, red, VMs, multiattach). | — | `202` `{mensaje}` | `202`, `405`, `409`, `500` | Existe |
+| 14 | `GET` | `/api/setup/stream` | Estado de la preparación en tiempo real (SSE). | — | `200` `text/event-stream` (`data: <SetupEstado JSON>`) | `200`, `405`, `500` | Existe |
 
 ## Esquemas clave (resumen)
 
 - **Instancia**: `id`, `nombre`, `fqdn`, `ip`, `enlace` (URL), `estado` (`CREANDO|ACTIVA|ERROR|ELIMINADA`), `creado_en` (date-time).
 - **Registro DNS**: `nombre` (FQDN), `tipo` (`A`), `ip`, `ttl`.
 - **LogEntry**: `id`, `ts` (RFC3339), `nivel` (`DEBUG|INFO|WARN|ERROR`), `componente`, `mensaje`, `campos` (objeto opcional).
+- **SetupInput**: `usuario` y `contrasena`.
+- **SetupEstado**: `requiere_configuracion`, `ejecutando`, `completado`, `error`, `configuracion` (`usuario`, `lista`), `imagen`, `red` (`interfaz`, `ip_anfitrion`, `mascara`, `cidr`, `ip_dns`, `dhcp_inicio`, `dhcp_fin`), `actualizado_en` y `pasos[]` con `id`, `nombre`, `descripcion`, `estado` (`PENDIENTE|EN_CURSO|COMPLETADO|ERROR|OMITIDO`), `progreso` (0–100; `-1` indeterminado) y `mensaje`.
 - **ErrorRespuesta**: `error`, `codigo`.
 
 ## Notas de rigor
 
 - `GET /api/dns/registros` consulta la zona mediante transferencia AXFR (`dig`) a través de `DnsProvider.ListRecords`; si la consulta no está disponible responde `200` con `registros` vacío para preservar el contrato (degradación explícita, no error).
-- Los handlers validan método HTTP y responden `405` cuando no aplica; los middlewares globales aplican CORS, logging y recuperación de pánicos.
+- Los handlers validan método HTTP y responden `405` cuando no aplica; los middlewares globales aplican CORS, logging, recuperación de pánicos y **bloqueo de escrituras** (`409`) mientras la configuración inicial no esté completa.
 - Cualquier ampliación del contrato se realiza primero en `docs/openapi.yaml` y en este inventario, luego en pruebas y finalmente en implementación (flujo **docs → tests → implementación**).

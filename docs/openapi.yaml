@@ -390,6 +390,155 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorRespuesta'
 
+  /api/setup/estado:
+    get:
+      operationId: getSetupEstado
+      summary: Consultar el estado de la configuración inicial
+      description: Retorna el estado de la preparación del laboratorio (ISO, red host-only, VMs ns y ApacheServer, disco multiattach).
+      responses:
+        '200':
+          description: Estado de la preparación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetupEstado'
+        '405':
+          description: Método HTTP no permitido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+
+  /api/setup/configuracion:
+    post:
+      operationId: configurarSetup
+      summary: Guardar los datos del formulario de la preparación
+      description: Valida y aplica usuario y contraseña. La contraseña no se persiste en disco.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetupInput'
+      responses:
+        '200':
+          description: Configuración guardada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: Configuración de la preparación guardada
+        '400':
+          description: Datos inválidos (usuario o contraseña)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+        '405':
+          description: Método HTTP no permitido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+
+  /api/setup/reiniciar:
+    post:
+      operationId: reiniciarSetup
+      summary: Reiniciar la preparación del laboratorio
+      description: Elimina las VMs base (ns y ApacheServer) y sus semillas, limpia el progreso y vuelve a detectar el entorno. Conserva la imagen descargada y la red.
+      responses:
+        '200':
+          description: Preparación reiniciada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: Preparación reiniciada
+        '405':
+          description: Método HTTP no permitido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+        '409':
+          description: La preparación está en ejecución
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+        '500':
+          description: No se pudieron eliminar las VMs base
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+
+  /api/setup/iniciar:
+    post:
+      operationId: iniciarSetup
+      summary: Iniciar la configuración inicial del laboratorio
+      description: Arranca la secuencia de pasos en segundo plano. Es idempotente y reanuda desde el primer paso no completado.
+      responses:
+        '202':
+          description: Configuración inicial aceptada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: Configuración inicial iniciada
+        '405':
+          description: Método HTTP no permitido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+        '409':
+          description: Ya está en ejecución o el entorno ya está configurado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+        '500':
+          description: No se pudo iniciar la configuración
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+
+  /api/setup/stream:
+    get:
+      operationId: streamSetup
+      summary: Estado de la configuración inicial en tiempo real
+      description: Entrega una instantánea del estado en cada cambio mediante Server-Sent Events. Cada mensaje usa `data` con un objeto SetupEstado en JSON.
+      responses:
+        '200':
+          description: Stream SSE de la preparación
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        '405':
+          description: Método HTTP no permitido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+        '500':
+          description: El servidor no soporta streaming de eventos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+
 components:
   schemas:
     Instancia:
@@ -454,4 +603,102 @@ components:
         codigo:
           type: integer
           example: 400
+
+    SetupInput:
+      type: object
+      required: [usuario, contrasena]
+      properties:
+        usuario:
+          type: string
+          pattern: '^[a-z][a-z0-9_-]{2,31}$'
+          example: http
+        contrasena:
+          type: string
+          minLength: 1
+          description: Obligatoria; no se imponen requisitos de fortaleza ni se persiste en disco.
+          example: httpaas
+
+    SetupPaso:
+      type: object
+      properties:
+        id:
+          type: string
+          example: iso
+        nombre:
+          type: string
+          example: Descargar imagen Debian
+        descripcion:
+          type: string
+          example: Imagen cloud de Debian 13 (~3 GB); se reutiliza si ya existe
+        estado:
+          type: string
+          enum: [PENDIENTE, EN_CURSO, COMPLETADO, ERROR, OMITIDO]
+          example: EN_CURSO
+        progreso:
+          type: integer
+          minimum: -1
+          maximum: 100
+          example: 42
+        mensaje:
+          type: string
+          example: 320 MB / 780 MB
+
+    SetupEstado:
+      type: object
+      properties:
+        requiere_configuracion:
+          type: boolean
+          example: true
+        ejecutando:
+          type: boolean
+          example: false
+        completado:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: ''
+        actualizado_en:
+          type: string
+          format: date-time
+        imagen:
+          type: string
+          description: Ruta de la imagen cloud descargada, si existe.
+          example: /var/lib/httpaas/raw/debian-13-generic-amd64.raw
+        red:
+          type: object
+          description: Red host-only derivada de la interfaz real de VirtualBox.
+          properties:
+            interfaz:
+              type: string
+              example: vboxnet1
+            ip_anfitrion:
+              type: string
+              example: 192.168.57.1
+            mascara:
+              type: string
+              example: 255.255.255.0
+            cidr:
+              type: string
+              example: 192.168.57.0/24
+            ip_dns:
+              type: string
+              example: 192.168.57.10
+            dhcp_inicio:
+              type: string
+              example: 192.168.57.100
+            dhcp_fin:
+              type: string
+              example: 192.168.57.199
+        configuracion:
+          type: object
+          properties:
+            usuario:
+              type: string
+            lista:
+              type: boolean
+        pasos:
+          type: array
+          items:
+            $ref: '#/components/schemas/SetupPaso'
 

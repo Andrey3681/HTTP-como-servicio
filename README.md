@@ -16,19 +16,19 @@ Proyecto correspondiente a la **Nota Parcial #3 de Computación en la Nube (2026
                       +--------------------+---------------------+
                                            |
                     +----------------------+----------------------+
-                    | Red Interna / Host-Only (192.168.10.0/24)   |
+                    | Red Host-Only (subred asignada por VirtualBox) |
                     |                                             |
    +----------------+----------------+          +-----------------+----------------+
    |  Servidor DNS Dedicado (Bind9)  |          | Disco Base Multiconexión         |
    |  VM: ns (Debian 13.0 CLI)       |          | ApacheServer.vdi (multiattach)   |
-   |  IP: 192.168.10.10/24           |          +--------+----------------+--------+
+   |  IP: subred + .10 (derivada)     |          +--------+----------------+--------+
    |  Dominio: cloud.local.          |                   |                |
    +----------------+----------------+                   | Diferencial    | Diferencial
                     | Registros dinámicos                v                v
                     |                      +-------------+----+ +---------+----+
                     +--------------------> | Instancia 1:     | | Instancia 2: |
                     |                      | paisajes         | | negocios     |
-                    +--------------------> | 192.168.10.30    | | 192.168.10.31|
+                    +--------------------> | subred .100      | | subred .101  |
                                            | Apache + web.zip | | Apache + .zip|
                                            +------------------+ +--------------+
 ```
@@ -39,7 +39,33 @@ Proyecto correspondiente a la **Nota Parcial #3 de Computación en la Nube (2026
 - **Oracle VirtualBox**: 7.0+ (con herramienta `VBoxManage` en el PATH)
 - **Task**: Administrador de tareas `task`
 - **VM Base**: Máquina virtual Debian 13 CLI con Apache instalado y su disco virtual configurado en modo `multiattach` (`ApacheServer.vdi`)
-- **VM DNS**: Máquina virtual Debian 13 (`ns`) con Bind9 configurado en `192.168.10.10/24` para la zona `cloud.local.`
+- **VM DNS**: Máquina virtual Debian 13 (`ns`) con Bind9 en la IP derivada de la red host-only (`.10`) para la zona `cloud.local.`
+
+## 🧭 Preparación inicial del laboratorio
+
+La consola permanece **bloqueada** hasta que el laboratorio esté preparado: una pantalla guía el proceso (bienvenida → credenciales → confirmación → ejecución) y la API rechaza escrituras (`409`) mientras falte.
+
+1. Pide el **usuario y la contraseña** del invitado; se usan en las semillas cloud-init.
+2. Descarga la imagen cloud oficial de Debian 13 (`debian-13-generic-amd64.raw`, ~3 GB) si no existe en el directorio de datos.
+3. Convierte la imagen a VDI con `VBoxManage convertfromraw` y redimensiona el disco.
+4. Genera una ISO semilla por VM (`genisoimage`, volumen `cidata`) desde `scripts/seeds/`.
+5. Arranca **`ns`** y la plantilla **`ApacheServer`**; cloud-init crea el usuario, instala los paquetes y Guest Additions.
+6. Ejecuta `scripts/guest-bind9.sh` y `scripts/guest-apache.sh` para la zona DNS y el vhost.
+7. Marca el disco de la plantilla en `multiattach` y guarda su ruta para los diferenciales.
+
+### Directorio de datos
+
+| Orden | Ruta | Uso |
+|---|---|---|
+| 1 | `HTTPAAS_DIR` | anula cualquier otra resolución |
+| 2 | `/var/lib/httpaas` | si existe y es escribible |
+| 3 | `$XDG_DATA_HOME/httpaas` o `~/.local/share/httpaas` | ejecución sin privilegios |
+
+Contenido: `raw/` (imagen descargada), `seeds/` (user-data, meta-data e ISOs), `instances.json` y `setup-estado.json`. La aplicación no lee ni escribe fuera de este directorio.
+
+El progreso se muestra paso a paso con un registro en vivo y se puede reabrir desde **Configuración** en el pie. Contrato completo en [`docs/setup-inicial.md`](docs/setup-inicial.md).
+
+Flags relevantes: `-app-dir`, `-raw-url`, `-guest-user`, `-guest-pass`, `-install-timeout`, `-setup-state`.
 
 ## 🛠️ Comandos de Desarrollo (Taskfile)
 

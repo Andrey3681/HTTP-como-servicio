@@ -39,6 +39,7 @@ El sistema **HTTPaaS** adopta el patrón de **Arquitectura Hexagonal (Puertos y 
    - Orquestan la lógica de negocio consumiendo exclusivamente las interfaces de `ports`. No importan implementaciones concretas de `adapters`.
 3. **Los Adaptadores (`internal/adapters`)**:
    - Implementan las interfaces de `ports`. Interactúan con herramientas externas (`VBoxManage`, `nsupdate`, `dig`, sistema de archivos).
+   - `internal/adapters/provisioner` prepara el laboratorio real (red host-only, VMs, instalación desatendida, disco multiconexión) detrás del puerto `ports.SetupProvisioner`.
 4. **Punto de Composición (`cmd/server/main.go`)**:
    - Es el único lugar donde se instancian los adaptadores concretos y se inyectan en los servicios de aplicación y controladores HTTP.
    - También compone el broker de observabilidad (`internal/logging.Broker`), que se inyecta como `ports.EventLogger` en adaptadores, servicios y handlers.
@@ -116,7 +117,29 @@ type Repository interface {
 }
 ```
 
-### 3.6 Ejecutor de Comandos en el Host (`Executor`)
+### 3.6 Configuración inicial (`SetupProvisioner` e `ImageStore`)
+```go
+// SetupProvisioner abstrae la preparación real de la infraestructura del laboratorio.
+type SetupProvisioner interface {
+    Inspect(ctx context.Context, cfg domain.SetupConfig) (domain.EnvironmentStatus, error)
+    EnsureNetwork(ctx context.Context, cfg domain.SetupConfig) (string, error)
+    CreateVM(ctx context.Context, cfg domain.SetupConfig, vmName, netInterface string) (string, error)
+    StartUnattendedInstall(ctx context.Context, cfg domain.SetupConfig, vmName, hostname, isoPath string, progress ProgressFunc) error
+    WaitGuestReady(ctx context.Context, vmName string, timeout time.Duration) error
+    RunGuestScript(ctx context.Context, cfg domain.SetupConfig, vmName, localScript string) error
+    ReserveDHCPAddress(ctx context.Context, cfg domain.SetupConfig, vmName, ip string) error
+    MarkBaseMultiattach(ctx context.Context, cfg domain.SetupConfig, vmName string) (string, error)
+}
+
+// ImageStore localiza o descarga la imagen cloud del sistema invitado.
+type ImageStore interface {
+    Locate(ctx context.Context, dir string) (string, bool)
+    Download(ctx context.Context, url, dir string, progress ProgressFunc) (string, error)
+}
+```
+El servicio `services.SetupService` orquesta los pasos, mantiene el estado y lo publica por SSE. El detalle de pasos y del contrato HTTP está en [`docs/setup-inicial.md`](setup-inicial.md).
+
+### 3.7 Ejecutor de Comandos en el Host (`Executor`)
 ```go
 // Executor abstrae la invocación de procesos del sistema operativo host.
 type Executor interface {
@@ -141,4 +164,22 @@ Si alguna etapa del aprovisionamiento falla (creación de VM -> asignación de r
 2. Si falla el registro DNS: Se destruye la VM creada.
 3. Si falla la obtención de IP: Se destruye la VM creada.
 Esto garantiza que la infraestructura no quede en un estado inconsistente ni consuma memoria RAM o almacenamiento innecesario.
+
+---
+
+## 6. Infraestructura Real: Red y Estrategia de Discos
+
+### 6.1 Red host-only
+
+La red del proyecto se materializa como **interfaz host-only** de VirtualBox, no como red interna: el navegador del anfitrión debe alcanzar `http://<host>.cloud.local`. No se impone una subred: se usa la que VirtualBox asigna a la interfaz (por ejemplo `192.168.57.1/24`) y de ella se derivan el servidor DNS (`.10`) y el rango DHCP (`.100–.199`).
+
+El adaptador `vbox` resuelve la interfaz host-only real (`list hostonlyifs`, ignorando la red por defecto `192.168.56.1`) y configura cada instancia con `--nic1 hostonly --hostonlyadapter1 <interfaz>`. Si no existe, el aprovisionamiento falla con un mensaje que remite a la preparación inicial.
+
+### 6.2 Discos diferenciales explícitos
+
+`ApacheServer.vdi` se marca como `multiattach` (acción que exige desconectar el medio) y permanece como plantilla de solo lectura. Cada instancia crea su capa escribible con `VBoxManage createmedium disk --filename <carpeta-vm>/<instancia>.vdi --diffparent <ruta-ApacheServer.vdi> --format VDI` y conecta únicamente ese diferencial. No se clona el disco base: se comparte y cada VM escribe en su propio archivo, que desaparece al destruir la instancia (`unregistervm --delete`).
+
+### 6.3 Preparación del laboratorio
+
+La primera vez, la preparación (`services.SetupService` + `adapters/provisioner`) crea la red, descarga la imagen cloud de Debian 13 si falta, la convierte a VDI, genera las semillas cloud-init, arranca `ns` y `ApacheServer`, ejecuta los scripts de invitado (`scripts/guest-bind9.sh`, `scripts/guest-apache.sh`) y marca el disco base. El avance se persiste en `setup-estado.json` y el orquestador usa la ruta del disco base como origen de los diferenciales.
 

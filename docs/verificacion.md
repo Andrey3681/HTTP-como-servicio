@@ -6,13 +6,45 @@ Este documento define la matriz de pruebas end-to-end y los comandos reproducibl
 
 ## 1. Verificación de Infraestructura Base
 
+### 1.0 Configuración inicial del laboratorio
+La primera vez se prepara todo desde la preparación del panel (`/api/setup/*`, ver [`setup-inicial.md`](setup-inicial.md)) o consultando su estado:
+
+```bash
+curl -s http://localhost:8080/api/setup/estado | jq '{requiere_configuracion, completado, pasos: [.pasos[] | {id, estado, progreso}]}'
+```
+
+Comprobaciones posteriores:
+
+```bash
+# La subred y la IP del DNS se derivan de la interfaz host-only real
+curl -s http://localhost:8080/api/setup/estado | jq '.red'
+DNS_IP=$(curl -s http://localhost:8080/api/setup/estado | jq -r '.red.ip_dns')
+
+# Interfaz host-only del proyecto (la que no es 192.168.56.1)
+VBoxManage list hostonlyifs
+
+# Máquinas virtuales base
+VBoxManage list vms | grep -E '"ns"|"ApacheServer"'
+
+# El disco plantilla debe reportar Type: multiattach
+VBoxManage showvminfo ApacheServer --machinereadable | grep SATA-0-0
+VBoxManage showmediuminfo disk "<ruta-ApacheServer.vdi>" | grep -E '^Type'
+
+# Guest Additions activas en el invitado (habilita la lectura de IP)
+VBoxManage guestproperty get ns /VirtualBox/GuestAdd/Version
+VBoxManage guestproperty get ApacheServer /VirtualBox/GuestAdd/Version
+
+# El servidor DNS se resuelve a sí mismo
+dig @"$DNS_IP" ns.cloud.local +short
+```
+
 ### 1.1 Verificación de Servidor DNS (VM `ns`)
 ```bash
-# Consultar si el servidor Bind9 responde en la IP dedicada
-dig @192.168.10.10 ns.cloud.local +short
+# Consultar si Bind9 responde en la IP derivada de la red
+dig @"$DNS_IP" ns.cloud.local +short
 
 # Verificar consulta SOA de la zona
-dig @192.168.10.10 cloud.local SOA +noall +answer
+dig @"$DNS_IP" cloud.local SOA +noall +answer
 ```
 
 ### 1.2 Verificación de Disco Base Multiconexión
@@ -51,18 +83,19 @@ curl -X POST http://localhost:8080/api/instancias \
   -F "nombre=paisajes" \
   -F "archivo=@/tmp/archivos.zip" | jq .
 ```
-Respuesta esperada: Código `201 Created` con JSON que incluya IP (ej. `192.168.10.30`) y FQDN `paisajes.cloud.local`.
+Respuesta esperada: Código `201 Created` con JSON que incluya la IP asignada por DHCP y el FQDN `paisajes.cloud.local`.
 
 ### 2.3 Verificar Registro Dinámico en Bind9
 ```bash
-dig @192.168.10.10 paisajes.cloud.local +short
-# Debe responder: 192.168.10.30
+dig @"$DNS_IP" paisajes.cloud.local +short
+# Debe responder la IP de la instancia (la del JSON de creación)
 ```
 
 ### 2.4 Verificar Publicación del Servidor Apache
 ```bash
-curl -I http://192.168.10.30/
-curl http://192.168.10.30/
+IP_INSTANCIA=<ip-del-json-de-creacion>
+curl -I http://"$IP_INSTANCIA"/
+curl http://"$IP_INSTANCIA"/
 # Debe retornar el HTML subido en el .zip
 ```
 
@@ -90,5 +123,5 @@ curl -X DELETE http://localhost:8080/api/instancias/paisajes | jq .
 ```
 Comprobación post-eliminación:
 - `VBoxManage list vms` ya no debe listar `paisajes`.
-- `dig @192.168.10.10 paisajes.cloud.local +short` debe responder vacío (NXDOMAIN).
+- `dig @"$DNS_IP" paisajes.cloud.local +short` debe responder vacío (NXDOMAIN).
 

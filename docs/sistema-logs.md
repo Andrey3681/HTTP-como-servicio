@@ -67,6 +67,7 @@ Todos los endpoints bajo `/api/logs`, JSON salvo SSE:
 
 Notas:
 - `GET /api/logs/stream` mantiene la conexión abierta; el cliente (dock, rama UI) la consume para el indicador «live».
+- El servidor HTTP usa `WriteTimeout: 0` porque un límite cortaría los streams SSE; el apagado ordenado cierra los streams mediante un canal interno antes de esperar a las conexiones activas.
 - `DELETE /api/logs` limpia el historial en memoria del servidor (complementa la limpieza de vista del cliente).
 - Errores siguen `{"error","codigo"}` cuando aplique (p. ej. `400`, `405`).
 

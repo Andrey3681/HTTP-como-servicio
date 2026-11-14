@@ -11,7 +11,7 @@
 
 Según el enunciado (`Nota parcial 3`), el proyecto implementa un servicio administrado de servidores HTTP (HTTPaaS) sobre infraestructura virtualizada local: **VirtualBox** (plantilla Debian 13 CLI con Apache, disco en modo **multiconexión**), **Bind9** (dominio/zona local, p. ej. `cloud.local.`, con registro dinámico de hosts) y una **aplicación web de gestión en Go** que actúa como punto de acceso/orquestador. La webapp debe recibir solicitudes de aprovisionamiento, cargar un `.zip` con el contenido, crear/configurar VMs, actualizar DNS, desplegar en Apache y **mostrar en un dashboard** las instancias activas con **nombre de host, dirección IP y enlace** de acceso (preferiblemente en nueva pestaña). Los procedimientos de creación/configuración/despliegue deben estar **automatizados** (sin interacción manual del usuario durante el aprovisionamiento).
 
-El diseño técnico (`arquitectura.md`/`diseno-solucion.md`) concreta el flujo transaccional y sus compensaciones (rollback): crear VM → iniciar → obtener IP → registrar DNS → desplegar `.zip` → persistir; ante fallos en DNS/deploy/IP se destruye/compensa. Topología de referencia: orquestador en el host (`localhost:8080`), VM DNS `ns` en `192.168.10.10/24` (`cloudnet`, zona `cloud.local.`), instancias dinámicas en `192.168.10.x` con FQDN `<host>.cloud.local`.
+El diseño técnico (`arquitectura.md`/`diseno-solucion.md`) concreta el flujo transaccional y sus compensaciones (rollback): crear VM → iniciar → obtener IP → registrar DNS → desplegar `.zip` → persistir; ante fallos en DNS/deploy/IP se destruye/compensa. Topología de referencia: orquestador en el host (`localhost:8080`), VM DNS `ns` con IP derivada de la subred host-only (`.10`, zona `cloud.local.`), instancias dinámicas en el rango DHCP de esa subred con FQDN `<host>.cloud.local`.
 
 ---
 
@@ -32,6 +32,7 @@ El diseño técnico (`arquitectura.md`/`diseno-solucion.md`) concreta el flujo t
 | RF-11 | Refrescar/sincronizar vistas de datos (instancias, DNS, salud) bajo demanda. | Necesidad operativa derivada de estado dinámico (`diseno-solucion`/`openapi`) |
 | RF-12 | Mostrar el contexto operativo relevante (zona DNS, red, DocumentRoot, FQDN `.cloud.local`) para orientar al usuario. | `Nota parcial 3`/`diseno-solucion` §1/§2; coherencia con `openapi` |
 | RF-13 | (Evolutivo, sustentado en specs) Visualizar el estado/configuración asociada a Apache VHost y al registro DNS de una instancia (referencia de `ServerName`/DocumentRoot y registro A) para diagnóstico. | `Nota parcial 3` (hostname único, directorio de contenido, despliegue por instancia); `arquitectura` §1; `diseno-solucion` §1/§2; nav Stitch (“VHosts”) |
+| RF-15 | **Configuración inicial del entorno:** preparación de primer arranque que descarga/reutiliza la ISO de Debian, crea la red host-only, instala desatendidamente las VMs `ns` y `ApacheServer`, configura Bind9/Apache y marca el disco plantilla en modo multiconexión, mostrando progreso por paso. | `docs/setup-inicial.md`; `openapi.yaml` `/api/setup/estado`, `/api/setup/iniciar`, `/api/setup/stream` |
 | RF-14 | Consultar eventos/logs de aprovisionamiento y operación (Apache/Bind9/orquestador) para observabilidad y soporte. | Observabilidad ante flujo transaccional/rollback (`arquitectura` §5); `docs/sistema-logs.md`; `GET/DELETE /api/logs`, `GET /api/logs/stream` |
 
 > Nota: RF-13 no tiene endpoint dedicado en `openapi.yaml` y se especifica como vista **preparada para conexión** (datos derivados de instancias + contrato futuro). RF-14 ya cuenta con contrato e implementación mediante `GET/DELETE /api/logs` y `GET /api/logs/stream` (ver `docs/sistema-logs.md`).
@@ -68,6 +69,7 @@ El diseño técnico (`arquitectura.md`/`diseno-solucion.md`) concreta el flujo t
 | M4. Salud / Diagnóstico | `/salud.html` | Estado de dependencias del entorno. | RF-08,10,11 | `GET /api/salud` |
 | M5. VHosts / Apache (vista operativa) | `/vhosts.html` | Visibilidad de VirtualHosts/ServerName/DocumentRoot por instancia (y estado lógico). | RF-13,12,10,11 | *futuro* `GET /api/vhosts` o derivado de instancias |
 | M6. Operaciones / Eventos (logs) | componente `logs-dock` (global) *(extensible a `/eventos.html`)* | Observabilidad de eventos de aprovisionamiento/operación. | RF-14,10 | `GET/DELETE /api/logs`, `GET /api/logs/stream` (SSE) |
+| M8. Preparación del entorno | página completa `setup-wizard` (bloquea la consola hasta completar) | Prepara el laboratorio real guiando al usuario paso a paso. | RF-15,10 | `GET /api/setup/estado`, `POST /api/setup/configuracion`, `POST /api/setup/iniciar`, `GET /api/setup/stream` |
 | M7. Ayuda / Verificación operativa | `/ayuda.html` | Guía rápida: formato hostname/zip, zona/red, pasos de verificación (dig/curl) y resolución de errores comunes. | RF-03,08,10,12 (soporte a RF-02/06) | ninguno (estático, enlaza conceptos de `verificacion.md`) |
 
 Componentes transversales (presentes en todos los módulos, RNF-02/07/10): **header** (marca, nav, estado de servicios/nodo), **footer** (contexto zona/DocumentRoot/versiones + toggle de logs), **dock de logs** (M6), **router** (navegación sin recarga), utilidades comunes (escape, formato fecha, feedback/loading).
@@ -115,7 +117,7 @@ Componentes transversales (presentes en todos los módulos, RNF-02/07/10): **hea
 - **Funciones:** consultar y listar registros A; refrescar; mostrar zona/red/servidor.
 - **Formulario:** no requiere formulario de alta (el alta DNS la dispara el aprovisionamiento, RF-02). *Evolutivo:* filtro/búsqueda por nombre/IP.
 - **Botones/acciones:** `Actualizar` (RF-11). (Recomendado evolutivo) `Copiar` valor, filtro cliente.
-- **Elementos UI:** tarjetas de contexto (Zona `cloud.local.`, servidor Bind9/rndc, red `192.168.10.0/24`), tabla (Nombre, Tipo, IP, TTL) con tipografía monoespaciada para valores técnicos, estado vacío/error.
+- **Elementos UI:** tarjetas de contexto (Zona `cloud.local.`, servidor Bind9/rndc, red derivada de la interfaz host-only), tabla (Nombre, Tipo, IP, TTL) con tipografía monoespaciada para valores técnicos, estado vacío/error.
 - **Estados:** cargando, con datos, sin registros, backend inaccesible.
 
 ### M4. Salud / Diagnóstico (`/salud.html`)
@@ -147,6 +149,18 @@ Componentes transversales (presentes en todos los módulos, RNF-02/07/10): **hea
 - **Contrato de componente (reutilizable):** `#logs-toggle-mount` (footer) y dock inyectado por `logs-dock.js`; API global `window.toggleLogsDock`/`openLogsDock`/`closeLogsDock`. El dock consulta `/api/logs` y se suscribe a `/api/logs/stream` (SSE/EventSource) con deduplicación por `id`.
 - **Estados:** oculto, visible, conectando, conectado (`live`), reconectando/error, backend inaccesible (RNF-11).
 
+### M8. Preparación del entorno (`setup-wizard`, página completa)
+- **Objetivo:** preparar el laboratorio real la primera vez que se abre la consola (RF-15), guiando al usuario paso a paso.
+- **Trazabilidad:** RF-15,10; RNF-01,02,03,05,08,11.
+- **Pantallas:** bienvenida → credenciales (usuario y contraseña del invitado) → resumen → ejecución automática → listo.
+- **Funciones:** detectar infraestructura faltante, recoger los datos que solo el usuario puede aportar, ejecutar el resto de forma automática y mostrar estado/progreso por paso, tiempo transcurrido y error accionable.
+- **Fuente de datos:** `GET /api/setup/estado`, `POST /api/setup/configuracion`, `POST /api/setup/iniciar`, `GET /api/setup/stream` (SSE).
+- **Botones/acciones:** `Comenzar`, `Siguiente`/`Atrás`, `Comenzar preparación`, `Reintentar`, `Ir a la consola`; `Configuración` en el pie reabre el resumen cuando ya está completado.
+- **Elementos UI:** página completa `#setup-wizard` con `[data-screen]`, indicador de pasos, barra global `role="progressbar"`, lista `data-setup-step`, mensajes `aria-live`, error `role="alert"`.
+- **Estados:** primer arranque, captura de datos, ejecución, completado, error con reintento, backend inaccesible.
+- **Bloqueo:** mientras `completado` sea falso, la consola (cabecera, páginas y pie) queda oculta y no se puede cerrar la preparación. La API rechaza escrituras con `409` hasta completar.
+- **Contrato de componentes:** `#setup-wizard`, `[data-screen="credenciales|resumen|ejecucion|listo"]`, `#setup-user`, `#setup-pass`, `#setup-steps`, `#setup-progress-track`, `#setup-start-btn`, `#setup-log` (con `#setup-copy-log`), `#setup-error`, `[data-setup-step]`, `#setup-open-btn` (pie), API `window.openSetupWizard()`.
+
 ### M7. Ayuda / Verificación operativa (`/ayuda.html`)
 - **Objetivo:** reducir errores de entrada y apoyar diagnóstico (RF-03/08/10) con guía alineada a specs.
 - **Trazabilidad:** RF-03,08,10,12; RNF-01,02,05,08.
@@ -177,6 +191,7 @@ Componentes transversales (presentes en todos los módulos, RNF-02/07/10): **hea
 | RF-12 | ● | ● | ● | ○ | ● | | ● | header/footer |
 | RF-13 | | ● | | | ● | | | |
 | RF-14 | | | | | | ● | | dock |
+| RF-15 | | | | | | | | M8 |
 | RNF-01..12 | ● | ● | ● | ● | ● | ● | ● | ● |
 
 (● responsabilidad principal, ○ apoyo/navegación)
@@ -209,6 +224,7 @@ Estos contratos deben cumplirse para considerar la interfaz “reconstruida” s
 - **M4/salud:** `checkBtn`/`checkHealthBtn`, indicadores de estado general/VBoxManage/Bind9, `healthRaw`.
 - **M5/vhosts:** `vhostsTableBody`, `refreshVhostsBtn`.
 - **M6/logs (global):** `system-logs-dock` (inyectado), `toggle-logs-btn` (inyectado, con `aria-expanded` y `aria-controls="system-logs-dock"`), `terminal-output-container` (inyectado). Controles con nombre accesible; resize no depende solo de puntero.
+- **M8/preparación:** `setup-wizard`, `[data-screen]`, `setup-user`, `setup-pass`, `setup-iso-mode`, `setup-steps`, `setup-progress-track`, `setup-start-btn`, `setup-open-btn` (pie) y `[data-setup-step]`; la preparación se abre solo cuando `requiere_configuracion` es verdadero.
 - **M7/ayuda:** contenido estático con reglas de hostname/patrón, referencia `.zip`, zona `cloud.local` y enlaces a módulos.
 
 ### 8.3 Reglas de reutilización

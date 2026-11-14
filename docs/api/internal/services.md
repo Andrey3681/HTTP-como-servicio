@@ -10,6 +10,7 @@ Package services implementa los casos de uso y la lógica de orquestación trans
 
 ## Index
 
+- [Variables](<#variables>)
 - [type InstanceService](<#InstanceService>)
   - [func NewInstanceService\(repo ports.Repository, hypervisor ports.Hypervisor, dnsProvider ports.DnsProvider, logger ports.EventLogger\) \*InstanceService](<#NewInstanceService>)
   - [func \(s \*InstanceService\) DeleteInstance\(ctx context.Context, id string\) error](<#InstanceService.DeleteInstance>)
@@ -19,7 +20,34 @@ Package services implementa los casos de uso y la lógica de orquestación trans
   - [func NewOrchestrator\(hypervisor ports.Hypervisor, dnsProvider ports.DnsProvider, deployer ports.Deployer, repo ports.Repository, domainZone string, baseDiskPath string, logger ports.EventLogger\) \*Orchestrator](<#NewOrchestrator>)
   - [func \(o \*Orchestrator\) Provision\(ctx context.Context, req ProvisionRequest\) \(\*domain.Instance, error\)](<#Orchestrator.Provision>)
 - [type ProvisionRequest](<#ProvisionRequest>)
+- [type SetupService](<#SetupService>)
+  - [func NewSetupService\(cfg domain.SetupConfig, prov ports.SetupProvisioner, images ports.ImageStore, logger ports.EventLogger, stateFile string\) \*SetupService](<#NewSetupService>)
+  - [func \(s \*SetupService\) ActualizarDeteccion\(ctx context.Context\) error](<#SetupService.ActualizarDeteccion>)
+  - [func \(s \*SetupService\) BaseDiskPath\(\) string](<#SetupService.BaseDiskPath>)
+  - [func \(s \*SetupService\) Configurar\(in domain.SetupInput\) error](<#SetupService.Configurar>)
+  - [func \(s \*SetupService\) Estado\(\) domain.SetupState](<#SetupService.Estado>)
+  - [func \(s \*SetupService\) Iniciar\(ctx context.Context\) error](<#SetupService.Iniciar>)
+  - [func \(s \*SetupService\) Network\(\) domain.NetworkConfig](<#SetupService.Network>)
+  - [func \(s \*SetupService\) Reiniciar\(ctx context.Context\) error](<#SetupService.Reiniciar>)
+  - [func \(s \*SetupService\) Subscribe\(\) \(\<\-chan domain.SetupState, func\(\)\)](<#SetupService.Subscribe>)
 
+
+## Variables
+
+<a name="ErrSetupEjecutando"></a>Errores del configuración inicial.
+
+```go
+var (
+    // ErrSetupEjecutando indica que la preparación ya se encuentra en ejecución.
+    ErrSetupEjecutando = errors.New("la configuración inicial ya está en ejecución")
+
+    // ErrSetupCompletado indica que el entorno ya fue configurado.
+    ErrSetupCompletado = errors.New("el entorno ya está configurado")
+
+    // ErrSetupSinConfigurar indica que falta completar el formulario de la preparación.
+    ErrSetupSinConfigurar = errors.New("completa los datos de la preparación antes de iniciar")
+)
+```
 
 <a name="InstanceService"></a>
 ## type [InstanceService](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L16-L21>)
@@ -110,5 +138,97 @@ type ProvisionRequest struct {
     ZipStream  io.Reader
 }
 ```
+
+<a name="SetupService"></a>
+## type [SetupService](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L45-L62>)
+
+SetupService orquesta la configuración inicial del laboratorio y publica su estado a los suscriptores en tiempo real.
+
+```go
+type SetupService struct {
+    // contains filtered or unexported fields
+}
+```
+
+<a name="NewSetupService"></a>
+### func [NewSetupService](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L65>)
+
+```go
+func NewSetupService(cfg domain.SetupConfig, prov ports.SetupProvisioner, images ports.ImageStore, logger ports.EventLogger, stateFile string) *SetupService
+```
+
+NewSetupService crea el servicio de la preparación con el estado inicial pendiente.
+
+<a name="SetupService.ActualizarDeteccion"></a>
+### func \(\*SetupService\) [ActualizarDeteccion](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L215>)
+
+```go
+func (s *SetupService) ActualizarDeteccion(ctx context.Context) error
+```
+
+ActualizarDeteccion inspecciona el host y decide si hace falta configuración.
+
+<a name="SetupService.BaseDiskPath"></a>
+### func \(\*SetupService\) [BaseDiskPath](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L141>)
+
+```go
+func (s *SetupService) BaseDiskPath() string
+```
+
+BaseDiskPath retorna la ruta persistida del disco base multiconexión.
+
+<a name="SetupService.Configurar"></a>
+### func \(\*SetupService\) [Configurar](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L113>)
+
+```go
+func (s *SetupService) Configurar(in domain.SetupInput) error
+```
+
+Configurar valida y aplica los datos del formulario de la preparación.
+
+<a name="SetupService.Estado"></a>
+### func \(\*SetupService\) [Estado](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L106>)
+
+```go
+func (s *SetupService) Estado() domain.SetupState
+```
+
+Estado retorna una copia de la instantánea actual.
+
+<a name="SetupService.Iniciar"></a>
+### func \(\*SetupService\) [Iniciar](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L286>)
+
+```go
+func (s *SetupService) Iniciar(ctx context.Context) error
+```
+
+Iniciar arranca la configuración inicial en segundo plano.
+
+<a name="SetupService.Network"></a>
+### func \(\*SetupService\) [Network](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L134>)
+
+```go
+func (s *SetupService) Network() domain.NetworkConfig
+```
+
+Network retorna la red host\-only detectada o derivada.
+
+<a name="SetupService.Reiniciar"></a>
+### func \(\*SetupService\) [Reiniciar](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L312>)
+
+```go
+func (s *SetupService) Reiniciar(ctx context.Context) error
+```
+
+Reiniciar elimina las VMs base, limpia el progreso y vuelve a detectar el entorno.
+
+<a name="SetupService.Subscribe"></a>
+### func \(\*SetupService\) [Subscribe](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L148>)
+
+```go
+func (s *SetupService) Subscribe() (<-chan domain.SetupState, func())
+```
+
+Subscribe registra un observador del estado y retorna el canal y su cancelación.
 
 Generated by [gomarkdoc](<https://github.com/princjef/gomarkdoc>)

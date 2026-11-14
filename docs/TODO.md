@@ -11,8 +11,9 @@ Diseñar e implementar un entorno local automatizado para el aprovisionamiento y
 - [x] **OE3:** Automatizar el despliegue de las páginas o aplicaciones web solicitadas por el usuario a partir de archivos `.zip` en instancias Apache con discos en modo multiconexión.
 
 ## 1. Infraestructura Base y Virtualización
+> Automatizable desde el preparación de primer arranque (`docs/setup-inicial.md`, `/api/setup/iniciar`).
 - [ ] Desplegar y configurar la máquina virtual dedicada `ns` (Debian 13.0 CLI).
-  - [ ] Asignar IP fija `192.168.10.10/24` en la red interna `cloudnet`.
+  - [ ] Usar la subred host-only asignada por VirtualBox (DNS derivado en `.10`).
   - [ ] Instalar y configurar Bind9 (`named`) para la zona `cloud.local.`.
   - [ ] Habilitar actualizaciones dinámicas mediante TSIG (`nsupdate`) o scripts con clave SSH.
 - [ ] Configurar la máquina virtual plantilla base `ApacheServer` (Debian 13.0 CLI).
@@ -61,6 +62,10 @@ Diseñar e implementar un entorno local automatizado para el aprovisionamiento y
 - [x] Plantilla del informe IEEEtran en LaTeX (`docs/informe/`).
 - [x] Compilar informe en PDF (`task informe`, `docs/informe/main.pdf`).
 - [x] Migrar `.golangci.yml` al esquema v2 (golangci-lint 2.x) y resolver los hallazgos de `errcheck`.
+- [x] Diseñar el configuración inicial (`docs/setup-inicial.md`) con contrato HTTP y pasos.
+- [x] Implementar la preparación: backend (`services.SetupService`, `adapters/provisioner`), endpoints y ventana de primer arranque con progreso por pasos.
+- [x] Alinear el adaptador `vbox` con la realidad: red host-only y discos diferenciales explícitos.
+- [ ] Ejecutar la preparación en el host y registrar las evidencias (ISO, VMs, multiattach, Bind9 resolviendo).
 - [ ] Redactar detalles finales del informe tras desplegar el laboratorio físico.
 - [ ] Tomar capturas de pantalla de evidencias y almacenarlas en `docs/informe/images/`.
 

@@ -15,7 +15,11 @@ Package ports define los contratos de interfaz que comunican el núcleo de la ap
 - [type EventLogger](<#EventLogger>)
 - [type Executor](<#Executor>)
 - [type Hypervisor](<#Hypervisor>)
+- [type ImageStore](<#ImageStore>)
+- [type NetworkInfoProvider](<#NetworkInfoProvider>)
+- [type ProgressFunc](<#ProgressFunc>)
 - [type Repository](<#Repository>)
+- [type SetupProvisioner](<#SetupProvisioner>)
 
 
 <a name="Deployer"></a>
@@ -99,6 +103,41 @@ type Hypervisor interface {
 }
 ```
 
+<a name="ImageStore"></a>
+## type [ImageStore](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/ports/setup.go#L65-L71>)
+
+ImageStore localiza o descarga la imagen ISO del sistema invitado.
+
+```go
+type ImageStore interface {
+    // Locate busca una ISO compatible en el directorio indicado.
+    Locate(ctx context.Context, dir string) (string, bool)
+
+    // Download descarga la ISO desde url y retorna la ruta final.
+    Download(ctx context.Context, url, dir string, progress ProgressFunc) (string, error)
+}
+```
+
+<a name="NetworkInfoProvider"></a>
+## type [NetworkInfoProvider](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/ports/setup.go#L60-L62>)
+
+NetworkInfoProvider expone la red host\-only ya detectada.
+
+```go
+type NetworkInfoProvider interface {
+    Network() domain.NetworkConfig
+}
+```
+
+<a name="ProgressFunc"></a>
+## type [ProgressFunc](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/ports/setup.go#L15>)
+
+ProgressFunc reporta el avance de una operación larga. Un porcentaje negativo indica progreso indeterminado y el mensaje describe la actividad en curso.
+
+```go
+type ProgressFunc func(percent int, message string)
+```
+
 <a name="Repository"></a>
 ## type [Repository](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/ports/repository.go#L13-L25>)
 
@@ -117,6 +156,54 @@ type Repository interface {
 
     // Delete elimina la instancia del repositorio de datos.
     Delete(ctx context.Context, id string) error
+}
+```
+
+<a name="SetupProvisioner"></a>
+## type [SetupProvisioner](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/ports/setup.go#L18-L57>)
+
+SetupProvisioner abstrae la preparación real de la infraestructura del laboratorio.
+
+```go
+type SetupProvisioner interface {
+    // Inspect detecta el estado actual del host sin modificarlo.
+    Inspect(ctx context.Context, cfg domain.SetupConfig) (domain.EnvironmentStatus, error)
+
+    // EnsureNetwork garantiza una red host-only y retorna su configuración real
+    // (interfaz, IP del anfitrión, DNS y rango DHCP derivados de esa subred).
+    EnsureNetwork(ctx context.Context, cfg domain.SetupConfig) (domain.NetworkConfig, error)
+
+    // Network describe la red host-only existente sin modificarla.
+    Network(ctx context.Context) (domain.NetworkConfig, error)
+
+    // CreateVM registra una máquina virtual, convierte la imagen base a VDI y
+    // conecta el disco. Retorna la ruta del disco creado.
+    CreateVM(ctx context.Context, cfg domain.SetupConfig, vmName, netInterface, rawPath string) (string, error)
+
+    // CreateSeedISO genera la ISO NoCloud con user-data y meta-data.
+    CreateSeedISO(ctx context.Context, cfg domain.SetupConfig, vmName, userData, metaData string) (string, error)
+
+    // StartSeedBoot conecta la ISO semilla y arranca la máquina en headless.
+    StartSeedBoot(ctx context.Context, cfg domain.SetupConfig, vmName, seedISO string) error
+
+    // WaitGuestReady espera a que Guest Additions y la red estén disponibles,
+    // reportando hitos reales del invitado mientras tanto.
+    WaitGuestReady(ctx context.Context, vmName string, timeout time.Duration, progress ...ProgressFunc) error
+
+    // RunGuestScript copia un script local al invitado y lo ejecuta como root con
+    // los argumentos indicados.
+    RunGuestScript(ctx context.Context, cfg domain.SetupConfig, vmName, localScript string, args ...string) error
+
+    // ReserveDHCPAddress fija una dirección IP para la MAC de la VM indicada.
+    ReserveDHCPAddress(ctx context.Context, cfg domain.SetupConfig, vmName, ip string) error
+
+    // MarkBaseMultiattach apaga la plantilla, marca su disco como multiconexión y
+    // retorna la ruta del disco base.
+    MarkBaseMultiattach(ctx context.Context, cfg domain.SetupConfig, vmName string) (string, error)
+
+    // ResetEnvironment elimina las VMs base y sus semillas para reiniciar la
+    // preparación. No borra la imagen descargada ni la red.
+    ResetEnvironment(ctx context.Context, cfg domain.SetupConfig) error
 }
 ```
 

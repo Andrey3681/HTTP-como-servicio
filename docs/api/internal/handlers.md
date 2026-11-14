@@ -15,6 +15,7 @@ Package handlers contiene los adaptadores primarios que exponen la API REST y ge
 - [func JSON\(w http.ResponseWriter, statusCode int, data any\)](<#JSON>)
 - [func Logger\(next http.Handler\) http.Handler](<#Logger>)
 - [func Recoverer\(next http.Handler\) http.Handler](<#Recoverer>)
+- [func RequireSetup\(setup SetupStateProvider\) func\(http.Handler\) http.Handler](<#RequireSetup>)
 - [type DnsHandler](<#DnsHandler>)
   - [func NewDnsHandler\(dnsProvider ports.DnsProvider, zone string, logger ports.EventLogger\) \*DnsHandler](<#NewDnsHandler>)
   - [func \(h \*DnsHandler\) HandleHealth\(w http.ResponseWriter, r \*http.Request\)](<#DnsHandler.HandleHealth>)
@@ -25,10 +26,18 @@ Package handlers contiene los adaptadores primarios que exponen la API REST y ge
   - [func \(h \*InstanceHandler\) HandleInstance\(w http.ResponseWriter, r \*http.Request\)](<#InstanceHandler.HandleInstance>)
   - [func \(h \*InstanceHandler\) HandleInstances\(w http.ResponseWriter, r \*http.Request\)](<#InstanceHandler.HandleInstances>)
 - [type LogsHandler](<#LogsHandler>)
-  - [func NewLogsHandler\(broker \*logging.Broker\) \*LogsHandler](<#NewLogsHandler>)
+  - [func NewLogsHandler\(broker \*logging.Broker, done ...\<\-chan struct\{\}\) \*LogsHandler](<#NewLogsHandler>)
   - [func \(h \*LogsHandler\) HandleLogs\(w http.ResponseWriter, r \*http.Request\)](<#LogsHandler.HandleLogs>)
   - [func \(h \*LogsHandler\) HandleStream\(w http.ResponseWriter, r \*http.Request\)](<#LogsHandler.HandleStream>)
 - [type Response](<#Response>)
+- [type SetupHandler](<#SetupHandler>)
+  - [func NewSetupHandler\(setup \*services.SetupService, done ...\<\-chan struct\{\}\) \*SetupHandler](<#NewSetupHandler>)
+  - [func \(h \*SetupHandler\) HandleConfigurar\(w http.ResponseWriter, r \*http.Request\)](<#SetupHandler.HandleConfigurar>)
+  - [func \(h \*SetupHandler\) HandleEstado\(w http.ResponseWriter, r \*http.Request\)](<#SetupHandler.HandleEstado>)
+  - [func \(h \*SetupHandler\) HandleIniciar\(w http.ResponseWriter, r \*http.Request\)](<#SetupHandler.HandleIniciar>)
+  - [func \(h \*SetupHandler\) HandleReiniciar\(w http.ResponseWriter, r \*http.Request\)](<#SetupHandler.HandleReiniciar>)
+  - [func \(h \*SetupHandler\) HandleStream\(w http.ResponseWriter, r \*http.Request\)](<#SetupHandler.HandleStream>)
+- [type SetupStateProvider](<#SetupStateProvider>)
 
 
 <a name="CORS"></a>
@@ -75,6 +84,15 @@ func Recoverer(next http.Handler) http.Handler
 ```
 
 Recoverer middleware captura pánicos no controlados y responde un error 500 limpio.
+
+<a name="RequireSetup"></a>
+## func [RequireSetup](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/setup_guard.go#L21>)
+
+```go
+func RequireSetup(setup SetupStateProvider) func(http.Handler) http.Handler
+```
+
+RequireSetup bloquea las operaciones que modifican el laboratorio mientras la configuración inicial no haya finalizado. Las lecturas y los endpoints del propia preparación permanecen disponibles.
 
 <a name="DnsHandler"></a>
 ## type [DnsHandler](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/dns_handler.go#L15-L19>)
@@ -165,7 +183,7 @@ func (h *InstanceHandler) HandleInstances(w http.ResponseWriter, r *http.Request
 HandleInstances enruta las peticiones de colección \(/api/instancias\).
 
 <a name="LogsHandler"></a>
-## type [LogsHandler](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/logs_handler.go#L28-L30>)
+## type [LogsHandler](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/logs_handler.go#L28-L31>)
 
 LogsHandler atiende los endpoints de consulta, limpieza y streaming de logs.
 
@@ -176,16 +194,16 @@ type LogsHandler struct {
 ```
 
 <a name="NewLogsHandler"></a>
-### func [NewLogsHandler](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/logs_handler.go#L33>)
+### func [NewLogsHandler](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/logs_handler.go#L35>)
 
 ```go
-func NewLogsHandler(broker *logging.Broker) *LogsHandler
+func NewLogsHandler(broker *logging.Broker, done ...<-chan struct{}) *LogsHandler
 ```
 
-NewLogsHandler crea un nuevo LogsHandler respaldado por el broker indicado.
+NewLogsHandler crea un nuevo LogsHandler respaldado por el broker indicado. El canal opcional done permite cerrar los streams SSE durante el apagado.
 
 <a name="LogsHandler.HandleLogs"></a>
-### func \(\*LogsHandler\) [HandleLogs](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/logs_handler.go#L38>)
+### func \(\*LogsHandler\) [HandleLogs](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/logs_handler.go#L44>)
 
 ```go
 func (h *LogsHandler) HandleLogs(w http.ResponseWriter, r *http.Request)
@@ -194,7 +212,7 @@ func (h *LogsHandler) HandleLogs(w http.ResponseWriter, r *http.Request)
 HandleLogs enruta operaciones de colección de logs \(/api/logs\): listado \(GET\) y limpieza \(DELETE\).
 
 <a name="LogsHandler.HandleStream"></a>
-### func \(\*LogsHandler\) [HandleStream](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/logs_handler.go#L95>)
+### func \(\*LogsHandler\) [HandleStream](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/logs_handler.go#L101>)
 
 ```go
 func (h *LogsHandler) HandleStream(w http.ResponseWriter, r *http.Request)
@@ -212,6 +230,82 @@ type Response struct {
     Mensaje string `json:"mensaje,omitempty"`
     Datos   any    `json:"datos,omitempty"`
     Total   int    `json:"total,omitempty"`
+}
+```
+
+<a name="SetupHandler"></a>
+## type [SetupHandler](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/setup_handler.go#L18-L21>)
+
+SetupHandler expone el configuración inicial.
+
+```go
+type SetupHandler struct {
+    // contains filtered or unexported fields
+}
+```
+
+<a name="NewSetupHandler"></a>
+### func [NewSetupHandler](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/setup_handler.go#L25>)
+
+```go
+func NewSetupHandler(setup *services.SetupService, done ...<-chan struct{}) *SetupHandler
+```
+
+NewSetupHandler crea el manejador de la preparación sobre el servicio indicado. El canal opcional done permite cerrar los streams SSE durante el apagado.
+
+<a name="SetupHandler.HandleConfigurar"></a>
+### func \(\*SetupHandler\) [HandleConfigurar](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/setup_handler.go#L43>)
+
+```go
+func (h *SetupHandler) HandleConfigurar(w http.ResponseWriter, r *http.Request)
+```
+
+HandleConfigurar valida y guarda los datos del formulario \(/api/setup/configuracion\).
+
+<a name="SetupHandler.HandleEstado"></a>
+### func \(\*SetupHandler\) [HandleEstado](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/setup_handler.go#L34>)
+
+```go
+func (h *SetupHandler) HandleEstado(w http.ResponseWriter, r *http.Request)
+```
+
+HandleEstado responde la instantánea actual de la preparación \(/api/setup/estado\).
+
+<a name="SetupHandler.HandleIniciar"></a>
+### func \(\*SetupHandler\) [HandleIniciar](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/setup_handler.go#L64>)
+
+```go
+func (h *SetupHandler) HandleIniciar(w http.ResponseWriter, r *http.Request)
+```
+
+HandleIniciar arranca la configuración inicial \(/api/setup/iniciar\).
+
+<a name="SetupHandler.HandleReiniciar"></a>
+### func \(\*SetupHandler\) [HandleReiniciar](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/setup_handler.go#L86>)
+
+```go
+func (h *SetupHandler) HandleReiniciar(w http.ResponseWriter, r *http.Request)
+```
+
+HandleReiniciar elimina las VMs base y reinicia la preparación \(/api/setup/reiniciar\).
+
+<a name="SetupHandler.HandleStream"></a>
+### func \(\*SetupHandler\) [HandleStream](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/setup_handler.go#L103>)
+
+```go
+func (h *SetupHandler) HandleStream(w http.ResponseWriter, r *http.Request)
+```
+
+HandleStream entrega el estado de la preparación en tiempo real \(/api/setup/stream\).
+
+<a name="SetupStateProvider"></a>
+## type [SetupStateProvider](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/setup_guard.go#L14-L16>)
+
+SetupStateProvider expone el estado del configuración inicial.
+
+```go
+type SetupStateProvider interface {
+    Estado() domain.SetupState
 }
 ```
 
