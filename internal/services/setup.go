@@ -55,6 +55,7 @@ type SetupService struct {
 	input        domain.SetupInput
 	network      domain.NetworkConfig
 	sshPublicKey string
+	sshReady     map[string]bool
 	completed    map[domain.SetupStepID]bool
 	baseDisk     string
 	progressLog  map[domain.SetupStepID]time.Time
@@ -71,6 +72,7 @@ func NewSetupService(cfg domain.SetupConfig, prov ports.SetupProvisioner, images
 		logger:      logger,
 		stateFile:   stateFile,
 		completed:   make(map[domain.SetupStepID]bool),
+		sshReady:    make(map[string]bool),
 		progressLog: make(map[domain.SetupStepID]time.Time),
 		subs:        make(map[int]chan domain.SetupState),
 		state: domain.SetupState{
@@ -194,7 +196,7 @@ func (s *SetupService) updateStep(id domain.SetupStepID, status domain.SetupStep
 			continue
 		}
 		s.state.Pasos[i].Estado = status
-		if progress >= 0 {
+		if progress >= -1 {
 			s.state.Pasos[i].Progreso = progress
 		}
 		if message != "" {
@@ -262,6 +264,9 @@ func (s *SetupService) ActualizarDeteccion(ctx context.Context) error {
 		for i := range s.state.Pasos {
 			s.state.Pasos[i].Estado = domain.StepCompleted
 			s.state.Pasos[i].Progreso = 100
+			if s.state.Pasos[i].Mensaje == "" {
+				s.state.Pasos[i].Mensaje = "Completado"
+			}
 		}
 		s.completed = map[domain.SetupStepID]bool{}
 		for _, step := range s.state.Pasos {
@@ -455,7 +460,7 @@ func (s *SetupService) runSteps(ctx context.Context, ids []domain.SetupStepID, b
 			}
 			continue
 		}
-		s.track(res.id, domain.StepCompleted, 100, "")
+		s.track(res.id, domain.StepCompleted, 100, "Completado")
 	}
 	return firstErr
 }
@@ -591,16 +596,16 @@ func (s *SetupService) runStep(ctx context.Context, id domain.SetupStepID, baseV
 		if err != nil {
 			return err
 		}
-		if err := s.prov.WaitGuestReady(ctx, cfg.DNSVMName, cfg.InstallTimeout, s.progressFor(id)); err != nil {
+		if sshOK {
+			return nil
+		}
+		if err := s.prov.WaitGuestReady(ctx, cfg.DNSVMName, 10*time.Minute, s.progressFor(id)); err != nil {
 			return err
 		}
-		if !sshOK {
-			return s.verifyCloudInit(ctx, id, cfg, cfg.DNSVMName)
-		}
-		return nil
+		return s.verifyCloudInit(ctx, id, cfg, cfg.DNSVMName)
 
 	case domain.SetupStepDNSConfig:
-		out, err := s.prov.RunGuestScript(ctx, cfg, cfg.DNSVMName, filepath.Join("scripts", "guest-bind9.sh"), network.DNSIP, network.CIDR)
+		out, err := s.runGuestScript(ctx, cfg, cfg.DNSVMName, network.DNSIP, filepath.Join("scripts", "guest-bind9.sh"), network.DNSIP, network.CIDR)
 		s.logGuestOutput(out)
 		return err
 
@@ -634,16 +639,16 @@ func (s *SetupService) runStep(ctx context.Context, id domain.SetupStepID, baseV
 		if err != nil {
 			return err
 		}
-		if err := s.prov.WaitGuestReady(ctx, cfg.BaseVMName, cfg.InstallTimeout, s.progressFor(id)); err != nil {
+		if sshOK {
+			return nil
+		}
+		if err := s.prov.WaitGuestReady(ctx, cfg.BaseVMName, 10*time.Minute, s.progressFor(id)); err != nil {
 			return err
 		}
-		if !sshOK {
-			return s.verifyCloudInit(ctx, id, cfg, cfg.BaseVMName)
-		}
-		return nil
+		return s.verifyCloudInit(ctx, id, cfg, cfg.BaseVMName)
 
 	case domain.SetupStepBaseConfig:
-		out, err := s.prov.RunGuestScript(ctx, cfg, cfg.BaseVMName, filepath.Join("scripts", "guest-apache.sh"))
+		out, err := s.runGuestScript(ctx, cfg, cfg.BaseVMName, network.BaseIP, filepath.Join("scripts", "guest-apache.sh"))
 		s.logGuestOutput(out)
 		return err
 
@@ -755,31 +760,134 @@ func (s *SetupService) resolveBaseVDI(ctx context.Context, base *string, progres
 	return path, nil
 }
 
+// runGuestScript ejecuta un script de configuración por SSH y, si SSH falla,
+// recurre a guestcontrol como respaldo.
+func (s *SetupService) runGuestScript(ctx context.Context, cfg domain.SetupConfig, vmName, ip, script string, args ...string) (string, error) {
+	s.mu.Lock()
+	ready, known := s.sshReady[vmName]
+	s.mu.Unlock()
+	// Desconocido (p. ej. tras reanudar) se intenta por SSH; solo se usa
+	// guestcontrol cuando la prueba de SSH ya falló en esta ejecución.
+	if (!known || ready) && ip != "" {
+		out, err := s.prov.RunScriptSSH(ctx, cfg, ip, script, args...)
+		if err == nil {
+			return out, nil
+		}
+		if known {
+			return out, err
+		}
+		s.log("WARN", "SSH falló al ejecutar "+filepath.Base(script)+" en "+vmName+"; se intenta con Guest Additions: "+err.Error(), map[string]any{"instancia": vmName})
+	}
+	return s.prov.RunGuestScript(ctx, cfg, vmName, script, args...)
+}
+
 // monitorCloudInitSSH se conecta por SSH en cuanto el invitado la acepta, espera
-// a que cloud-init termine y publica su estado y registro. Retorna false si SSH
-// no está disponible (se usará Guest Additions como respaldo).
-func (s *SetupService) monitorCloudInitSSH(ctx context.Context, _ domain.SetupStepID, cfg domain.SetupConfig, vmName, ip string) (bool, error) {
+// a que cloud-init termine publicando el avance y su registro. Retorna false si
+// SSH no está disponible (se usará Guest Additions como respaldo).
+func (s *SetupService) monitorCloudInitSSH(ctx context.Context, id domain.SetupStepID, cfg domain.SetupConfig, vmName, ip string) (bool, error) {
 	keyPath := cfg.SSHKeyPath
 	if keyPath == "" {
 		keyPath = filepath.Join(cfg.SSHDir, "id_ed25519")
 	}
-	if err := s.prov.WaitSSH(ctx, ip, cfg.GuestUser, keyPath, 10*time.Minute); err != nil {
-		s.log("WARN", "SSH no disponible en "+ip+"; se continúa con Guest Additions: "+err.Error(), map[string]any{"instancia": vmName})
-		return false, nil
+	progress := s.progressFor(id)
+	sshStarted := time.Now()
+	sshTimeout := 5 * time.Minute
+	if cfg.InstallTimeout > 0 && cfg.InstallTimeout < sshTimeout {
+		sshTimeout = cfg.InstallTimeout
 	}
+	sshDeadline := sshStarted.Add(sshTimeout)
+	var lastErr error
+	for {
+		if _, err := s.prov.RunSSH(ctx, ip, cfg.GuestUser, keyPath, "true"); err == nil {
+			break
+		} else {
+			lastErr = err
+		}
+		elapsed := time.Since(sshStarted)
+		progress(-1, fmt.Sprintf("Esperando SSH en %s · %dm %02ds", ip, int(elapsed.Minutes()), int(elapsed.Seconds())%60))
+		if time.Now().After(sshDeadline) {
+			s.setSSHReady(vmName, false)
+			msg := "SSH no disponible en " + ip + "; se continúa con Guest Additions"
+			if lastErr != nil {
+				msg += ": " + lastErr.Error()
+			}
+			s.log("WARN", msg, map[string]any{"instancia": vmName})
+			return false, nil
+		}
+		wait := 5 * time.Second
+		if remaining := time.Until(sshDeadline); remaining < wait {
+			wait = remaining
+		}
+		if wait <= 0 {
+			continue
+		}
+		select {
+		case <-ctx.Done():
+			return false, ctx.Err()
+		case <-time.After(wait):
+		}
+	}
+	s.setSSHReady(vmName, true)
 	s.log("INFO", "SSH disponible en "+ip, map[string]any{"instancia": vmName})
 
-	// Bloquea hasta que cloud-init termine dentro del invitado.
-	_, _ = s.prov.RunSSH(ctx, ip, cfg.GuestUser, keyPath, "cloud-init status --wait")
+	started := time.Now()
+	timeout := cfg.InstallTimeout
+	if timeout <= 0 {
+		timeout = 45 * time.Minute
+	}
+	deadline := started.Add(timeout)
+
+	for {
+		statusOut, _ := s.prov.RunSSH(ctx, ip, cfg.GuestUser, keyPath, "cloud-init status")
+		if strings.Contains(statusOut, "status: error") {
+			_, _ = s.prov.RunSSH(ctx, ip, cfg.GuestUser, keyPath, "cloud-init status --long")
+			s.logCloudInitLog(ctx, cfg, ip, keyPath)
+			s.logGuestDiagnostics(ctx, cfg, ip, keyPath)
+			s.log("INFO", statusOut, map[string]any{"instancia": vmName})
+			return true, fmt.Errorf("cloud-init terminó con error en %s; revisa el registro", vmName)
+		}
+		if strings.Contains(statusOut, "status: done") {
+			break
+		}
+		elapsed := time.Since(started)
+		progress(-1, fmt.Sprintf("cloud-init en ejecución · %dm %02ds", int(elapsed.Minutes()), int(elapsed.Seconds())%60))
+		if time.Now().After(deadline) {
+			s.logCloudInitLog(ctx, cfg, ip, keyPath)
+			return true, fmt.Errorf("cloud-init no terminó en %s sobre %s", timeout, vmName)
+		}
+		select {
+		case <-ctx.Done():
+			return true, ctx.Err()
+		case <-time.After(10 * time.Second):
+		}
+	}
+
+	progress(70, "cloud-init terminó; recopilando registro")
 	statusOut, _ := s.prov.RunSSH(ctx, ip, cfg.GuestUser, keyPath, "cloud-init status --long")
 	s.logGuestOutput(statusOut)
-	logOut, _ := s.prov.RunSSH(ctx, ip, cfg.GuestUser, keyPath, "tail -n 60 /var/log/cloud-init-output.log")
-	s.logGuestOutput(logOut)
-
-	if strings.Contains(statusOut, "status: error") {
-		return true, fmt.Errorf("cloud-init terminó con error en %s; revisa el registro", vmName)
-	}
+	s.logCloudInitLog(ctx, cfg, ip, keyPath)
 	return true, nil
+}
+
+// setSSHReady registra si el invitado quedó accesible por SSH.
+func (s *SetupService) setSSHReady(vmName string, ready bool) {
+	s.mu.Lock()
+	s.sshReady[vmName] = ready
+	s.mu.Unlock()
+}
+
+// logCloudInitLog publica el final del registro de cloud-init del invitado.
+func (s *SetupService) logCloudInitLog(ctx context.Context, cfg domain.SetupConfig, ip, keyPath string) {
+	logOut, _ := s.prov.RunSSH(ctx, ip, cfg.GuestUser, keyPath, "sudo -n tail -n 60 /var/log/cloud-init-output.log")
+	s.logGuestOutput(logOut)
+}
+
+// logGuestDiagnostics publica red, netplan y apt del invitado para explicar un
+// fallo de cloud-init.
+func (s *SetupService) logGuestDiagnostics(ctx context.Context, cfg domain.SetupConfig, ip, keyPath string) {
+	out, _ := s.prov.RunSSH(ctx, ip, cfg.GuestUser, keyPath,
+		"echo '--- red ---'; ip -br a; ip r; echo '--- netplan ---'; sudo -n cat /etc/netplan/*.yaml 2>/dev/null; echo '--- apt ---'; sudo -n tail -n 25 /var/log/apt/term.log 2>/dev/null")
+	s.logGuestOutput(out)
 }
 
 // verifyCloudInit espera a que cloud-init termine y publica su registro.
@@ -842,6 +950,13 @@ func (s *SetupService) loadRecord() {
 	s.completed = make(map[domain.SetupStepID]bool, len(record.PasosCompletos))
 	for _, id := range record.PasosCompletos {
 		s.completed[id] = true
+	}
+	for i := range s.state.Pasos {
+		if s.completed[s.state.Pasos[i].ID] {
+			s.state.Pasos[i].Estado = domain.StepCompleted
+			s.state.Pasos[i].Progreso = 100
+			s.state.Pasos[i].Mensaje = "Completado"
+		}
 	}
 	s.baseDisk = record.BaseDiskPath
 	if record.Network != nil {

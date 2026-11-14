@@ -11,7 +11,7 @@ Este documento describe cómo HTTPaaS prepara el laboratorio la primera vez: des
 | VM | Rol | Disco |
 |---|---|---|
 | `ns` | Bind9 para `cloud.local.` y actualizaciones dinámicas | Copia propia de la imagen (VDI) |
-| `ApacheServer` | Plantilla: Apache2, Guest Additions y `/var/www/vhosts` | Copia propia en modo `multiattach`; las instancias son discos diferenciales |
+| `ApacheServer` | Plantilla: Apache2 y `/var/www/vhosts` | Copia propia en modo `multiattach`; las instancias son discos diferenciales |
 
 Una sola imagen base: `debian-13-generic-amd64.raw`. Se descarga solo si no existe en el directorio de datos.
 
@@ -22,8 +22,8 @@ Una sola imagen base: `debian-13-generic-amd64.raw`. Se descarga solo si no exis
 1. **Imagen:** descarga la `.raw` oficial (~3 GB) en `<app-dir>/raw/`. Si ya está, se reutiliza.
 2. **Red:** reutiliza la interfaz host-only de VirtualBox y configura DHCP en su subred. El DHCP no anuncia puerta de enlace ni DNS; las VM base llevan además una NIC NAT para descargar paquetes durante la preparación.
 3. **VM `ns`:** duplica el VDI base (convertido una sola vez), redimensiona el disco, crea la ISO semilla NoCloud y arranca.
-4. **Primer arranque de `ns`:** cloud-init crea el usuario (con clave SSH), instala los paquetes y Guest Additions. El orquestador espera SSH y ejecuta `cloud-init status --wait`, publicando el estado y el final de `/var/log/cloud-init-output.log`.
-5. **Configuración de Bind9:** el orquestador ejecuta `scripts/guest-bind9.sh` con la IP del DNS y el CIDR derivados.
+4. **Primer arranque de `ns`:** cloud-init crea el usuario con la clave SSH e instala los paquetes. El orquestador espera SSH, consulta `cloud-init status` hasta que termine y publica el estado y el final de `/var/log/cloud-init-output.log`.
+5. **Configuración de Bind9:** el orquestador ejecuta `scripts/guest-bind9.sh` por SSH con la IP del DNS y el CIDR derivados.
 6. **VM plantilla:** mismo proceso con su propia semilla.
 7. **Disco multiconexión:** desconecta, marca `multiattach`, reconecta y guarda la ruta.
 8. **Verificación final.**
@@ -74,17 +74,16 @@ genisoimage -quiet -output <vm>-seed.iso -volid cidata -joliet -rock <vm>/user-d
 
 Cada semilla instala exactamente lo necesario:
 
-- **`ns`:** `bind9`, `bind9-utils`, `bind9-dnsutils`, `virtualbox-guest-additions-iso`, `bzip2`, `tar`, `build-essential`, `linux-headers-amd64`.
-- **Plantilla:** `apache2`, `unzip`, `virtualbox-guest-additions-iso`, `bzip2`, `tar`, `build-essential`, `linux-headers-amd64`.
+- **`ns`:** `bind9`, `bind9-utils`, `bind9-dnsutils`.
+- **Plantilla:** `apache2`, `unzip`.
 
-Guest Additions se compilan desde la ISO que instala el paquete Debian. `unzip` es necesario para extraer el contenido `.zip` de cada instancia.
+`unzip` es necesario para extraer el contenido `.zip` de cada instancia. La imagen cloud ya incluye el módulo `vboxguest`; no se compilan Guest Additions porque el orquestador no las necesita.
 
-La semilla configura **ambos adaptadores por DHCP** (`enp0s3` host-only y `enp0s8` NAT) para que `apt` tenga ruta y DNS durante la preparación. Después de Guest Additions, el orquestador ejecuta `cloud-init status --wait`, publica el estado y las últimas líneas de `/var/log/cloud-init-output.log` en el registro, y falla el paso si cloud-init no terminó en `done`.
+La semilla escribe un netplan propio (`/etc/netplan/99-httpaas.yaml`) y desactiva el renderizador de cloud-init, para garantizar que **ambos adaptadores** suban por DHCP: `enp0s3` host-only (servicio) y `enp0s8` NAT (solo durante la preparación). También desactiva IPv6 en NAT —VirtualBox anuncia una ruta sin salida real— y fuerza IPv4 en APT. Los repositorios se limitan a binarios (`Types: deb`) y a `trixie`, `trixie-updates` y `trixie-security`, lo que reduce la descarga de índices de minutos a segundos. El orquestador consulta `cloud-init status` cada 10 segundos por SSH y publica el tiempo transcurrido con barra indeterminada (cloud-init no expone un porcentaje real). Al terminar registra `cloud-init status --long` y las últimas 60 líneas de `/var/log/cloud-init-output.log`; si el estado es `error`, falla el paso y publica red, netplan y el registro de APT como diagnóstico. Los scripts de Bind9 y Apache se ejecutan por SSH con `sudo`, con reintentos ante cortes transitorios de conexión.
 
 Las semillas además:
 
-- habilitan `contrib` y `non-free` para el paquete de Guest Additions;
-- crean el usuario con `sudo` sin contraseña (requisito de `guestcontrol`) y la clave SSH autorizada;
+- crean el usuario con `sudo` sin contraseña y la clave SSH autorizada;
 - dejan la red en DHCP (la reserva de IP se hace por MAC desde el host).
 
 ---
@@ -147,6 +146,6 @@ La aplicación no lee ni escribe fuera de este directorio.
 
 - `POST /api/setup/configuracion` valida usuario y contraseña y no persiste la contraseña.
 - La imagen se reutiliza si existe y solo se descarga si falta.
-- Cada VM arranca con su semilla, obtiene IP por DHCP y Guest Additions responde.
+- Cada VM arranca con su semilla, obtiene IP por DHCP y acepta SSH con la clave generada.
 - Bind9 resuelve `ns.cloud.local` y la plantilla queda en `multiattach`.
 - Reiniciar el proceso retoma desde el primer paso no completado.

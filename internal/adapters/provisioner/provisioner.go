@@ -80,8 +80,12 @@ func (p *Provisioner) Inspect(ctx context.Context, cfg domain.SetupConfig) (doma
 
 	if status.HasBaseVM {
 		if disk, err := p.vmDiskPath(ctx, cfg.BaseVMName); err == nil && disk != "" {
-			status.BaseDiskPath = disk
-			if out, err := p.vbox(ctx, "showmediuminfo", "disk", disk); err == nil {
+			base, err := p.resolveBaseDisk(ctx, disk)
+			if err != nil {
+				return status, err
+			}
+			status.BaseDiskPath = base
+			if out, err := p.vbox(ctx, "showmediuminfo", "disk", base); err == nil {
 				status.BaseDiskMultiattach = IsMultiattach(out)
 			}
 		}
@@ -144,9 +148,15 @@ func (p *Provisioner) ensureDHCP(ctx context.Context, network domain.NetworkConf
 	}
 	networkName := "HostInterfaceNetworking-" + network.Interface
 	exists := strings.Contains(out, networkName)
+	if exists {
+		// Se recrea para descartar reservas de máquinas que ya no existen.
+		if _, _, err := p.executor.Execute(ctx, vboxBinary, "dhcpserver", "remove", "--interface="+network.Interface); err != nil {
+			return fmt.Errorf("no se pudo limpiar el DHCP de %s: %w", network.Interface, err)
+		}
+	}
 
 	args := []string{
-		"dhcpserver", "modify", "--interface=" + network.Interface,
+		"dhcpserver", "add", "--interface=" + network.Interface,
 		"--server-ip=" + network.HostIP,
 		"--netmask=" + network.Netmask,
 		"--lower-ip=" + network.DHCPLower,
@@ -154,9 +164,6 @@ func (p *Provisioner) ensureDHCP(ctx context.Context, network domain.NetworkConf
 		"--suppress-opt=3", // sin puerta de enlace en la red host-only
 		"--suppress-opt=6", // sin DNS: los invitados usan la NIC NAT durante la preparación
 		"--enable",
-	}
-	if !exists {
-		args[1] = "add"
 	}
 	_, err = p.vbox(ctx, args...)
 	return err
@@ -253,9 +260,13 @@ func (p *Provisioner) attachBaseDisk(ctx context.Context, cfg domain.SetupConfig
 	diskPath := filepath.Join(folder, vmName+".vdi")
 	if _, statErr := os.Stat(diskPath); statErr == nil {
 		// Copia previa (posiblemente registrada o con UUID duplicado): se
-		// desregistra y se descarta; el clon nuevo recibe un UUID propio.
-		_, _ = p.vbox(ctx, "closemedium", "disk", diskPath)
-		if err := os.Remove(diskPath); err != nil {
+		// desconecta, se desregistra y se descarta; el clon nuevo recibe un
+		// UUID propio.
+		_, _ = p.vbox(ctx, "storageattach", vmName,
+			"--storagectl", "SATA", "--port", "0", "--device", "0",
+			"--type", "hdd", "--medium", "none")
+		_, _, _ = p.executor.Execute(ctx, vboxBinary, "closemedium", "disk", diskPath, "--delete")
+		if err := os.Remove(diskPath); err != nil && !os.IsNotExist(err) {
 			return "", fmt.Errorf("no se pudo reemplazar el disco previo: %w", err)
 		}
 	}
@@ -436,12 +447,19 @@ func (p *Provisioner) ReserveDHCPAddress(ctx context.Context, _ domain.SetupConf
 
 // MarkBaseMultiattach apaga la plantilla, marca el disco como multiattach y lo reconecta.
 func (p *Provisioner) MarkBaseMultiattach(ctx context.Context, cfg domain.SetupConfig, vmName string) (string, error) {
-	disk, err := p.vmDiskPath(ctx, vmName)
+	attached, err := p.vmDiskPath(ctx, vmName)
 	if err != nil {
 		return "", err
 	}
-	if disk == "" {
+	if attached == "" {
 		return "", fmt.Errorf("la VM %s no tiene disco conectado", vmName)
+	}
+	disk, err := p.resolveBaseDisk(ctx, attached)
+	if err != nil {
+		return "", err
+	}
+	if out, err := p.vbox(ctx, "showmediuminfo", "disk", disk); err == nil && IsMultiattach(out) {
+		return disk, nil
 	}
 
 	_ = p.stopVM(ctx, vmName)
@@ -462,6 +480,17 @@ func (p *Provisioner) MarkBaseMultiattach(ctx context.Context, cfg domain.SetupC
 		return "", err
 	}
 
+	attached, err = p.vmDiskPath(ctx, vmName)
+	if err != nil {
+		return "", err
+	}
+	attachedBase, err := p.resolveBaseDisk(ctx, attached)
+	if err != nil {
+		return "", err
+	}
+	if attachedBase != disk {
+		return "", fmt.Errorf("la VM %s quedó con el disco %s en lugar de %s", vmName, attachedBase, disk)
+	}
 	out, err := p.vbox(ctx, "showmediuminfo", "disk", disk)
 	if err != nil {
 		return "", err
@@ -524,6 +553,30 @@ func (p *Provisioner) vmFolder(ctx context.Context, vmName string) (string, erro
 		return "", fmt.Errorf("no se pudo obtener la carpeta de la VM %s", vmName)
 	}
 	return filepath.Dir(cfgFile), nil
+}
+
+// resolveBaseDisk recorre la cadena de discos diferenciales hasta el medio base.
+func (p *Provisioner) resolveBaseDisk(ctx context.Context, disk string) (string, error) {
+	for i := 0; i < 8; i++ {
+		out, err := p.vbox(ctx, "showmediuminfo", "disk", disk)
+		if err != nil {
+			return "", err
+		}
+		parent := ParseParentUUID(out)
+		if parent == "" {
+			return disk, nil
+		}
+		hdds, err := p.vbox(ctx, "list", "hdds")
+		if err != nil {
+			return "", err
+		}
+		path := ParseMediumPath(hdds, parent)
+		if path == "" {
+			return disk, nil
+		}
+		disk = path
+	}
+	return disk, nil
 }
 
 func (p *Provisioner) vmDiskPath(ctx context.Context, vmName string) (string, error) {
@@ -624,11 +677,48 @@ func ParseCreatedInterface(output string) string {
 func ParseMachineReadableValue(output, key string) string {
 	for _, line := range strings.Split(output, "\n") {
 		line = strings.TrimSpace(line)
-		if !strings.HasPrefix(line, key+"=") {
+		var value string
+		switch {
+		case strings.HasPrefix(line, key+"="):
+			value = strings.TrimPrefix(line, key+"=")
+		case strings.HasPrefix(line, `"`+key+`"=`):
+			value = strings.TrimPrefix(line, `"`+key+`"=`)
+		default:
 			continue
 		}
-		value := strings.TrimPrefix(line, key+"=")
 		return strings.Trim(value, `"`)
+	}
+	return ""
+}
+
+// ParseParentUUID devuelve el UUID del medio padre, o "" si es un medio base.
+func ParseParentUUID(output string) string {
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "Parent UUID:") {
+			continue
+		}
+		value := strings.TrimSpace(strings.TrimPrefix(line, "Parent UUID:"))
+		if value == "base" {
+			return ""
+		}
+		return value
+	}
+	return ""
+}
+
+// ParseMediumPath busca en "list hdds" la ruta del medio con el UUID indicado.
+func ParseMediumPath(output, uuid string) string {
+	var current string
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "UUID:") {
+			current = strings.TrimSpace(strings.TrimPrefix(line, "UUID:"))
+			continue
+		}
+		if strings.HasPrefix(line, "Location:") && current == uuid {
+			return strings.TrimSpace(strings.TrimPrefix(line, "Location:"))
+		}
 	}
 	return ""
 }

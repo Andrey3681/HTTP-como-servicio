@@ -31,7 +31,7 @@ const SystemDir = "/var/lib/httpaas"
 ```
 
 <a name="ResolveAppDir"></a>
-## func [ResolveAppDir](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/config/appdir.go#L32>)
+## func [ResolveAppDir](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/config/appdir.go#L33>)
 
 ```go
 func ResolveAppDir() string
@@ -40,7 +40,7 @@ func ResolveAppDir() string
 ResolveAppDir determina el directorio de datos: variable de entorno, ruta de sistema escribible o, en su defecto, el directorio de datos del usuario.
 
 <a name="Layout"></a>
-## type [Layout](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/config/appdir.go#L21-L28>)
+## type [Layout](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/config/appdir.go#L21-L29>)
 
 Layout agrupa las rutas de datos que usa el orquestador.
 
@@ -50,13 +50,14 @@ type Layout struct {
     ISODir         string
     RawDir         string
     SeedDir        string
+    SSHDir         string
     InstancesFile  string
     SetupStateFile string
 }
 ```
 
 <a name="EnsureLayout"></a>
-### func [EnsureLayout](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/config/appdir.go#L49>)
+### func [EnsureLayout](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/config/appdir.go#L50>)
 
 ```go
 func EnsureLayout(base string) (Layout, error)

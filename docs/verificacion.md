@@ -30,7 +30,7 @@ VBoxManage list vms | grep -E '"ns"|"ApacheServer"'
 VBoxManage showvminfo ApacheServer --machinereadable | grep SATA-0-0
 VBoxManage showmediuminfo disk "<ruta-ApacheServer.vdi>" | grep -E '^Type'
 
-# Guest Additions activas en el invitado (habilita la lectura de IP)
+# Acceso SSH con la clave del laboratorio (seguimiento de cloud-init)
 VBoxManage guestproperty get ns /VirtualBox/GuestAdd/Version
 VBoxManage guestproperty get ApacheServer /VirtualBox/GuestAdd/Version
 

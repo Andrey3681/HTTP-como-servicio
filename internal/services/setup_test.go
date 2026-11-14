@@ -27,6 +27,7 @@ type fakeProvisioner struct {
 	reserveErr error
 	waitErr    error
 	scriptErr  error
+	sshErr     error
 	multiErr   error
 	baseDisk   string
 	calls      []string
@@ -66,6 +67,7 @@ func fakeNetwork() domain.NetworkConfig {
 		Netmask:   "255.255.255.0",
 		CIDR:      "192.168.57.0/24",
 		DNSIP:     "192.168.57.10",
+		BaseIP:    "192.168.57.11",
 		DHCPLower: "192.168.57.100",
 		DHCPUpper: "192.168.57.199",
 	}
@@ -121,15 +123,26 @@ func (f *fakeProvisioner) EnsureSSHKey(_ context.Context, _ domain.SetupConfig) 
 
 func (f *fakeProvisioner) WaitSSH(_ context.Context, _, _, _ string, _ time.Duration) error {
 	f.record("sshwait")
-	return nil
+	return f.sshErr
 }
 
 func (f *fakeProvisioner) RunSSH(_ context.Context, _, _, _, command string) (string, error) {
 	f.record("ssh")
+	if f.sshErr != nil {
+		return "", f.sshErr
+	}
 	if strings.Contains(command, "status --long") {
 		return "status: done\nextended_status: done", nil
 	}
+	if strings.Contains(command, "cloud-init status") {
+		return "status: done", nil
+	}
 	return "", nil
+}
+
+func (f *fakeProvisioner) RunScriptSSH(_ context.Context, _ domain.SetupConfig, _, script string, _ ...string) (string, error) {
+	f.record("sshscript:" + filepath.Base(script))
+	return "", f.scriptErr
 }
 
 func (f *fakeProvisioner) MarkBaseMultiattach(_ context.Context, _ domain.SetupConfig, name string) (string, error) {
@@ -302,11 +315,43 @@ func TestSetupService_RunsFullPipeline(t *testing.T) {
 	}
 
 	wantCalls := []string{
-		"inspect", "convert", "network", "create:ns", "seed:ns", "reserve:ns:192.168.57.10", "boot:ns", "wait:ns",
-		"script:ns:guest-bind9.sh",
-		"create:ApacheServer", "seed:ApacheServer", "boot:ApacheServer", "wait:ApacheServer",
-		"script:ApacheServer:guest-apache.sh", "multiattach:ApacheServer",
+		"inspect", "convert", "network", "create:ns", "seed:ns", "reserve:ns:192.168.57.10", "boot:ns",
+		"sshscript:guest-bind9.sh",
+		"create:ApacheServer", "seed:ApacheServer", "boot:ApacheServer",
+		"sshscript:guest-apache.sh", "multiattach:ApacheServer",
 	}
+	seen := make(map[string]int, len(prov.calls))
+	for _, call := range prov.calls {
+		seen[call]++
+	}
+	for _, want := range wantCalls {
+		if seen[want] == 0 {
+			t.Errorf("expected call %q, got %v", want, prov.calls)
+		}
+	}
+}
+
+func TestSetupService_FallsBackToGuestControlWhenSSHUnavailable(t *testing.T) {
+	prov := &fakeProvisioner{
+		inspect:  domain.EnvironmentStatus{VBoxAvailable: true, VBoxVersion: "7.2.22", Ready: true},
+		baseDisk: "/media/ApacheServer.vdi",
+		sshErr:   errors.New("ssh no disponible"),
+	}
+	cfg := testConfig(t.TempDir())
+	cfg.InstallTimeout = time.Second
+	stateFile := filepath.Join(t.TempDir(), "setup-estado.json")
+	svc := services.NewSetupService(cfg, prov, &fakeImages{found: true, path: "/isos/debian-13.iso"}, nil, stateFile)
+	configure(t, svc)
+
+	if err := svc.Iniciar(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	state := waitForIdle(t, svc)
+	if state.Error != "" {
+		t.Fatalf("unexpected error state: %s", state.Error)
+	}
+
+	wantCalls := []string{"wait:ns", "script:ns:guest-bind9.sh", "wait:ApacheServer", "script:ApacheServer:guest-apache.sh"}
 	seen := make(map[string]int, len(prov.calls))
 	for _, call := range prov.calls {
 		seen[call]++

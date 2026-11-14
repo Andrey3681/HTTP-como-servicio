@@ -38,7 +38,7 @@ zone "cloud.local" {
 EOF
 
 cat > /var/lib/bind/db.cloud.local <<EOF
-$TTL    300
+\$TTL    300
 @       IN      SOA     ns.cloud.local. admin.cloud.local. (
                               1         ; Serial
                          604800         ; Refresh

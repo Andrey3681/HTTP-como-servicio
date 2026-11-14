@@ -19,11 +19,15 @@ type fakeExecutor struct {
 	calls     []string
 	responses map[string]string
 	failOn    string
+	onCall    func(key string)
 }
 
 func (f *fakeExecutor) Execute(_ context.Context, command string, args ...string) ([]byte, []byte, error) {
 	key := strings.Join(append([]string{command}, args...), " ")
 	f.calls = append(f.calls, key)
+	if f.onCall != nil {
+		f.onCall(key)
+	}
 	if f.failOn != "" && strings.Contains(key, f.failOn) {
 		return nil, []byte("boom"), os.ErrPermission
 	}
@@ -74,6 +78,22 @@ func TestParseHelpers(t *testing.T) {
 		t.Errorf("unexpected machine value: %q", got)
 	}
 
+	quoted := "name=\"paisajes\"\n\"SATA-0-0\"=\"/home/u/VMs/paisajes/paisajes.vdi\"\n\"SATA-ImageUUID-0-0\"=\"8ceac129\"\n"
+	if got := provisioner.ParseMachineReadableValue(quoted, "SATA-0-0"); got != "/home/u/VMs/paisajes/paisajes.vdi" {
+		t.Errorf("unexpected quoted machine value: %q", got)
+	}
+
+	if got := provisioner.ParseParentUUID("Parent UUID:    base\n"); got != "" {
+		t.Errorf("expected no parent, got %q", got)
+	}
+	if got := provisioner.ParseParentUUID("Parent UUID:    ca3829ae-de90\n"); got != "ca3829ae-de90" {
+		t.Errorf("unexpected parent: %q", got)
+	}
+	hdds := "UUID: ca3829ae\nLocation: /media/base.vdi\n\nUUID: child-1\nLocation: /media/child.vdi\n"
+	if got := provisioner.ParseMediumPath(hdds, "child-1"); got != "/media/child.vdi" {
+		t.Errorf("unexpected medium path: %q", got)
+	}
+
 	if !provisioner.IsMultiattach("Type: multiattach\n") {
 		t.Error("expected multiattach detection")
 	}
@@ -108,10 +128,13 @@ func TestEnsureNetworkDerivesFromExistingInterface(t *testing.T) {
 	if exec.contains("hostonlyif ipconfig") {
 		t.Error("must not reconfigure host interfaces (requires root)")
 	}
-	if !exec.contains("dhcpserver modify --interface=vboxnet1 --server-ip=192.168.57.1") {
+	if !exec.contains("dhcpserver remove --interface=vboxnet1") {
+		t.Errorf("expected stale DHCP reservations to be cleared, got %v", exec.calls)
+	}
+	if !exec.contains("dhcpserver add --interface=vboxnet1 --server-ip=192.168.57.1") {
 		t.Errorf("expected DHCP configuration with the derived network, got %v", exec.calls)
 	}
-	if !exec.contains("--lower-ip=192.168.57.100 --upper-ip=192.168.57.199") {
+	if !exec.contains("--lower-ip=192.168.57.10 --upper-ip=192.168.57.199") {
 		t.Errorf("expected derived DHCP range, got %v", exec.calls)
 	}
 	if !exec.contains("--suppress-opt=3") || !exec.contains("--suppress-opt=6") {
@@ -212,8 +235,13 @@ func TestCreateSeedISOAndBoot(t *testing.T) {
 func TestMarkBaseMultiattach(t *testing.T) {
 	exec := &fakeExecutor{responses: map[string]string{
 		"VBoxManage showvminfo ApacheServer --machinereadable":   "CfgFile=\"/home/user/VMs/ApacheServer/ApacheServer.vbox\"\nVMState=\"poweroff\"\nSATA-0-0=\"/media/ApacheServer.vdi\"\n",
-		"VBoxManage showmediuminfo disk /media/ApacheServer.vdi": "Type: multiattach\n",
+		"VBoxManage showmediuminfo disk /media/ApacheServer.vdi": "Parent UUID:    base\nType: normal (base)\n",
 	}}
+	exec.onCall = func(key string) {
+		if strings.Contains(key, "modifymedium disk /media/ApacheServer.vdi --type multiattach") {
+			exec.responses["VBoxManage showmediuminfo disk /media/ApacheServer.vdi"] = "Parent UUID:    base\nType: multiattach\n"
+		}
+	}
 	prov := provisioner.NewProvisioner(exec)
 
 	disk, err := prov.MarkBaseMultiattach(context.Background(), setupConfig(), "ApacheServer")

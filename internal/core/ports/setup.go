@@ -48,6 +48,10 @@ type SetupProvisioner interface {
 	// los argumentos indicados y retorna su salida.
 	RunGuestScript(ctx context.Context, cfg domain.SetupConfig, vmName, localScript string, args ...string) (string, error)
 
+	// RunScriptSSH ejecuta un script local como root en el invitado mediante SSH
+	// y retorna su salida combinada.
+	RunScriptSSH(ctx context.Context, cfg domain.SetupConfig, ip, localScript string, args ...string) (string, error)
+
 	// ReserveDHCPAddress fija una dirección IP para la MAC de la VM indicada.
 	ReserveDHCPAddress(ctx context.Context, cfg domain.SetupConfig, vmName, ip string) error
 

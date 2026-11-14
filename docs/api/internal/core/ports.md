@@ -104,7 +104,7 @@ type Hypervisor interface {
 ```
 
 <a name="ImageStore"></a>
-## type [ImageStore](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/ports/setup.go#L65-L71>)
+## type [ImageStore](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/ports/setup.go#L82-L88>)
 
 ImageStore localiza o descarga la imagen ISO del sistema invitado.
 
@@ -119,7 +119,7 @@ type ImageStore interface {
 ```
 
 <a name="NetworkInfoProvider"></a>
-## type [NetworkInfoProvider](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/ports/setup.go#L60-L62>)
+## type [NetworkInfoProvider](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/ports/setup.go#L77-L79>)
 
 NetworkInfoProvider expone la red host\-only ya detectada.
 
@@ -160,7 +160,7 @@ type Repository interface {
 ```
 
 <a name="SetupProvisioner"></a>
-## type [SetupProvisioner](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/ports/setup.go#L18-L57>)
+## type [SetupProvisioner](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/ports/setup.go#L18-L74>)
 
 SetupProvisioner abstrae la preparación real de la infraestructura del laboratorio.
 
@@ -176,9 +176,13 @@ type SetupProvisioner interface {
     // Network describe la red host-only existente sin modificarla.
     Network(ctx context.Context) (domain.NetworkConfig, error)
 
-    // CreateVM registra una máquina virtual, convierte la imagen base a VDI y
-    // conecta el disco. Retorna la ruta del disco creado.
-    CreateVM(ctx context.Context, cfg domain.SetupConfig, vmName, netInterface, rawPath string) (string, error)
+    // CreateVM registra una máquina virtual, duplica el VDI base y conecta el
+    // disco. Retorna la ruta del disco creado.
+    CreateVM(ctx context.Context, cfg domain.SetupConfig, vmName, netInterface, baseVDI string) (string, error)
+
+    // ConvertToBaseVDI convierte la imagen raw en un VDI base reutilizable, una
+    // sola vez. Si ya existe, no hace nada.
+    ConvertToBaseVDI(ctx context.Context, cfg domain.SetupConfig, rawPath, baseVDI string, progress ProgressFunc) error
 
     // CreateSeedISO genera la ISO NoCloud con user-data y meta-data.
     CreateSeedISO(ctx context.Context, cfg domain.SetupConfig, vmName, userData, metaData string) (string, error)
@@ -190,9 +194,13 @@ type SetupProvisioner interface {
     // reportando hitos reales del invitado mientras tanto.
     WaitGuestReady(ctx context.Context, vmName string, timeout time.Duration, progress ...ProgressFunc) error
 
-    // RunGuestScript copia un script local al invitado y lo ejecuta como root con
-    // los argumentos indicados.
-    RunGuestScript(ctx context.Context, cfg domain.SetupConfig, vmName, localScript string, args ...string) error
+    // RunGuestScript copia un script local al invitado, lo ejecuta como root con
+    // los argumentos indicados y retorna su salida.
+    RunGuestScript(ctx context.Context, cfg domain.SetupConfig, vmName, localScript string, args ...string) (string, error)
+
+    // RunScriptSSH ejecuta un script local como root en el invitado mediante SSH
+    // y retorna su salida combinada.
+    RunScriptSSH(ctx context.Context, cfg domain.SetupConfig, ip, localScript string, args ...string) (string, error)
 
     // ReserveDHCPAddress fija una dirección IP para la MAC de la VM indicada.
     ReserveDHCPAddress(ctx context.Context, cfg domain.SetupConfig, vmName, ip string) error
@@ -204,6 +212,15 @@ type SetupProvisioner interface {
     // ResetEnvironment elimina las VMs base y sus semillas para reiniciar la
     // preparación. No borra la imagen descargada ni la red.
     ResetEnvironment(ctx context.Context, cfg domain.SetupConfig) error
+
+    // EnsureSSHKey crea el par de claves si falta y retorna la clave pública.
+    EnsureSSHKey(ctx context.Context, cfg domain.SetupConfig) (string, error)
+
+    // WaitSSH espera a que el invitado acepte conexiones SSH con la clave.
+    WaitSSH(ctx context.Context, host, user, keyPath string, timeout time.Duration) error
+
+    // RunSSH ejecuta un comando por SSH y retorna la salida combinada.
+    RunSSH(ctx context.Context, host, user, keyPath, command string) (string, error)
 }
 ```
 

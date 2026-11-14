@@ -5,6 +5,7 @@ package provisioner
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -68,6 +69,8 @@ func (p *Provisioner) RunSSH(ctx context.Context, host, user, keyPath, command s
 		"-o", "StrictHostKeyChecking=no",
 		"-o", "UserKnownHostsFile=/dev/null",
 		"-o", "ConnectTimeout=5",
+		"-o", "ServerAliveInterval=15",
+		"-o", "ServerAliveCountMax=3",
 		user + "@" + host,
 		command,
 	}
@@ -77,4 +80,52 @@ func (p *Provisioner) RunSSH(ctx context.Context, host, user, keyPath, command s
 		return out, fmt.Errorf("ssh %s: %w", host, err)
 	}
 	return out, nil
+}
+
+// RunScriptSSH copia un script al invitado por SSH y lo ejecuta como root con
+// los argumentos indicados, retornando la salida combinada del comando.
+func (p *Provisioner) RunScriptSSH(ctx context.Context, cfg domain.SetupConfig, ip, localScript string, args ...string) (string, error) {
+	data, err := os.ReadFile(localScript)
+	if err != nil {
+		return "", fmt.Errorf("script de invitado no encontrado: %s: %w", localScript, err)
+	}
+	keyPath := cfg.SSHKeyPath
+	if keyPath == "" {
+		keyPath = filepath.Join(cfg.SSHDir, "id_ed25519")
+	}
+	encoded := base64.StdEncoding.EncodeToString(data)
+	remote := "tmp=/tmp/httpaas-" + filepath.Base(localScript) +
+		"; echo '" + encoded + "' | base64 -d > \"$tmp\" && sudo bash \"$tmp\""
+	for _, arg := range args {
+		remote += " " + shellQuote(arg)
+	}
+	remote += "; rc=$?; rm -f \"$tmp\"; exit $rc"
+
+	var lastOut string
+	var lastErr error
+	for attempt := 0; attempt < 3; attempt++ {
+		out, err := p.RunSSH(ctx, ip, cfg.GuestUser, keyPath, remote)
+		if err == nil {
+			return out, nil
+		}
+		lastOut, lastErr = out, err
+		// Solo se reintenta ante fallos de conexión, no ante errores del script.
+		if !strings.Contains(out, "Connection timed out") &&
+			!strings.Contains(out, "Connection refused") &&
+			!strings.Contains(out, "No route to host") &&
+			!strings.Contains(out, "exit status 255") {
+			return out, err
+		}
+		select {
+		case <-ctx.Done():
+			return out, ctx.Err()
+		case <-time.After(5 * time.Second):
+		}
+	}
+	return lastOut, lastErr
+}
+
+// shellQuote envuelve un argumento para que el shell remoto lo trate literal.
+func shellQuote(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'"
 }

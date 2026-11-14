@@ -140,7 +140,7 @@ type ProvisionRequest struct {
 ```
 
 <a name="SetupService"></a>
-## type [SetupService](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L45-L62>)
+## type [SetupService](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L45-L64>)
 
 SetupService orquesta la configuración inicial del laboratorio y publica su estado a los suscriptores en tiempo real.
 
@@ -151,7 +151,7 @@ type SetupService struct {
 ```
 
 <a name="NewSetupService"></a>
-### func [NewSetupService](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L65>)
+### func [NewSetupService](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L67>)
 
 ```go
 func NewSetupService(cfg domain.SetupConfig, prov ports.SetupProvisioner, images ports.ImageStore, logger ports.EventLogger, stateFile string) *SetupService
@@ -160,7 +160,7 @@ func NewSetupService(cfg domain.SetupConfig, prov ports.SetupProvisioner, images
 NewSetupService crea el servicio de la preparación con el estado inicial pendiente.
 
 <a name="SetupService.ActualizarDeteccion"></a>
-### func \(\*SetupService\) [ActualizarDeteccion](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L215>)
+### func \(\*SetupService\) [ActualizarDeteccion](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L218>)
 
 ```go
 func (s *SetupService) ActualizarDeteccion(ctx context.Context) error
@@ -169,7 +169,7 @@ func (s *SetupService) ActualizarDeteccion(ctx context.Context) error
 ActualizarDeteccion inspecciona el host y decide si hace falta configuración.
 
 <a name="SetupService.BaseDiskPath"></a>
-### func \(\*SetupService\) [BaseDiskPath](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L141>)
+### func \(\*SetupService\) [BaseDiskPath](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L144>)
 
 ```go
 func (s *SetupService) BaseDiskPath() string
@@ -178,7 +178,7 @@ func (s *SetupService) BaseDiskPath() string
 BaseDiskPath retorna la ruta persistida del disco base multiconexión.
 
 <a name="SetupService.Configurar"></a>
-### func \(\*SetupService\) [Configurar](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L113>)
+### func \(\*SetupService\) [Configurar](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L116>)
 
 ```go
 func (s *SetupService) Configurar(in domain.SetupInput) error
@@ -187,7 +187,7 @@ func (s *SetupService) Configurar(in domain.SetupInput) error
 Configurar valida y aplica los datos del formulario de la preparación.
 
 <a name="SetupService.Estado"></a>
-### func \(\*SetupService\) [Estado](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L106>)
+### func \(\*SetupService\) [Estado](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L109>)
 
 ```go
 func (s *SetupService) Estado() domain.SetupState
@@ -196,7 +196,7 @@ func (s *SetupService) Estado() domain.SetupState
 Estado retorna una copia de la instantánea actual.
 
 <a name="SetupService.Iniciar"></a>
-### func \(\*SetupService\) [Iniciar](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L286>)
+### func \(\*SetupService\) [Iniciar](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L301>)
 
 ```go
 func (s *SetupService) Iniciar(ctx context.Context) error
@@ -205,7 +205,7 @@ func (s *SetupService) Iniciar(ctx context.Context) error
 Iniciar arranca la configuración inicial en segundo plano.
 
 <a name="SetupService.Network"></a>
-### func \(\*SetupService\) [Network](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L134>)
+### func \(\*SetupService\) [Network](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L137>)
 
 ```go
 func (s *SetupService) Network() domain.NetworkConfig
@@ -214,7 +214,7 @@ func (s *SetupService) Network() domain.NetworkConfig
 Network retorna la red host\-only detectada o derivada.
 
 <a name="SetupService.Reiniciar"></a>
-### func \(\*SetupService\) [Reiniciar](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L312>)
+### func \(\*SetupService\) [Reiniciar](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L327>)
 
 ```go
 func (s *SetupService) Reiniciar(ctx context.Context) error
@@ -223,7 +223,7 @@ func (s *SetupService) Reiniciar(ctx context.Context) error
 Reiniciar elimina las VMs base, limpia el progreso y vuelve a detectar el entorno.
 
 <a name="SetupService.Subscribe"></a>
-### func \(\*SetupService\) [Subscribe](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L148>)
+### func \(\*SetupService\) [Subscribe](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L151>)
 
 ```go
 func (s *SetupService) Subscribe() (<-chan domain.SetupState, func())

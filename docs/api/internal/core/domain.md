@@ -102,7 +102,7 @@ func NewARecord(name string, zone string, ip netip.Addr, ttl int) (*DnsRecord, e
 NewARecord construye y valida un registro de tipo A para la zona DNS local.
 
 <a name="EnvironmentStatus"></a>
-## type [EnvironmentStatus](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/setup.go#L121-L133>)
+## type [EnvironmentStatus](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/setup.go#L123-L135>)
 
 EnvironmentStatus resume lo que ya existe en el host antes de configurar.
 
@@ -176,7 +176,7 @@ const (
 ```
 
 <a name="NetworkConfig"></a>
-## type [NetworkConfig](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/network.go#L16-L24>)
+## type [NetworkConfig](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/network.go#L16-L25>)
 
 NetworkConfig describe la red host\-only real del laboratorio. Se deriva de la dirección que VirtualBox asigna a la interfaz, sin imponer una subred fija.
 
@@ -187,13 +187,14 @@ type NetworkConfig struct {
     Netmask   string `json:"mascara"`
     CIDR      string `json:"cidr"`
     DNSIP     string `json:"ip_dns"`
+    BaseIP    string `json:"ip_plantilla"`
     DHCPLower string `json:"dhcp_inicio"`
     DHCPUpper string `json:"dhcp_fin"`
 }
 ```
 
 <a name="DeriveNetwork"></a>
-### func [DeriveNetwork](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/network.go#L28>)
+### func [DeriveNetwork](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/network.go#L29>)
 
 ```go
 func DeriveNetwork(iface, hostIP, netmask string) (NetworkConfig, error)
@@ -202,7 +203,7 @@ func DeriveNetwork(iface, hostIP, netmask string) (NetworkConfig, error)
 DeriveNetwork calcula la configuración del laboratorio a partir de la IP y la máscara de la interfaz host\-only \(se admite /24, el valor habitual de VirtualBox\).
 
 <a name="SetupConfig"></a>
-## type [SetupConfig](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/setup.go#L102-L118>)
+## type [SetupConfig](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/setup.go#L102-L120>)
 
 SetupConfig agrupa los parámetros del entorno real que prepara la preparación.
 
@@ -210,6 +211,8 @@ SetupConfig agrupa los parámetros del entorno real que prepara la preparación.
 type SetupConfig struct {
     RawDir           string
     SeedDir          string
+    SSHDir           string
+    SSHKeyPath       string
     SeedTemplatesDir string
     RawURL           string
 

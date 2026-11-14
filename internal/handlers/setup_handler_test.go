@@ -72,6 +72,10 @@ func (s *stubProvisioner) RunGuestScript(context.Context, domain.SetupConfig, st
 	return "", nil
 }
 
+func (s *stubProvisioner) RunScriptSSH(context.Context, domain.SetupConfig, string, string, ...string) (string, error) {
+	return "", nil
+}
+
 func (s *stubProvisioner) ReserveDHCPAddress(context.Context, domain.SetupConfig, string, string) error {
 	return nil
 }
@@ -90,6 +94,9 @@ func (s *stubProvisioner) WaitSSH(context.Context, string, string, string, time.
 
 func (s *stubProvisioner) RunSSH(_ context.Context, _, _, _, command string) (string, error) {
 	if strings.Contains(command, "status --long") {
+		return "status: done", nil
+	}
+	if strings.Contains(command, "cloud-init status") {
 		return "status: done", nil
 	}
 	return "", nil

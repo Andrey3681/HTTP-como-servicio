@@ -171,7 +171,7 @@ Esto garantiza que la infraestructura no quede en un estado inconsistente ni con
 
 ### 6.1 Red host-only
 
-La red del proyecto se materializa como **interfaz host-only** de VirtualBox, no como red interna: el navegador del anfitrión debe alcanzar `http://<host>.cloud.local`. No se impone una subred: se usa la que VirtualBox asigna a la interfaz (por ejemplo `192.168.57.1/24`) y de ella se derivan el servidor DNS (`.10`) y el rango DHCP (`.100–.199`).
+La red del proyecto se materializa como **interfaz host-only** de VirtualBox, no como red interna: el navegador del anfitrión debe alcanzar `http://<host>.cloud.local`. No se impone una subred: se usa la que VirtualBox asigna a la interfaz (por ejemplo `192.168.57.1/24`) y de ella se derivan el servidor DNS (`.10`), la IP de la plantilla (`.11`) y el rango DHCP (`.10–.199`).
 
 El adaptador `vbox` resuelve la interfaz host-only real (`list hostonlyifs`, ignorando la red por defecto `192.168.56.1`) y configura cada instancia con `--nic1 hostonly --hostonlyadapter1 <interfaz>`. Si no existe, el aprovisionamiento falla con un mensaje que remite a la preparación inicial.
 

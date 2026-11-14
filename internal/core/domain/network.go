@@ -48,7 +48,7 @@ func DeriveNetwork(iface, hostIP, netmask string) (NetworkConfig, error) {
 		CIDR:      masked.String(),
 		DNSIP:     netip.AddrFrom4([4]byte{base[0], base[1], base[2], 10}).String(),
 		BaseIP:    netip.AddrFrom4([4]byte{base[0], base[1], base[2], 11}).String(),
-		DHCPLower: netip.AddrFrom4([4]byte{base[0], base[1], base[2], 100}).String(),
+		DHCPLower: netip.AddrFrom4([4]byte{base[0], base[1], base[2], 10}).String(),
 		DHCPUpper: netip.AddrFrom4([4]byte{base[0], base[1], base[2], 199}).String(),
 	}, nil
 }

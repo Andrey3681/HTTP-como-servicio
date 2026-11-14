@@ -50,7 +50,7 @@ La consola permanece **bloqueada** hasta que el laboratorio esté preparado: una
 2. Descarga la imagen cloud oficial de Debian 13 (`debian-13-generic-amd64.raw`, ~3 GB) si no existe en el directorio de datos.
 3. Convierte la imagen a un VDI base una sola vez y duplica ese VDI para cada VM.
 4. Genera una ISO semilla por VM (`genisoimage`, volumen `cidata`) desde `scripts/seeds/`; las VM base llevan una NIC NAT para descargar paquetes.
-5. Arranca **`ns`** y la plantilla **`ApacheServer`**; cloud-init crea el usuario, instala los paquetes y Guest Additions.
+5. Arranca **`ns`** y la plantilla **`ApacheServer`**; cloud-init crea el usuario con la clave SSH e instala los paquetes; el orquestador sigue el avance por SSH.
 6. Ejecuta `scripts/guest-bind9.sh` y `scripts/guest-apache.sh` para la zona DNS y el vhost.
 7. Marca el disco de la plantilla en `multiattach` y guarda su ruta para los diferenciales.
 
