@@ -150,8 +150,8 @@ func TestCreateVMCommands(t *testing.T) {
 	if disk != want {
 		t.Errorf("unexpected disk path: %q", disk)
 	}
-	if _, err := os.Stat(want); err != nil {
-		t.Errorf("expected the base VDI to be duplicated: %v", err)
+	if !exec.contains("clonemedium disk " + base + " " + want + " --format VDI") {
+		t.Errorf("expected the base VDI to be cloned, got %v", exec.calls)
 	}
 	for _, fragment := range []string{
 		"createvm --name ns --ostype Debian13_64 --register",
@@ -319,7 +319,31 @@ func TestCreateVMRepairsVMWithoutDisk(t *testing.T) {
 	if !exec.contains("storageattach ns --storagectl SATA") {
 		t.Errorf("expected the disk to be attached, got %v", exec.calls)
 	}
-	if _, err := os.Stat(disk); err != nil {
-		t.Errorf("expected the base VDI to be duplicated: %v", err)
+	if !exec.contains("clonemedium disk " + base + " " + disk + " --format VDI") {
+		t.Errorf("expected the base VDI to be cloned, got %v", exec.calls)
+	}
+}
+
+func TestCreateVMFixesDuplicateUUIDOnExistingDisk(t *testing.T) {
+	folder := t.TempDir()
+	base := filepath.Join(t.TempDir(), "base.vdi")
+	if err := os.WriteFile(base, []byte("vdi"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	disk := filepath.Join(folder, "ns.vdi")
+	if err := os.WriteFile(disk, []byte("old"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	exec := &fakeExecutor{responses: map[string]string{
+		"VBoxManage list vms":                        `"ns" {uuid}`,
+		"VBoxManage showvminfo ns --machinereadable": "CfgFile=\"" + filepath.Join(folder, "ns.vbox") + "\"\nVMState=\"poweroff\"\n",
+	}}
+	prov := provisioner.NewProvisioner(exec)
+
+	if _, err := prov.CreateVM(context.Background(), setupConfig(), "ns", "vboxnet1", base); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !exec.contains("internalcommands sethduuid " + disk) {
+		t.Errorf("expected a new UUID for the copied disk, got %v", exec.calls)
 	}
 }

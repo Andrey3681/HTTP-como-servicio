@@ -7,7 +7,6 @@ package provisioner
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -178,25 +177,6 @@ func (p *Provisioner) ConvertToBaseVDI(ctx context.Context, _ domain.SetupConfig
 	return nil
 }
 
-// copyFile duplica un archivo completo.
-func copyFile(src, dst string) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = in.Close() }()
-
-	out, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	if _, err := io.Copy(out, in); err != nil {
-		_ = out.Close()
-		return err
-	}
-	return out.Close()
-}
-
 // CreateVM registra la VM, duplica el VDI base y conecta el disco. Es
 // idempotente y repara VMs creadas a medias (por ejemplo, sin disco).
 func (p *Provisioner) CreateVM(ctx context.Context, cfg domain.SetupConfig, vmName, netInterface, baseVDI string) (string, error) {
@@ -272,9 +252,12 @@ func (p *Provisioner) attachBaseDisk(ctx context.Context, cfg domain.SetupConfig
 	}
 	diskPath := filepath.Join(folder, vmName+".vdi")
 	if _, statErr := os.Stat(diskPath); statErr != nil {
-		if err := copyFile(baseVDI, diskPath); err != nil {
+		if _, err := p.vbox(ctx, "clonemedium", "disk", baseVDI, diskPath, "--format", "VDI"); err != nil {
 			return "", fmt.Errorf("fallo duplicando el VDI base: %w", err)
 		}
+	} else {
+		// Copia previa con el UUID de la base: asignar uno propio antes de registrar.
+		_, _ = p.vbox(ctx, "internalcommands", "sethduuid", diskPath)
 	}
 	if _, err := p.vbox(ctx, "modifymedium", "disk", diskPath, "--resize", strconv.Itoa(cfg.DiskMB)); err != nil {
 		return "", fmt.Errorf("fallo redimensionando el disco: %w", err)
