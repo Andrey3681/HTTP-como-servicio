@@ -23,6 +23,7 @@ type DnsAdapter struct {
 	serverIP string
 	zone     string
 	nsupdate string
+	network  ports.NetworkInfoProvider
 	logger   ports.EventLogger
 }
 
@@ -37,6 +38,26 @@ func NewDnsAdapter(executor ports.Executor, serverIP string, zone string, logger
 	}
 }
 
+// NewDnsAdapterWithNetwork deriva la IP del servidor DNS de la red host-only real.
+func NewDnsAdapterWithNetwork(executor ports.Executor, zone string, logger ports.EventLogger, network ports.NetworkInfoProvider) *DnsAdapter {
+	adapter := NewDnsAdapter(executor, "", zone, logger)
+	adapter.network = network
+	return adapter
+}
+
+// address resuelve la IP del servidor DNS: fija si se indicó o derivada de la red.
+func (a *DnsAdapter) address() (string, error) {
+	if a.serverIP != "" {
+		return a.serverIP, nil
+	}
+	if a.network != nil {
+		if cfg := a.network.Network(); cfg.DNSIP != "" {
+			return cfg.DNSIP, nil
+		}
+	}
+	return "", fmt.Errorf("el servidor DNS aún no está disponible: completa la preparación del entorno")
+}
+
 func (a *DnsAdapter) log(level, message string, fields map[string]any) {
 	if a.logger != nil {
 		a.logger.Append(level, "bind9", message, fields)
@@ -49,7 +70,11 @@ func (a *DnsAdapter) AddRecord(ctx context.Context, record domain.DnsRecord) err
 	a.log("INFO", "Registrando registro DNS", map[string]any{"nombre": record.Name, "ip": record.IP, "zona": a.zone})
 
 	var script bytes.Buffer
-	fmt.Fprintf(&script, "server %s\n", a.serverIP)
+	server, err := a.address()
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(&script, "server %s\n", server)
 	fmt.Fprintf(&script, "zone %s\n", a.zone)
 	fmt.Fprintf(&script, "update delete %s A\n", record.Name)
 	fmt.Fprintf(&script, "update add %s %d A %s\n", record.Name, record.TTL, record.IP)
@@ -76,7 +101,11 @@ func (a *DnsAdapter) RemoveRecord(ctx context.Context, hostname string) error {
 	a.log("INFO", "Eliminando registro DNS", map[string]any{"nombre": fqdn, "zona": a.zone})
 
 	var script bytes.Buffer
-	fmt.Fprintf(&script, "server %s\n", a.serverIP)
+	server, err := a.address()
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(&script, "server %s\n", server)
 	fmt.Fprintf(&script, "zone %s\n", a.zone)
 	fmt.Fprintf(&script, "update delete %s A\n", fqdn)
 	fmt.Fprintf(&script, "send\n")
@@ -92,17 +121,21 @@ func (a *DnsAdapter) Resolve(ctx context.Context, hostname string) (netip.Addr, 
 		cleanHost = fmt.Sprintf("%s.%s", cleanHost, strings.TrimSuffix(a.zone, "."))
 	}
 
+	server, err := a.address()
+	if err != nil {
+		return netip.Addr{}, err
+	}
 	resolver := &net.Resolver{
 		PreferGo: true,
 		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
 			d := net.Dialer{}
-			return d.DialContext(ctx, "udp", net.JoinHostPort(a.serverIP, "53"))
+			return d.DialContext(ctx, "udp", net.JoinHostPort(server, "53"))
 		},
 	}
 
 	ips, err := resolver.LookupHost(ctx, cleanHost)
 	if err != nil || len(ips) == 0 {
-		return netip.Addr{}, fmt.Errorf("no se pudo resolver el nombre '%s' en servidor %s: %w", cleanHost, a.serverIP, err)
+		return netip.Addr{}, fmt.Errorf("no se pudo resolver el nombre '%s' en servidor %s: %w", cleanHost, server, err)
 	}
 
 	return netip.ParseAddr(ips[0])
@@ -111,7 +144,11 @@ func (a *DnsAdapter) Resolve(ctx context.Context, hostname string) (netip.Addr, 
 // ListRecords consulta los registros A de la zona administrada mediante transferencia AXFR (dig).
 // Si la consulta no está disponible, retorna una lista vacía sin error para preservar el contrato de la API.
 func (a *DnsAdapter) ListRecords(ctx context.Context) ([]domain.DnsRecord, error) {
-	stdout, _, err := a.executor.Execute(ctx, "dig", "@"+a.serverIP, a.zone, "AXFR", "+noall", "+answer")
+	server, err := a.address()
+	if err != nil {
+		return []domain.DnsRecord{}, nil
+	}
+	stdout, _, err := a.executor.Execute(ctx, "dig", "@"+server, a.zone, "AXFR", "+noall", "+answer")
 	if err != nil || len(bytes.TrimSpace(stdout)) == 0 {
 		return []domain.DnsRecord{}, nil
 	}

@@ -164,3 +164,10 @@ a.url-service-link .material-symbols-outlined { color: inherit !important; }
 }
 .zip-dropzone.has-file .zip-dropzone-file { color: #00504a; border-color: #a7f3d0; background: #ecfdf5; }
 .zip-dropzone.has-error .zip-dropzone-file { color: #991b1b; border-color: #fecaca; background: #fff; }
+
+
+/* Evita el parpadeo de la consola antes de resolver el estado de preparación. */
+html.setup-checking body > main,
+html.setup-checking #site-header-mount,
+html.setup-checking #site-footer-mount { visibility: hidden !important; }
+html.setup-checking { background: #ffffff; }

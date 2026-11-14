@@ -31,3 +31,51 @@ func ParseGuestIP(output string) (netip.Addr, error) {
 
 	return addr, nil
 }
+
+// ParseHostOnlyInterfaceByIP localiza el nombre de la interfaz host-only con la IP indicada.
+func ParseHostOnlyInterfaceByIP(output, ip string) string {
+	var name string
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(line)
+		switch {
+		case strings.HasPrefix(line, "Name:"):
+			name = strings.TrimSpace(strings.TrimPrefix(line, "Name:"))
+		case strings.HasPrefix(line, "IPAddress:"):
+			if strings.TrimSpace(strings.TrimPrefix(line, "IPAddress:")) == ip && name != "" {
+				return name
+			}
+		}
+	}
+	return ""
+}
+
+// ParseFirstProjectInterface retorna el nombre de la primera interfaz host-only
+// que no sea la red por defecto de VirtualBox (192.168.56.1).
+func ParseFirstProjectInterface(output string) string {
+	var name string
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(line)
+		switch {
+		case strings.HasPrefix(line, "Name:"):
+			name = strings.TrimSpace(strings.TrimPrefix(line, "Name:"))
+		case strings.HasPrefix(line, "IPAddress:"):
+			ip := strings.TrimSpace(strings.TrimPrefix(line, "IPAddress:"))
+			if name != "" && ip != "" && ip != "192.168.56.1" {
+				return name
+			}
+		}
+	}
+	return ""
+}
+
+// ParseMachineValue extrae el valor de una clave en la salida --machinereadable.
+func ParseMachineValue(output, key string) string {
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, key+"=") {
+			continue
+		}
+		return strings.Trim(strings.TrimPrefix(line, key+"="), `"`)
+	}
+	return ""
+}

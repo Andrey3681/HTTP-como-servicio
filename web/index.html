@@ -12,6 +12,11 @@
   </script>
 </head>
 <body data-page="index" class="h-full bg-surface-container-lowest text-on-surface antialiased flex flex-col text-[14px] selection:bg-primary-container selection:text-white">
+  <script>
+    // Oculta la consola hasta conocer el estado de preparación (evita el parpadeo).
+    document.documentElement.classList.add('setup-checking');
+    window.setTimeout(function () { document.documentElement.classList.remove('setup-checking'); }, 8000);
+  </script>
   <div id="site-header-mount"></div>
 
   <main class="flex-1 overflow-y-auto bg-surface-bright pb-64">
@@ -142,6 +147,7 @@
   <script src="/js/common.js"></script>
   <script src="/js/components.js"></script>
   <script src="/js/logs-dock.js"></script>
+  <script src="/js/setup-wizard.js"></script>
   <script src="/js/pages/index.js"></script>
   <script src="/js/pages/dns.js"></script>
   <script src="/js/pages/salud.js"></script>

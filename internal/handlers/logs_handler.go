@@ -27,11 +27,17 @@ var allowedLogLevels = map[string]bool{
 // LogsHandler atiende los endpoints de consulta, limpieza y streaming de logs.
 type LogsHandler struct {
 	broker *logging.Broker
+	done   <-chan struct{}
 }
 
 // NewLogsHandler crea un nuevo LogsHandler respaldado por el broker indicado.
-func NewLogsHandler(broker *logging.Broker) *LogsHandler {
-	return &LogsHandler{broker: broker}
+// El canal opcional done permite cerrar los streams SSE durante el apagado.
+func NewLogsHandler(broker *logging.Broker, done ...<-chan struct{}) *LogsHandler {
+	h := &LogsHandler{broker: broker}
+	if len(done) > 0 {
+		h.done = done[0]
+	}
+	return h
 }
 
 // HandleLogs enruta operaciones de colección de logs (/api/logs): listado (GET) y limpieza (DELETE).
@@ -129,6 +135,8 @@ func (h *LogsHandler) HandleStream(w http.ResponseWriter, r *http.Request) {
 
 	for {
 		select {
+		case <-h.done:
+			return
 		case <-r.Context().Done():
 			return
 		case entry, ok := <-ch:

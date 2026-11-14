@@ -48,7 +48,9 @@ func TestAllPagesUseSharedShell(t *testing.T) {
 		`/js/common.js`,
 		`/js/components.js`,
 		`/js/logs-dock.js`,
+		`/js/setup-wizard.js`,
 		`/js/router.js`,
+		`setup-checking`,
 	}
 	for _, p := range pages {
 		content := readFile(t, p)
@@ -162,4 +164,37 @@ func TestPageModulesExist(t *testing.T) {
 	for _, needle := range []string{`vhosts`, `ayuda`} {
 		assertContains(t, router, needle, "js/router.js (enrutamiento)")
 	}
+}
+
+func TestSetupWizardContract(t *testing.T) {
+	js := readFile(t, filepath.Join("js", "setup-wizard.js"))
+	for _, needle := range []string{
+		"/api/setup/estado",
+		"/api/setup/iniciar",
+		"/api/setup/stream",
+		"EventSource",
+		"setup-wizard",
+		"data-screen",
+		"/api/setup/configuracion",
+		"setup-user",
+		"setup-pass",
+		"setup-steps",
+		"setup-log",
+		"setup-copy-log",
+		"setup-reset-btn",
+		"/api/logs/stream",
+		"data-setup-step",
+		`data-screen`,
+		`aria-live`,
+		"setup-progress-track",
+		"setup-start-btn",
+		"openSetupWizard",
+		"setup-gate",
+		"prefers-reduced-motion",
+	} {
+		assertContains(t, js, needle, "js/setup-wizard.js")
+	}
+
+	components := readFile(t, filepath.Join("js", "components.js"))
+	assertContains(t, components, "setup-open-btn", "js/components.js (acceso a la configuración inicial)")
 }

@@ -10,6 +10,11 @@
   <script>tailwind.config={theme:{extend:{colors:{"on-surface":"#181c21","on-surface-variant":"#3e4947","surface-bright":"#f8f9ff","surface-container-lowest":"#ffffff","surface-container-low":"#f1f4fb","surface-container":"#ebeef5","primary-container":"#0f766e","secondary-container":"#e02928",outline:"#6e7977",error:"#ba1a1a"},borderRadius:{xl:"0.5rem",full:"0.75rem"}}}};</script>
 </head>
 <body data-page="ayuda" class="h-full bg-surface-container-lowest text-on-surface antialiased flex flex-col text-[14px]">
+  <script>
+    // Oculta la consola hasta conocer el estado de preparación (evita el parpadeo).
+    document.documentElement.classList.add('setup-checking');
+    window.setTimeout(function () { document.documentElement.classList.remove('setup-checking'); }, 8000);
+  </script>
   <div id="site-header-mount"></div>
 
   <main class="page-main">
@@ -85,6 +90,7 @@ VBoxManage showmediuminfo "ApacheServer.vdi"  <span class="cmt"># Type: multiatt
   <script src="/js/common.js"></script>
   <script src="/js/components.js"></script>
   <script src="/js/logs-dock.js"></script>
+  <script src="/js/setup-wizard.js"></script>
   <script src="/js/pages/index.js"></script>
   <script src="/js/pages/dns.js"></script>
   <script src="/js/pages/salud.js"></script>

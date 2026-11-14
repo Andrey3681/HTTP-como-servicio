@@ -1,0 +1,36 @@
+#cloud-config
+hostname: ns-server
+
+# 1. CREACIÓN DEL USUARIO
+users:
+  - name: @@USUARIO@@
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    lock_passwd: false
+    plain_text_passwd: '@@CONTRASENA@@'
+
+# 2. HABILITAR REPOSITORIOS (Contrib y Non-Free para el ISO)
+apt:
+  sources:
+    debian:
+      source: "deb http://deb.debian.org/debian/ trixie main contrib non-free non-free-firmware"
+
+# 3. PAQUETES
+packages:
+  - bind9
+  - bind9-utils
+  - bind9-dnsutils
+  - virtualbox-guest-additions-iso
+  - bzip2
+  - tar
+  - build-essential
+  - linux-headers-amd64
+
+# 4. COMANDOS FINALES
+runcmd:
+  - systemctl enable --now named
+  # Instalación de Guest Additions
+  - mkdir -p /mnt/cdrom
+  - mount -o loop /usr/share/virtualbox/VBoxGuestAdditions.iso /mnt/cdrom
+  - /mnt/cdrom/VBoxLinuxAdditions.run --nox11 || true
+  - umount /mnt/cdrom

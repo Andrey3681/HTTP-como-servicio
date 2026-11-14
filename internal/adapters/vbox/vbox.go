@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net/netip"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -20,16 +21,18 @@ type HypervisorAdapter struct {
 	executor   ports.Executor
 	vboxBinary string
 	domainZone string
+	hostOnlyIP string
 	logger     ports.EventLogger
 	mu         sync.Mutex // Serializa el acceso a VBoxSVC para evitar colisiones concurrentes
 }
 
 // NewHypervisorAdapter crea un nuevo adaptador de VirtualBox.
-func NewHypervisorAdapter(executor ports.Executor, domainZone string, logger ports.EventLogger) *HypervisorAdapter {
+func NewHypervisorAdapter(executor ports.Executor, domainZone, hostOnlyIP string, logger ports.EventLogger) *HypervisorAdapter {
 	return &HypervisorAdapter{
 		executor:   executor,
 		vboxBinary: "VBoxManage",
 		domainZone: domainZone,
+		hostOnlyIP: hostOnlyIP,
 		logger:     logger,
 	}
 }
@@ -53,12 +56,17 @@ func (h *HypervisorAdapter) CreateInstanceFromBase(ctx context.Context, name str
 		return nil, fmt.Errorf("fallo createvm: %w", err)
 	}
 
-	// 2. VBoxManage modifyvm <name> --memory 1024 --cpus 1 --nic1 intnet --intnet1 cloudnet
+	// 2. VBoxManage modifyvm <name> --memory 1024 --cpus 1 --nic1 hostonly --hostonlyadapter1 <if>
+	iface, err := h.resolveHostOnlyInterface(ctx)
+	if err != nil {
+		_ = h.destroyLocked(ctx, name)
+		return nil, err
+	}
 	_, _, err = h.executor.Execute(ctx, h.vboxBinary, "modifyvm", name,
-		"--memory", "1024",
+		"--memory", "512",
 		"--cpus", "1",
-		"--nic1", "intnet",
-		"--intnet1", "cloudnet",
+		"--nic1", "hostonly",
+		"--hostonlyadapter1", iface,
 	)
 	if err != nil {
 		_ = h.destroyLocked(ctx, name)
@@ -70,26 +78,72 @@ func (h *HypervisorAdapter) CreateInstanceFromBase(ctx context.Context, name str
 		"--name", "SATA",
 		"--add", "sata",
 		"--controller", "IntelAHCI",
+		"--portcount", "2",
 	)
 	if err != nil {
 		_ = h.destroyLocked(ctx, name)
 		return nil, fmt.Errorf("fallo storagectl: %w", err)
 	}
 
-	// 4. VBoxManage storageattach <name> --storagectl SATA --port 0 --device 0 --type hdd --medium <baseDiskPath>
+	// 4. Crear un disco diferencial explícito cuyo padre es el disco multiconexión.
+	folder, err := h.vmFolder(ctx, name)
+	if err != nil {
+		_ = h.destroyLocked(ctx, name)
+		return nil, err
+	}
+	diffDisk := filepath.Join(folder, name+".vdi")
+	_, _, err = h.executor.Execute(ctx, h.vboxBinary, "createmedium", "disk",
+		"--filename", diffDisk,
+		"--diffparent", baseDiskPath,
+		"--format", "VDI",
+	)
+	if err != nil {
+		_ = h.destroyLocked(ctx, name)
+		return nil, fmt.Errorf("fallo createmedium diferencial: %w", err)
+	}
+
+	// 5. Conectar únicamente el diferencial; el disco base nunca se monta en escritura.
 	_, _, err = h.executor.Execute(ctx, h.vboxBinary, "storageattach", name,
 		"--storagectl", "SATA",
 		"--port", "0",
 		"--device", "0",
 		"--type", "hdd",
-		"--medium", baseDiskPath,
+		"--medium", diffDisk,
 	)
 	if err != nil {
 		_ = h.destroyLocked(ctx, name)
-		return nil, fmt.Errorf("fallo storageattach con disco multiconexión: %w", err)
+		return nil, fmt.Errorf("fallo storageattach con disco diferencial: %w", err)
 	}
 
 	return domain.NewInstance(name, h.domainZone)
+}
+
+// resolveHostOnlyInterface ubica la interfaz host-only del proyecto por su IP.
+func (h *HypervisorAdapter) resolveHostOnlyInterface(ctx context.Context) (string, error) {
+	out, _, err := h.executor.Execute(ctx, h.vboxBinary, "list", "hostonlyifs")
+	if err != nil {
+		return "", fmt.Errorf("fallo list hostonlyifs: %w", err)
+	}
+	if iface := ParseHostOnlyInterfaceByIP(string(out), h.hostOnlyIP); iface != "" {
+		return iface, nil
+	}
+	if iface := ParseFirstProjectInterface(string(out)); iface != "" {
+		return iface, nil
+	}
+	return "", fmt.Errorf("no existe una interfaz host-only del proyecto; ejecuta la preparación inicial")
+}
+
+// vmFolder obtiene la carpeta de configuración de la máquina virtual.
+func (h *HypervisorAdapter) vmFolder(ctx context.Context, vmName string) (string, error) {
+	out, _, err := h.executor.Execute(ctx, h.vboxBinary, "showvminfo", vmName, "--machinereadable")
+	if err != nil {
+		return "", fmt.Errorf("fallo showvminfo %s: %w", vmName, err)
+	}
+	cfgFile := ParseMachineValue(string(out), "CfgFile")
+	if cfgFile == "" {
+		return "", fmt.Errorf("no se pudo obtener la carpeta de la VM %s", vmName)
+	}
+	return filepath.Dir(cfgFile), nil
 }
 
 // Start inicia la máquina virtual en modo headless.

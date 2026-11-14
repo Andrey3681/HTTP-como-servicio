@@ -112,12 +112,22 @@
             '<div class="flex items-center gap-1"><span class="text-outline">DocumentRoot:</span><span class="px-1 rounded bg-surface-container border-standard text-on-surface">/var/www/vhosts/</span></div>' +
           '</div>' +
           '<div class="flex flex-wrap items-center justify-center md:justify-end gap-3 shrink-0">' +
+            '<button id="setup-open-btn" class="inline-flex items-center gap-1.5 px-2.5 py-1 mono text-[11px] transition-colors cursor-pointer" title="Abrir la configuración inicial del entorno" aria-label="Abrir la configuración inicial del entorno" style="background-color:rgb(236,253,245);border:1px solid rgba(19,78,74,0.25);border-radius:4px;color:#0f766e;" type="button">' +
+              '<span class="material-symbols-outlined text-[14px]" aria-hidden="true">settings_suggest</span>' +
+              '<span class="font-semibold">Configuración</span>' +
+            '</button>' +
             '<div id="logs-toggle-mount"></div>' +
             '<span class="text-outline">|</span>' +
             '<span class="text-on-surface-variant">BIND <span class="text-on-surface">9.18.28-1</span></span><span class="text-outline">|</span><span class="text-on-surface-variant">Apache <span class="text-on-surface">2.4.58</span></span>' +
           '</div>' +
         '</div>' +
       '</footer>';
+    var setupBtn = document.getElementById('setup-open-btn');
+    if (setupBtn) {
+      setupBtn.addEventListener('click', function () {
+        if (window.openSetupWizard) window.openSetupWizard();
+      });
+    }
   }
 
   function updateActiveNav() {

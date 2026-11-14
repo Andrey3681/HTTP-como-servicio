@@ -21,7 +21,10 @@ import (
 	"github.com/Andrey3681/httpaas-orchestrator/internal/adapters/deployer"
 	"github.com/Andrey3681/httpaas-orchestrator/internal/adapters/filestore"
 	"github.com/Andrey3681/httpaas-orchestrator/internal/adapters/localproc"
+	"github.com/Andrey3681/httpaas-orchestrator/internal/adapters/provisioner"
 	"github.com/Andrey3681/httpaas-orchestrator/internal/adapters/vbox"
+	"github.com/Andrey3681/httpaas-orchestrator/internal/config"
+	"github.com/Andrey3681/httpaas-orchestrator/internal/core/domain"
 	"github.com/Andrey3681/httpaas-orchestrator/internal/handlers"
 	"github.com/Andrey3681/httpaas-orchestrator/internal/logging"
 	"github.com/Andrey3681/httpaas-orchestrator/internal/services"
@@ -30,11 +33,31 @@ import (
 func main() {
 	port := flag.Int("port", 8080, "Puerto HTTP del panel de administración")
 	domainZone := flag.String("zone", "cloud.local", "Zona de dominio DNS administrada")
-	dnsIP := flag.String("dns-ip", "192.168.10.10", "Dirección IP del servidor DNS Bind9 (VM ns)")
-	baseDisk := flag.String("base-disk", "ApacheServer.vdi", "Ruta al disco base multiconexión de Apache")
-	dataPath := flag.String("data", filepath.Join("data", "instances.json"), "Ruta del archivo de persistencia JSON")
+	baseDisk := flag.String("base-disk", "", "Ruta al disco base multiconexión (por defecto, la detectada por la configuración inicial)")
+	appDir := flag.String("app-dir", "", "Directorio de datos de HTTPaaS (por defecto /var/lib/httpaas o ~/.local/share/httpaas)")
+	dataPath := flag.String("data", "", "Ruta del archivo de persistencia JSON (por defecto <app-dir>/instances.json)")
 	webDir := flag.String("web", "web", "Directorio con los archivos estáticos de la interfaz web")
+	rawURL := flag.String("raw-url", "https://cloud.debian.org/images/cloud/trixie/latest/debian-13-generic-amd64.raw", "URL de la imagen cloud de Debian 13")
+	guestUser := flag.String("guest-user", "debian", "Usuario de aprovisionamiento en los invitados")
+	guestPass := flag.String("guest-pass", "debian", "Contraseña del usuario de aprovisionamiento")
+	setupState := flag.String("setup-state", "", "Ruta del estado persistido de la preparación (por defecto <app-dir>/setup-estado.json)")
+	installTimeout := flag.Duration("install-timeout", 45*time.Minute, "Tiempo máximo del primer arranque de cada VM")
 	flag.Parse()
+
+	baseDir := *appDir
+	if baseDir == "" {
+		baseDir = config.ResolveAppDir()
+	}
+	layout, err := config.EnsureLayout(baseDir)
+	if err != nil {
+		log.Fatalf("Error crítico preparando el directorio de datos: %v", err)
+	}
+	if *dataPath == "" {
+		*dataPath = layout.InstancesFile
+	}
+	if *setupState == "" {
+		*setupState = layout.SetupStateFile
+	}
 
 	logBroker := logging.NewBroker(1000)
 	log.SetOutput(io.MultiWriter(os.Stderr, logBroker))
@@ -52,24 +75,61 @@ func main() {
 		log.Fatalf("Error crítico inicializando repositorio en '%s': %v", *dataPath, err)
 	}
 
-	// 3. Inicializar adaptadores de infraestructura
-	hyp := vbox.NewHypervisorAdapter(executor, *domainZone, logBroker)
-	dns := bind9.NewDnsAdapter(executor, *dnsIP, *domainZone, logBroker)
+	// 3. Preparación inicial del laboratorio (primer arranque)
+	setupCfg := domain.SetupConfig{
+		RawDir:           layout.RawDir,
+		SeedDir:          layout.SeedDir,
+		SeedTemplatesDir: filepath.Join("scripts", "seeds"),
+		RawURL:           *rawURL,
+		DNSVMName:        "ns",
+		BaseVMName:       "ApacheServer",
+		DNSHostname:      "ns." + *domainZone,
+		BaseHostname:     "apache." + *domainZone,
+		GuestUser:        *guestUser,
+		GuestPassword:    *guestPass,
+		MemoryMB:         1024,
+		DiskMB:           8192,
+		InstallTimeout:   *installTimeout,
+	}
+	prov := provisioner.NewProvisioner(executor)
+	setupService := services.NewSetupService(setupCfg, prov, provisioner.NewISOStore(), logBroker, *setupState)
+	go func() {
+		_ = setupService.ActualizarDeteccion(context.Background())
+	}()
+	shutdown := make(chan struct{})
+	setupHandler := handlers.NewSetupHandler(setupService, shutdown)
+
+	// 4. Adaptadores de infraestructura (la red se deriva de la interfaz real)
+	hyp := vbox.NewHypervisorAdapter(executor, *domainZone, setupService.Network().HostIP, logBroker)
+	dns := bind9.NewDnsAdapterWithNetwork(executor, *domainZone, logBroker, setupService)
 	dep := deployer.NewApacheDeployer(executor, logBroker)
 
+	resolvedBaseDisk := *baseDisk
+	if resolvedBaseDisk == "" {
+		resolvedBaseDisk = setupService.BaseDiskPath()
+	}
+	if resolvedBaseDisk == "" {
+		resolvedBaseDisk = "ApacheServer.vdi"
+	}
+
 	// 4. Inicializar servicios de aplicación
-	orchestrator := services.NewOrchestrator(hyp, dns, dep, repo, *domainZone, *baseDisk, logBroker)
+	orchestrator := services.NewOrchestrator(hyp, dns, dep, repo, *domainZone, resolvedBaseDisk, logBroker)
 	instanceService := services.NewInstanceService(repo, hyp, dns, logBroker)
 
 	// 5. Inicializar manejadores HTTP
 	instanceHandler := handlers.NewInstanceHandler(orchestrator, instanceService, logBroker)
 	dnsHandler := handlers.NewDnsHandler(dns, *domainZone, logBroker)
-	logsHandler := handlers.NewLogsHandler(logBroker)
+	logsHandler := handlers.NewLogsHandler(logBroker, shutdown)
 
 	// 6. Configurar enrutador y montar endpoints
 	mux := http.NewServeMux()
 
 	// API REST
+	mux.HandleFunc("/api/setup/estado", setupHandler.HandleEstado)
+	mux.HandleFunc("/api/setup/configuracion", setupHandler.HandleConfigurar)
+	mux.HandleFunc("/api/setup/reiniciar", setupHandler.HandleReiniciar)
+	mux.HandleFunc("/api/setup/iniciar", setupHandler.HandleIniciar)
+	mux.HandleFunc("/api/setup/stream", setupHandler.HandleStream)
 	mux.HandleFunc("/api/logs/stream", logsHandler.HandleStream)
 	mux.HandleFunc("/api/logs", logsHandler.HandleLogs)
 	mux.HandleFunc("/api/instancias/", instanceHandler.HandleInstance)
@@ -81,15 +141,17 @@ func main() {
 	fileServer := http.FileServer(http.Dir(*webDir))
 	mux.Handle("/", fileServer)
 
-	// Envolver con middlewares (CORS, Logger, Recoverer)
-	handler := handlers.Recoverer(handlers.Logger(handlers.CORS(mux)))
+	// Envolver con middlewares (CORS, Logger, Recoverer y bloqueo previo a la configuración)
+	handler := handlers.Recoverer(handlers.Logger(handlers.CORS(handlers.RequireSetup(setupService)(mux))))
 
 	serverAddr := fmt.Sprintf(":%d", *port)
 	srv := &http.Server{
-		Addr:         serverAddr,
-		Handler:      handler,
-		ReadTimeout:  120 * time.Second,
-		WriteTimeout: 120 * time.Second,
+		Addr:        serverAddr,
+		Handler:     handler,
+		ReadTimeout: 120 * time.Second,
+		// WriteTimeout debe ser 0: los endpoints SSE mantienen la conexión
+		// abierta y un límite cortaría el stream cada dos minutos.
+		WriteTimeout: 0,
 		IdleTimeout:  120 * time.Second,
 	}
 
@@ -99,7 +161,7 @@ func main() {
 
 	go func() {
 		log.Printf("Servidor orquestador escuchando en http://localhost:%d", *port)
-		log.Printf("Directorio web: %s | Zona DNS: %s | Base VDI: %s", *webDir, *domainZone, *baseDisk)
+		log.Printf("Directorio web: %s | Zona DNS: %s | Base VDI: %s", *webDir, *domainZone, resolvedBaseDisk)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Error en servidor HTTP: %v", err)
 		}
@@ -107,12 +169,14 @@ func main() {
 
 	<-stop
 	log.Println("Señal de apagado recibida. Cerrando servidor de forma segura...")
+	close(shutdown)
 
 	ctxShutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(ctxShutdown); err != nil {
-		log.Fatalf("Error durante el cierre forzado del servidor: %v", err)
+		log.Printf("Aviso: el cierre ordenado no terminó a tiempo (%v); forzando cierre", err)
+		_ = srv.Close()
 	}
 
 	log.Println("Servidor HTTPaaS detenido correctamente.")

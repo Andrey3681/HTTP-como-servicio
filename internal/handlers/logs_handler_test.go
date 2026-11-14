@@ -225,3 +225,18 @@ func TestLogsHandler_StreamResume(t *testing.T) {
 	}
 	t.Fatal("did not receive resumed SSE event")
 }
+
+func TestLogsHandler_StreamStopsOnShutdown(t *testing.T) {
+	broker := logging.NewBroker(10)
+	done := make(chan struct{})
+	close(done)
+	handler := handlers.NewLogsHandler(broker, done)
+
+	start := time.Now()
+	rec := httptest.NewRecorder()
+	handler.HandleStream(rec, httptest.NewRequest(http.MethodGet, "/api/logs/stream", nil))
+
+	if elapsed := time.Since(start); elapsed > time.Second {
+		t.Fatalf("el stream no terminó con el apagado: %v", elapsed)
+	}
+}
