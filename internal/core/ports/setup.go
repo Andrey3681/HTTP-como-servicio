@@ -44,9 +44,9 @@ type SetupProvisioner interface {
 	// reportando hitos reales del invitado mientras tanto.
 	WaitGuestReady(ctx context.Context, vmName string, timeout time.Duration, progress ...ProgressFunc) error
 
-	// RunGuestScript copia un script local al invitado y lo ejecuta como root con
-	// los argumentos indicados.
-	RunGuestScript(ctx context.Context, cfg domain.SetupConfig, vmName, localScript string, args ...string) error
+	// RunGuestScript copia un script local al invitado, lo ejecuta como root con
+	// los argumentos indicados y retorna su salida.
+	RunGuestScript(ctx context.Context, cfg domain.SetupConfig, vmName, localScript string, args ...string) (string, error)
 
 	// ReserveDHCPAddress fija una dirección IP para la MAC de la VM indicada.
 	ReserveDHCPAddress(ctx context.Context, cfg domain.SetupConfig, vmName, ip string) error

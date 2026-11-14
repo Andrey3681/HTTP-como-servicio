@@ -68,8 +68,8 @@ func (s *stubProvisioner) WaitGuestReady(context.Context, string, time.Duration,
 	return nil
 }
 
-func (s *stubProvisioner) RunGuestScript(context.Context, domain.SetupConfig, string, string, ...string) error {
-	return nil
+func (s *stubProvisioner) RunGuestScript(context.Context, domain.SetupConfig, string, string, ...string) (string, error) {
+	return "", nil
 }
 
 func (s *stubProvisioner) ReserveDHCPAddress(context.Context, domain.SetupConfig, string, string) error {

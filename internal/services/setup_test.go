@@ -98,9 +98,9 @@ func (f *fakeProvisioner) WaitGuestReady(_ context.Context, name string, _ time.
 	return f.waitErr
 }
 
-func (f *fakeProvisioner) RunGuestScript(_ context.Context, _ domain.SetupConfig, name, script string, _ ...string) error {
+func (f *fakeProvisioner) RunGuestScript(_ context.Context, _ domain.SetupConfig, name, script string, _ ...string) (string, error) {
 	f.record("script:" + name + ":" + filepath.Base(script))
-	return f.scriptErr
+	return "", f.scriptErr
 }
 
 func (f *fakeProvisioner) ReserveDHCPAddress(_ context.Context, _ domain.SetupConfig, name, ip string) error {
@@ -284,8 +284,9 @@ func TestSetupService_RunsFullPipeline(t *testing.T) {
 
 	wantCalls := []string{
 		"inspect", "convert", "network", "create:ns", "seed:ns", "reserve:ns:192.168.57.10", "boot:ns", "wait:ns",
-		"script:ns:guest-bind9.sh", "create:ApacheServer", "seed:ApacheServer", "boot:ApacheServer",
-		"wait:ApacheServer", "script:ApacheServer:guest-apache.sh", "multiattach:ApacheServer",
+		"script:ns:guest-cloudinit-check.sh", "script:ns:guest-bind9.sh",
+		"create:ApacheServer", "seed:ApacheServer", "boot:ApacheServer", "wait:ApacheServer",
+		"script:ApacheServer:guest-cloudinit-check.sh", "script:ApacheServer:guest-apache.sh", "multiattach:ApacheServer",
 	}
 	seen := make(map[string]int, len(prov.calls))
 	for _, call := range prov.calls {

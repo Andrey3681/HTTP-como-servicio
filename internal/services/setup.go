@@ -577,10 +577,15 @@ func (s *SetupService) runStep(ctx context.Context, id domain.SetupStepID, baseV
 		if err := s.prov.StartSeedBoot(ctx, cfg, cfg.DNSVMName, seed); err != nil {
 			return err
 		}
-		return s.prov.WaitGuestReady(ctx, cfg.DNSVMName, cfg.InstallTimeout, s.progressFor(id))
+		if err := s.prov.WaitGuestReady(ctx, cfg.DNSVMName, cfg.InstallTimeout, s.progressFor(id)); err != nil {
+			return err
+		}
+		return s.verifyCloudInit(ctx, id, cfg, cfg.DNSVMName)
 
 	case domain.SetupStepDNSConfig:
-		return s.prov.RunGuestScript(ctx, cfg, cfg.DNSVMName, filepath.Join("scripts", "guest-bind9.sh"), network.DNSIP, network.CIDR)
+		out, err := s.prov.RunGuestScript(ctx, cfg, cfg.DNSVMName, filepath.Join("scripts", "guest-bind9.sh"), network.DNSIP, network.CIDR)
+		s.logGuestOutput(out)
+		return err
 
 	case domain.SetupStepBaseVM:
 		net, err := s.resolveNet(ctx, network)
@@ -605,10 +610,15 @@ func (s *SetupService) runStep(ctx context.Context, id domain.SetupStepID, baseV
 		if err := s.prov.StartSeedBoot(ctx, cfg, cfg.BaseVMName, seed); err != nil {
 			return err
 		}
-		return s.prov.WaitGuestReady(ctx, cfg.BaseVMName, cfg.InstallTimeout, s.progressFor(id))
+		if err := s.prov.WaitGuestReady(ctx, cfg.BaseVMName, cfg.InstallTimeout, s.progressFor(id)); err != nil {
+			return err
+		}
+		return s.verifyCloudInit(ctx, id, cfg, cfg.BaseVMName)
 
 	case domain.SetupStepBaseConfig:
-		return s.prov.RunGuestScript(ctx, cfg, cfg.BaseVMName, filepath.Join("scripts", "guest-apache.sh"))
+		out, err := s.prov.RunGuestScript(ctx, cfg, cfg.BaseVMName, filepath.Join("scripts", "guest-apache.sh"))
+		s.logGuestOutput(out)
+		return err
 
 	case domain.SetupStepMultiattach:
 		disk, err := s.prov.MarkBaseMultiattach(ctx, cfg, cfg.BaseVMName)
@@ -712,6 +722,30 @@ func (s *SetupService) resolveBaseVDI(ctx context.Context, base *string, progres
 	}
 	*base = path
 	return path, nil
+}
+
+// verifyCloudInit espera a que cloud-init termine y publica su registro.
+func (s *SetupService) verifyCloudInit(ctx context.Context, id domain.SetupStepID, cfg domain.SetupConfig, vmName string) error {
+	out, err := s.prov.RunGuestScript(ctx, cfg, vmName, filepath.Join("scripts", "guest-cloudinit-check.sh"))
+	s.logGuestOutput(out)
+	if err != nil {
+		return fmt.Errorf("cloud-init no terminó correctamente en %s: %w", vmName, err)
+	}
+	return nil
+}
+
+// logGuestOutput publica en el registro las últimas líneas de un script.
+func (s *SetupService) logGuestOutput(output string) {
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	if len(lines) > 40 {
+		lines = lines[len(lines)-40:]
+	}
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			s.log("INFO", line, nil)
+		}
+	}
 }
 
 // resolveNet recupera o crea la red host-only de forma idempotente.

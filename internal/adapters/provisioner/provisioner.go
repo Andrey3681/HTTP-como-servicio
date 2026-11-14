@@ -386,9 +386,9 @@ func (p *Provisioner) WaitGuestReady(ctx context.Context, vmName string, timeout
 
 // RunGuestScript copia un script local al invitado y lo ejecuta como root con
 // los argumentos indicados.
-func (p *Provisioner) RunGuestScript(ctx context.Context, cfg domain.SetupConfig, vmName, localScript string, args ...string) error {
+func (p *Provisioner) RunGuestScript(ctx context.Context, cfg domain.SetupConfig, vmName, localScript string, args ...string) (string, error) {
 	if _, err := os.Stat(localScript); err != nil {
-		return fmt.Errorf("script de invitado no encontrado: %s: %w", localScript, err)
+		return "", fmt.Errorf("script de invitado no encontrado: %s: %w", localScript, err)
 	}
 	remote := "/tmp/" + filepath.Base(localScript)
 
@@ -398,7 +398,7 @@ func (p *Provisioner) RunGuestScript(ctx context.Context, cfg domain.SetupConfig
 		"--target-directory", "/tmp",
 		localScript,
 	); err != nil {
-		return fmt.Errorf("no se pudo copiar %s al invitado: %w", localScript, err)
+		return "", fmt.Errorf("no se pudo copiar %s al invitado: %w", localScript, err)
 	}
 
 	runArgs := []string{
@@ -414,9 +414,9 @@ func (p *Provisioner) RunGuestScript(ctx context.Context, cfg domain.SetupConfig
 	runArgs = append(runArgs, args...)
 	out, err := p.vbox(ctx, runArgs...)
 	if err != nil {
-		return fmt.Errorf("fallo ejecutando %s en %s: %w (%s)", remote, vmName, err, lastLines(out, 6))
+		return out, fmt.Errorf("fallo ejecutando %s en %s: %w (%s)", remote, vmName, err, lastLines(out, 6))
 	}
-	return nil
+	return out, nil
 }
 
 // ReserveDHCPAddress fija la IP indicada a la MAC de la VM.

@@ -79,6 +79,8 @@ Cada semilla instala exactamente lo necesario:
 
 Guest Additions se compilan desde la ISO que instala el paquete Debian. `unzip` es necesario para extraer el contenido `.zip` de cada instancia.
 
+La semilla configura **ambos adaptadores por DHCP** (`enp0s3` host-only y `enp0s8` NAT) para que `apt` tenga ruta y DNS durante la preparación. Después de Guest Additions, el orquestador ejecuta `cloud-init status --wait`, publica el estado y las últimas líneas de `/var/log/cloud-init-output.log` en el registro, y falla el paso si cloud-init no terminó en `done`.
+
 Las semillas además:
 
 - habilitan `contrib` y `non-free` para el paquete de Guest Additions;

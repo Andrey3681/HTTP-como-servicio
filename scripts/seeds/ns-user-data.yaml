@@ -9,6 +9,17 @@ users:
     lock_passwd: false
     plain_text_passwd: '@@CONTRASENA@@'
 
+# 0. RED: ambos adaptadores por DHCP (NAT para paquetes, host-only para servicio)
+network:
+  version: 2
+  ethernets:
+    enp0s3:
+      dhcp4: true
+      optional: true
+    enp0s8:
+      dhcp4: true
+      optional: true
+
 # 2. HABILITAR REPOSITORIOS (Contrib y Non-Free para el ISO)
 apt:
   sources:
