@@ -162,7 +162,14 @@
           banner.classList.add('hidden');
           if (text) text.textContent = '';
         } else {
-          if (text) text.textContent = (data && data.mensaje) || 'El resolver del anfitrión no resuelve la zona cloud.local.';
+          var dns = (data && data.dns) || '';
+          var zona = (data && data.zona) || 'cloud.local';
+          var help = 'El navegador debe usar el DNS ' + (dns || 'del entorno') +
+            ' para resolver ' + zona + '. «Configurar DNS» lo aplica de forma persistente y pide la contraseña una vez.';
+          var info = document.getElementById('hostDnsInfo');
+          if (info) info.setAttribute('data-tooltip', help);
+          if (configureHostDnsBtn) configureHostDnsBtn.setAttribute('data-tooltip', help);
+          if (text) text.textContent = (data && data.mensaje) || 'Pulsa «Configurar DNS».';
           banner.classList.remove('hidden');
         }
       } catch (err) {

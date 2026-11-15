@@ -168,8 +168,8 @@ func TestDnsHandler_HostResolve(t *testing.T) {
 		if body.Resuelve {
 			t.Error("no se esperaba resolución para un nombre inválido")
 		}
-		if !strings.Contains(body.Mensaje, "resolvectl") {
-			t.Errorf("el mensaje debe explicar la configuración: %q", body.Mensaje)
+		if !strings.Contains(body.Mensaje, "Configurar DNS") {
+			t.Errorf("el mensaje debe indicar la acción: %q", body.Mensaje)
 		}
 	})
 }

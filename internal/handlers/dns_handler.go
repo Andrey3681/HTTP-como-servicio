@@ -100,18 +100,25 @@ func (h *DnsHandler) HandleHostResolve(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	addrs, err := h.lookup(ctx, name)
-	zone := strings.TrimSuffix(h.zone, ".")
-	if err != nil || len(addrs) == 0 {
-		JSON(w, http.StatusOK, map[string]any{
-			"resuelve": false,
-			"ip":       "",
-			"mensaje": "El resolver del anfitrión no resuelve " + zone + ". Configura el DNS del laboratorio: " +
-				"resolvectl dns vboxnet1 192.168.57.10 y resolvectl domain vboxnet1 '~" + zone + "' (requiere administrador), " +
-				"o añade el nombre a /etc/hosts.",
-		})
-		return
+	response := map[string]any{
+		"resuelve": false,
+		"ip":       "",
+		"zona":     strings.TrimSuffix(h.zone, "."),
+		"dns":      "",
+		"interfaz": "",
+		"mensaje":  "Pulsa «Configurar DNS».",
 	}
-	JSON(w, http.StatusOK, map[string]any{"resuelve": true, "ip": addrs[0], "mensaje": ""})
+	if h.network != nil {
+		cfg := h.network.Network()
+		response["dns"] = cfg.DNSIP
+		response["interfaz"] = cfg.Interface
+	}
+	if err == nil && len(addrs) > 0 {
+		response["resuelve"] = true
+		response["ip"] = addrs[0]
+		response["mensaje"] = ""
+	}
+	JSON(w, http.StatusOK, response)
 }
 
 // HandleRecords responde con los registros A de la zona DNS administrada (/api/dns/registros).

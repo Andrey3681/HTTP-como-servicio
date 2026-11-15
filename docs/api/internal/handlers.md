@@ -145,7 +145,7 @@ func (h *DnsHandler) HandleHostResolve(w http.ResponseWriter, r *http.Request)
 HandleHostResolve comprueba si el resolver del anfitrión resuelve un nombre de la zona \(/api/dns/anfitrion\). No usa el DNS del laboratorio: reproduce la vista del navegador.
 
 <a name="DnsHandler.HandleRecords"></a>
-### func \(\*DnsHandler\) [HandleRecords](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/dns_handler.go#L119>)
+### func \(\*DnsHandler\) [HandleRecords](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/dns_handler.go#L126>)
 
 ```go
 func (h *DnsHandler) HandleRecords(w http.ResponseWriter, r *http.Request)

@@ -89,15 +89,15 @@
             <div class="flex items-start gap-2.5">
               <span class="material-symbols-outlined text-orange-600 text-[20px] shrink-0" aria-hidden="true">warning</span>
               <div class="flex-1 min-w-0">
-                <p class="m-0 text-[13px] font-semibold text-orange-950">El DNS del laboratorio no está configurado en el anfitrión</p>
+                <p class="m-0 text-[13px] font-semibold text-orange-950">El DNS del anfitrión no está configurado</p>
                 <p class="m-0 mt-1 text-[12.5px] leading-relaxed text-orange-900" id="hostDnsWarningText"></p>
               </div>
               <div class="flex items-center gap-1.5 shrink-0">
-                <span class="material-symbols-outlined text-[18px] text-orange-700 cursor-help" aria-hidden="true"
-                  title="Hace falta que el navegador consulte el Bind9 del laboratorio para abrir los nombres cloud.local. El botón lo configura en systemd-resolved; pide la contraseña de administrador una sola vez y el cambio sobrevive reinicios.">info</span>
+                <span class="material-symbols-outlined text-[18px] text-orange-700 cursor-help" tabindex="0" role="button"
+                  aria-label="Qué hace Configurar DNS" id="hostDnsInfo">info</span>
                 <button class="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[12.5px] font-semibold text-white transition-colors disabled:opacity-60"
                   id="configureHostDnsBtn" type="button" style="background:#ea580c;border:1px solid #c2410c;"
-                  title="Configura systemd-resolved para que cloud.local use el DNS del laboratorio. Se pide la contraseña de administrador una sola vez; la configuración es persistente.">
+                  >
                   <span class="material-symbols-outlined text-[16px]" aria-hidden="true">settings</span> Configurar DNS
                 </button>
               </div>

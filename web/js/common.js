@@ -49,3 +49,67 @@
   }
   window.HTTPaaS = { escapeHtml: escapeHtml, escapeAttr: escapeAttr, formatFecha: formatFecha, showMessage: showMessage, hideMessage: hideMessage, showLoading: showLoading };
 })();
+
+// Tooltip propio para elementos con data-tooltip (visible al pasar el ratón o
+// al enfocar con el teclado, sin depender del tooltip nativo del navegador).
+(function () {
+  var tip = null;
+
+  function ensureTip() {
+    if (!tip) {
+      tip = document.createElement('div');
+      tip.className = 'httpaas-tooltip';
+      tip.setAttribute('role', 'tooltip');
+      document.body.appendChild(tip);
+    }
+    return tip;
+  }
+
+  function place(el) {
+    var text = el.getAttribute('data-tooltip') || '';
+    if (!text) return;
+    var t = ensureTip();
+    t.textContent = text;
+    t.classList.add('open');
+    var r = el.getBoundingClientRect();
+    var left = r.left + r.width / 2 - t.offsetWidth / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - t.offsetWidth - 8));
+    var top = r.top - t.offsetHeight - 8;
+    if (top < 8) top = r.bottom + 8;
+    t.style.left = left + 'px';
+    t.style.top = top + 'px';
+  }
+
+  function hide() {
+    if (tip) tip.classList.remove('open');
+  }
+
+  function target(node) {
+    return node && node.closest ? node.closest('[data-tooltip]') : null;
+  }
+
+  function bind() {
+    document.addEventListener('pointerover', function (e) {
+      var el = target(e.target);
+      if (el) place(el);
+    });
+    document.addEventListener('pointerout', function (e) {
+      var el = target(e.target);
+      if (!el) return;
+      if (e.relatedTarget && el.contains(e.relatedTarget)) return;
+      hide();
+    });
+    document.addEventListener('focusin', function (e) {
+      var el = target(e.target);
+      if (el) place(el);
+    });
+    document.addEventListener('focusout', hide);
+    window.addEventListener('scroll', hide, true);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bind);
+  } else {
+    bind();
+  }
+})();
