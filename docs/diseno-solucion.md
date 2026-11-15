@@ -23,7 +23,7 @@ VM Base (Plantilla / ApacheServer.vdi)
 Instancias Dinámicas (ej. paisajes, negocios)
  └── Disco diferencial anclado a ApacheServer.vdi
  └── IPs dinámicas dentro de la subred (p. ej. 192.168.57.100, .101, ...)
- └── Apache sirviendo contenido en /var/www/html/
+ └── Apache sirviendo contenido en /var/www/vhosts/<host>/public/
  └── Hostname y FQDN: <host>.cloud.local.
 ```
 
@@ -84,6 +84,6 @@ La información de las instancias activas se persiste en un archivo JSON atómic
    - No colisionar con nombres reservados del sistema (`ns`, `router`, `gateway`, `localhost`).
 2. **Validación de Paquete Web (`.zip`)**:
    - Tamaño máximo admitido: 50 MB.
-   - Prevención de **Zip Slip / Path Traversal**: Se verifica que ninguna ruta dentro del archivo `.zip` contenga secuencias `../` ni intente escribir fuera de `/var/www/html/`.
+   - Prevención de **Zip Slip / Path Traversal**: Se verifica que ninguna ruta dentro del archivo `.zip` contenga secuencias `../` ni intente escribir fuera de `/var/www/vhosts/<host>/public/`.
    - Presencia de al menos un archivo `index.html` en la raíz del archivo comprimido o en el directorio principal.
 

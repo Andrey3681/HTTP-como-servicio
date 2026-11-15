@@ -3,33 +3,32 @@ skinparam monochrome true
 skinparam shadowing false
 skinparam defaultTextAlignment left
 
-title Diagrama de Secuencia - Flujo de Aprovisionamiento HTTPaaS
+title Diagrama de Secuencia - Aprovisionamiento de una Instancia
 
 actor Usuario
-participant "Web / API" as API
+participant "API / Consola" as API
 participant "Orquestador" as Orq
 participant "VirtualBox" as VBox
-participant "Bind9 (DNS)" as DNS
-participant "Deployer" as Dep
+participant "ns (Bind9)" as DNS
+participant "Instancia Apache" as VM
 
-Usuario -> API : POST /api/instancias (nombre, archivo.zip)
-API -> Orq : Validar entrada
-API -> Orq : Solicitar aprovisionamiento
-
-Orq -> VBox : Crear VM desde disco multiattach
+Usuario -> API : POST /api/instancias (nombre, .zip)
+API -> Orq : validar entrada y paquete
+Orq -> VBox : createvm + disco diferencial + semilla cloud-init
 VBox --> Orq : VM creada
-Orq -> VBox : Iniciar VM
-Orq -> VBox : Obtener IP via Guest Additions
-VBox --> Orq : IP asignada (192.168.10.x)
-
-Orq -> DNS : Actualizar zona DNS - registro A <host>.cloud.local
-DNS --> Orq : Registro DNS OK
-
-Orq -> Dep : Desplegar contenido .zip en /var/www/html/
-Dep --> Orq : Despliegue completado
-
-Orq --> API : Persistir instancia
-Orq --> API : Instancia en estado RUNNING
-API --> Usuario : Respuesta 201 Created con http://<host>.cloud.local
+Orq -> VBox : startvm
+VBox --> Orq : VM en ejecución
+Orq -> VBox : concesión DHCP / tabla ARP
+VBox --> Orq : IP asignada (DHCP .100-.199)
+Orq -> DNS : nsupdate (registro A)
+DNS --> Orq : registro aplicado
+Orq -> VM : esperar SSH con la clave del entorno
+VM --> Orq : SSH disponible
+Orq -> VM : scp del paquete .zip
+VM --> Orq : paquete recibido
+Orq -> VM : descomprimir en /var/www/vhosts/<host>/public y publicar vhost
+VM --> Orq : Apache recargado
+Orq --> API : persistir instancia ACTIVA
+API --> Usuario : 200 con los datos de la instancia
 
 @enduml

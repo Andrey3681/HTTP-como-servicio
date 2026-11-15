@@ -63,9 +63,13 @@ tasks:
     ignore_error: true
 
   diagramas:
-    desc: Renderizar diagramas PlantUML a PNG y sincronizar con el informe
+    desc: Renderizar diagramas PlantUML a SVG/PDF y sincronizar con el informe
     cmds:
-      - plantuml -tpng docs/diagramas/*.puml
+      - plantuml -tsvg docs/diagramas/*.puml
+      - cmd: for f in docs/diagramas/*.svg; do inkscape --export-type=pdf --export-filename="${f%.svg}.pdf" "$f" >/dev/null 2>&1; done
+        platforms: [linux, darwin]
+      - cmd: cp docs/diagramas/*.svg docs/diagramas/*.pdf docs/informe/images/
+        platforms: [linux, darwin]
     ignore_error: true
 
   informe:

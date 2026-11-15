@@ -6,32 +6,11 @@ Proyecto correspondiente a la **Nota Parcial #3 de Computación en la Nube (2026
 
 ---
 
-## 🚀 Arquitectura General
+## 🧭 Diagrama de contexto
 
-```
-                      +------------------------------------------+
-                      |         Equipo Anfitrión (Host)          |
-                      |   Orquestador Web en Go (HTTPaaS Core)   |
-                      |          Puerto Web: :8080               |
-                      +--------------------+---------------------+
-                                           |
-                    +----------------------+----------------------+
-                    | Red Host-Only (subred asignada por VirtualBox) |
-                    |                                             |
-   +----------------+----------------+          +-----------------+----------------+
-   |  Servidor DNS Dedicado (Bind9)  |          | Disco Base Multiconexión         |
-   |  VM: ns (Debian 13.0 CLI)       |          | ApacheServer.vdi (multiattach)   |
-   |  IP: subred + .10 (derivada)     |          +--------+----------------+--------+
-   |  Dominio: cloud.local.          |                   |                |
-   +----------------+----------------+                   | Diferencial    | Diferencial
-                    | Registros dinámicos                v                v
-                    |                      +-------------+----+ +---------+----+
-                    +--------------------> | Instancia 1:     | | Instancia 2: |
-                    |                      | paisajes         | | negocios     |
-                    +--------------------> | subred .100      | | subred .101  |
-                                           | Apache + web.zip | | Apache + .zip|
-                                           +------------------+ +--------------+
-```
+![Diagrama de contexto de HTTPaaS](docs/diagramas/escenario.svg)
+
+El orquestador expone la API y la consola en `:8080` y opera VirtualBox sobre la red host-only derivada. `ns` publica la zona `cloud.local.`, la plantilla `ApacheServer` conserva el disco `multiattach` y las instancias usan DHCP (`.100–.199`) sobre discos diferenciales.
 
 ## 📋 Requisitos
 

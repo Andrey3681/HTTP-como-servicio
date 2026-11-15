@@ -51,3 +51,6 @@ desktop.ini
 .idea/
 .vscode/
 
+
+# Artefactos de herramientas de diseño
+.impeccable/

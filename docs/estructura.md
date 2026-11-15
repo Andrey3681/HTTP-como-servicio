@@ -17,24 +17,23 @@ Construir una plataforma local de tipo **PaaS / IaaS** que permita a usuarios so
 ```
                       +------------------------------------------+
                       |         Equipo Anfitrión (Host)          |
-                      |   Orquestador Web en Go (HTTPaaS Core)   |
-                      |          Puerto Web: :8080               |
+                      |   Orquestador HTTPaaS en Go (:8080)      |
                       +--------------------+---------------------+
                                            |
                     +----------------------+----------------------+
-                    | Red Interna / Host-Only (192.168.10.0/24)   |
+                    | Red host-only (subred derivada por VBox)    |
                     |                                             |
    +----------------+----------------+          +-----------------+----------------+
-   |  Servidor DNS Dedicado (Bind9)  |          | Disco Base Multiconexión         |
-   |  VM: ns (Debian 13.0 CLI)       |          | ApacheServer.vdi (multiattach)   |
-   |  IP: 192.168.10.10/24           |          +--------+----------------+--------+
+   |  Servidor DNS                   |          | Disco base multiconexión          |
+   |  VM: ns (Debian 13)             |          | ApacheServer.vdi (multiattach)    |
+   |  IP fija: subred + .10          |          +--------+----------------+---------+
    |  Dominio: cloud.local.          |                   |                |
    +----------------+----------------+                   | Diferencial    | Diferencial
                     | Registros dinámicos                v                v
                     |                      +-------------+----+ +---------+----+
-                    +--------------------> | Instancia 1:     | | Instancia 2: |
+                    +--------------------> | Instancia 1      | | Instancia 2  |
                     |                      | paisajes         | | negocios     |
-                    +--------------------> | 192.168.10.30    | | 192.168.10.31|
+                    +--------------------> | DHCP .100-.199   | | DHCP .100-.199|
                                            | Apache + web.zip | | Apache + .zip|
                                            +------------------+ +--------------+
 ```
@@ -43,9 +42,9 @@ Construir una plataforma local de tipo **PaaS / IaaS** que permita a usuarios so
 1. **Aprovisionar Instancia:**
    - El usuario envía nombre de host (ej. `paisajes`) y archivo `.zip` con el sitio web.
    - El orquestador crea la VM en VirtualBox reutilizando el disco multiconexión `ApacheServer.vdi`.
-   - Se configura la identidad de red (hostname, IP fija o reserva DHCP en `192.168.10.x`).
-   - Se registra el registro `A` en el servidor DNS Bind9 (`paisajes.cloud.local.` -> `192.168.10.30`).
-   - Se transfiere y descomprime el archivo `.zip` en el directorio de Apache (`/var/www/html/`).
+   - Se configura la identidad de red (hostname y dirección dinámica por DHCP en el rango `.100-.199` de la subred derivada).
+   - Se registra el registro `A` en el servidor DNS Bind9 (`paisajes.cloud.local.` -> `<ip-dhcp>`).
+   - Se transfiere y descomprime el archivo `.zip` en `/var/www/vhosts/<host>/public/`.
    - La instancia queda visible en el dashboard con enlace activo `http://paisajes.cloud.local`.
 2. **Consultar Instancias:**
    - Panel de control en tiempo real con listado de instancias, hostname, IP, fecha/hora de creación y estado de salud.
@@ -113,7 +112,7 @@ httpaas-orchestrator/
 │   │   │   ├── bind9.go                   # Gestión dinámica de registros en cloud.local.
 │   │   │   └── bind9_test.go
 │   │   ├── deployer/                      # Adaptador ports.Deployer (GuestControl o SSH/SCP)
-│   │   │   ├── deployer.go                # Envío de .zip y extracción en /var/www/html
+│   │   │   ├── deployer.go                # Envío de .zip y extracción en /var/www/vhosts/<host>/public
 │   │   │   └── deployer_test.go
 │   │   └── filestore/                     # Adaptador ports.Repository (JSON atómico o SQLite)
 │   │       ├── filestore.go
@@ -190,7 +189,7 @@ La carpeta `docs/` centraliza todo el ciclo de diseño, especificación, arquite
 
 2. **`docs/diseno-solucion.md`**:
    - Vistas arquitectónicas:
-     - **Vista de Despliegue:** Mapa de red (`192.168.10.0/24`), asignación de IPs, servidor DNS (`192.168.10.10`), máquinas creadas dinámicamente (`192.168.10.30+`).
+     - **Vista de Despliegue:** Mapa de la subred host-only derivada, servidor DNS (`subred + .10`), plantilla (`subred + .11`) y máquinas con IP dinámica (`.100-.199`).
      - **Vista de Procesos:** Flujo detallado paso a paso con manejo transaccional de fallos (rollback si falla el DNS o la subida de archivos).
      - **Vista de Datos:** Modelo de la instancia y persistencia del inventario.
      - **Vista de Seguridad y Validación:** Reglas de nombres de host (solo caracteres alfanuméricos y guiones, sin caracteres especiales, longitud 3-32), validación de archivos zip (detección de archivos maliciosos, límites de tamaño).
@@ -309,7 +308,7 @@ Para garantizar que los agentes de IA (Antigravity, Claude, Copilot) operen con 
      VBoxManage createvm --name "paisajes" --ostype "Debian_64" --register
      
      # 2. Configurar memoria, CPUs y red interna
-     VBoxManage modifyvm "paisajes" --memory 1024 --cpus 1 --nic1 intnet --intnet1 "cloudnet"
+     VBoxManage modifyvm "paisajes" --memory 1024 --cpus 1 --nic1 hostonly --hostonlyadapter1 vboxnet1
      
      # 3. Asociar controlador de almacenamiento y el disco multiconexión
      VBoxManage storagectl "paisajes" --name "SATA" --add sata --controller IntelAHCI

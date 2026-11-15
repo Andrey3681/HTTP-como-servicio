@@ -5,30 +5,30 @@ skinparam defaultTextAlignment center
 skinparam rectangleBorderThickness 1
 skinparam nodeBorderThickness 1
 
-title Diagrama de Escenario - HTTPaaS
+title Diagrama de Contexto - HTTPaaS
 
-node "Equipo Anfitrión\nVirtualBox\nOrquestador HTTPaaS (Go)" as host
+actor "Usuario" as user
+cloud "Internet" as wan
 
-rectangle "Red interna cloudnet\n192.168.10.0/24" as net {
-
-  node "VM DNS - ns\nDebian 13 (CLI)\nBind9\n192.168.10.10/24\nzona cloud.local." as dns
-
-  node "PLANTILLA ApacheServer\nDebian 13 (CLI) + Apache HTTPD\nGuest Additions\nApacheServer.vdi (multiattach)" as tmpl
-
-  node "INSTANCIAS DINÁMICAS\nCreadas desde plantilla\nDiscos diferenciales (multiattach)\n192.168.10.[30..254]\n<host>.cloud.local" as inst
-
-  node "Aplicación Web de Gestión\nInterfaz Web + API REST\nOrquestación y despliegue" as webapp
+package "Equipo anfitrión" {
+  node "Navegador" as browser
+  node "Orquestador HTTPaaS\nAPI REST y consola web (:8080)" as orch
+  node "Oracle VirtualBox\nVBoxManage" as vbox
 }
 
-host -- net : 192.168.10.1 (host-only)
-net -- dns
-net -- tmpl
-net -- inst
-net -- webapp
+package "Red host-only\nsubred derivada, por ejemplo 192.168.57.0/24" as net {
+  node "VM ns\nDebian 13 + Bind9\nzona cloud.local.\nIP fija .10" as dns
+  node "VM ApacheServer\nplantilla Apache\nIP fija .11\nApacheServer.vdi (multiattach)" as tmpl
+  node "Instancias\nApache + disco diferencial\nDHCP .100-.199\n<host>.cloud.local" as inst
+}
 
-tmpl --> inst : clonación / uso multiattach
-webapp --> dns : registro dinámico (nsupdate)
-webapp --> inst : despliegue .zip a /var/www/html/
-webapp --> tmpl : aprovisionamiento
+user --> browser
+browser --> orch : HTTP
+orch --> vbox : crea y opera las VM
+orch --> dns : registra y lista A (nsupdate/dig)
+orch --> inst : SSH/SCP (despliegue y operación)
+vbox --> wan : NAT temporal durante la preparación
+tmpl --> inst : discos diferenciales
+inst --> dns : resolución de nombres
 
 @enduml
