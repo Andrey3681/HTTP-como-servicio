@@ -195,6 +195,174 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorRespuesta'
 
+  /api/instancias/{id}/acceso:
+    get:
+      operationId: getInstanceAccess
+      summary: Obtener el comando SSH de acceso a la instancia
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Datos de acceso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datos:
+                    type: object
+                    properties:
+                      usuario:
+                        type: string
+                        example: jorge
+                      host:
+                        type: string
+                        example: 192.168.57.105
+                      ip:
+                        type: string
+                      fqdn:
+                        type: string
+                        example: mario.cloud.local
+                      puerto:
+                        type: integer
+                        example: 22
+                      comando:
+                        type: string
+                        example: ssh -i /ruta/clave jorge@192.168.57.105
+                      usa_clave_laboratorio:
+                        type: boolean
+                      nota_clave:
+                        type: string
+        '404':
+          description: Instancia no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+        '409':
+          description: La instancia no está activa o no tiene IP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+        '500':
+          description: Error al componer el acceso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+
+  /api/instancias/{id}/servicios/reiniciar:
+    post:
+      operationId: restartInstanceServices
+      summary: Reiniciar Apache en la instancia
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Servicios reiniciados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                  datos:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      estado:
+                        type: string
+                      resultado:
+                        type: string
+        '404':
+          description: Instancia no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+        '409':
+          description: La instancia no está activa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+        '500':
+          description: Fallo remoto al reiniciar
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+
+  /api/instancias/{id}/despliegue:
+    post:
+      operationId: redeployInstance
+      summary: Actualizar el contenido web de la instancia
+      description: Reemplaza el contenido publicado con un nuevo paquete .zip sin recrear la máquina virtual ni el registro DNS.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [archivo]
+              properties:
+                archivo:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Despliegue actualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                  datos:
+                    $ref: '#/components/schemas/Instancia'
+        '400':
+          description: Paquete inválido o solicitud multipart incorrecta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+        '404':
+          description: Instancia no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+        '409':
+          description: La instancia no está activa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+        '500':
+          description: Fallo remoto al desplegar
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+
   /api/dns/anfitrion:
     get:
       operationId: resolveFromHost

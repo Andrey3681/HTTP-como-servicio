@@ -6,27 +6,52 @@ package services
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
+	"net/netip"
+	"strings"
 
 	"github.com/Andrey3681/httpaas-orchestrator/internal/core/domain"
 	"github.com/Andrey3681/httpaas-orchestrator/internal/core/ports"
 )
 
-// InstanceService gestiona las operaciones de consulta y eliminación controlada de instancias.
+// InstanceOptions agrupa los colaboradores opcionales de las operaciones sobre
+// instancias ya aprovisionadas.
+type InstanceOptions struct {
+	// Operator ejecuta operaciones dentro de la instancia (reinicio de Apache).
+	Operator ports.InstanceOperator
+	// Deployer vuelve a publicar el contenido web.
+	Deployer ports.Deployer
+	// GuestUser retorna el usuario configurado para los invitados.
+	GuestUser func() string
+	// SSHKeyPath es la ruta local de la clave privada del entorno.
+	SSHKeyPath string
+}
+
+// InstanceService gestiona las operaciones de consulta, acceso y eliminación
+// controlada de instancias.
 type InstanceService struct {
 	repo        ports.Repository
 	hypervisor  ports.Hypervisor
 	dnsProvider ports.DnsProvider
 	logger      ports.EventLogger
+	operator    ports.InstanceOperator
+	deployer    ports.Deployer
+	guestUser   func() string
+	sshKeyPath  string
 }
 
 // NewInstanceService crea una nueva instancia del servicio de gestión.
-func NewInstanceService(repo ports.Repository, hypervisor ports.Hypervisor, dnsProvider ports.DnsProvider, logger ports.EventLogger) *InstanceService {
+func NewInstanceService(repo ports.Repository, hypervisor ports.Hypervisor, dnsProvider ports.DnsProvider, logger ports.EventLogger, opts InstanceOptions) *InstanceService {
 	return &InstanceService{
 		repo:        repo,
 		hypervisor:  hypervisor,
 		dnsProvider: dnsProvider,
 		logger:      logger,
+		operator:    opts.Operator,
+		deployer:    opts.Deployer,
+		guestUser:   opts.GuestUser,
+		sshKeyPath:  opts.SSHKeyPath,
 	}
 }
 
@@ -44,6 +69,89 @@ func (s *InstanceService) ListInstances(ctx context.Context) ([]domain.Instance,
 // GetInstance busca una instancia por su identificador único.
 func (s *InstanceService) GetInstance(ctx context.Context, id string) (*domain.Instance, error) {
 	return s.repo.FindByID(ctx, id)
+}
+
+// RestartServices reinicia Apache en una instancia activa.
+func (s *InstanceService) RestartServices(ctx context.Context, id string) (*domain.Instance, error) {
+	inst, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	ip, err := runningIP(inst)
+	if err != nil {
+		return nil, err
+	}
+	if s.operator == nil {
+		return nil, fmt.Errorf("el operador de instancias no está disponible")
+	}
+
+	s.log("INFO", "Reiniciando servicios de la instancia", map[string]any{"instancia": inst.Name, "ip": ip.String()})
+	if err := s.operator.RestartWebService(ctx, inst.Name, ip); err != nil {
+		return nil, err
+	}
+	s.log("INFO", "Servicios reiniciados correctamente", map[string]any{"instancia": inst.Name})
+	return inst, nil
+}
+
+// Redeploy reemplaza el contenido web de una instancia activa sin recrear la VM
+// ni el registro DNS.
+func (s *InstanceService) Redeploy(ctx context.Context, id string, content io.ReaderAt, size int64) (*domain.Instance, error) {
+	inst, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	ip, err := runningIP(inst)
+	if err != nil {
+		return nil, err
+	}
+	if s.deployer == nil {
+		return nil, fmt.Errorf("el desplegador no está disponible")
+	}
+	if _, err := domain.ValidateZipPackage(content, size); err != nil {
+		return nil, err
+	}
+
+	s.log("INFO", "Actualizando el despliegue de la instancia", map[string]any{"instancia": inst.Name, "bytes": size})
+	stream := io.NewSectionReader(content, 0, size)
+	if err := s.deployer.DeployWebZip(ctx, inst.Name, ip, stream, size); err != nil {
+		return nil, err
+	}
+	s.log("INFO", "Despliegue actualizado correctamente", map[string]any{"instancia": inst.Name})
+	return inst, nil
+}
+
+// GetAccess compone los datos y el comando SSH para acceder a la instancia.
+func (s *InstanceService) GetAccess(ctx context.Context, id string) (domain.InstanceAccess, error) {
+	inst, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return domain.InstanceAccess{}, err
+	}
+	ip, err := runningIP(inst)
+	if err != nil {
+		return domain.InstanceAccess{}, err
+	}
+	if s.sshKeyPath == "" {
+		return domain.InstanceAccess{}, fmt.Errorf("no hay una clave SSH configurada para el entorno")
+	}
+
+	user := "debian"
+	if s.guestUser != nil {
+		if value := s.guestUser(); value != "" {
+			user = value
+		}
+	}
+	host := ip.String()
+	command := fmt.Sprintf("ssh -i %s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 %s@%s", s.sshKeyPath, user, host)
+	return domain.InstanceAccess{
+		Usuario:             user,
+		Host:                host,
+		IP:                  host,
+		FQDN:                inst.FQDN,
+		Puerto:              22,
+		Comando:             command,
+		UsaClaveLaboratorio: true,
+		NotaClave:           "El comando usa la clave privada del entorno en el anfitrión (" + s.sshKeyPath + "). No se expone su contenido.",
+	}, nil
 }
 
 // DeleteInstance apaga y destruye la máquina virtual, remueve el registro DNS y elimina el registro del inventario.
@@ -75,4 +183,20 @@ func (s *InstanceService) DeleteInstance(ctx context.Context, id string) error {
 	log.Printf("[InstanceService] Instancia '%s' eliminada exitosamente", inst.Name)
 	s.log("INFO", "Instancia eliminada exitosamente", map[string]any{"instancia": inst.Name})
 	return nil
+}
+
+// runningIP valida que la instancia esté activa y retorna su IP utilizable.
+func runningIP(inst *domain.Instance) (netip.Addr, error) {
+	if inst == nil {
+		return netip.Addr{}, domain.ErrInstanceNotFound
+	}
+	if inst.Status != domain.StatusRunning {
+		return netip.Addr{}, fmt.Errorf("%w: la instancia '%s' está en estado %s", domain.ErrOperationNotAllowed, inst.Name, inst.Status)
+	}
+	raw := strings.TrimSpace(strings.Split(inst.IP, "/")[0])
+	ip, err := netip.ParseAddr(raw)
+	if err != nil || !ip.IsValid() {
+		return netip.Addr{}, fmt.Errorf("%w: la instancia '%s' no tiene una IP válida", domain.ErrOperationNotAllowed, inst.Name)
+	}
+	return ip, nil
 }

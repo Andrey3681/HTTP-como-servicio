@@ -54,12 +54,7 @@ func (d *ApacheDeployer) DeployWebZip(ctx context.Context, hostname string, targ
 	if d.keyPath == "" {
 		return fmt.Errorf("falta la clave SSH del laboratorio")
 	}
-	user := "debian"
-	if d.guestUser != nil {
-		if value := d.guestUser(); value != "" {
-			user = value
-		}
-	}
+	user := d.guestUserName()
 
 	log.Printf("[Deployer] Desplegando contenido web en %s (%d bytes)", targetIP.String(), size)
 	d.log("INFO", "Iniciando despliegue web", map[string]any{"instancia": hostname, "ip": targetIP.String(), "bytes": size})
@@ -83,15 +78,18 @@ func (d *ApacheDeployer) DeployWebZip(ctx context.Context, hostname string, targ
 	}
 	d.log("INFO", "Paquete web recibido", map[string]any{"instancia": hostname, "bytes": written})
 
+	d.log("INFO", "Esperando a que la instancia acepte SSH", map[string]any{"instancia": hostname, "ip": targetIP.String()})
 	if err := d.waitSSH(ctx, user, targetIP.String(), 90*time.Second); err != nil {
 		return err
 	}
 
+	d.log("INFO", "Copiando el paquete web a la instancia", map[string]any{"instancia": hostname, "ip": targetIP.String()})
 	remoteZip := "/tmp/httpaas-" + hostname + ".zip"
 	if _, stderr, err := d.executor.Execute(ctx, "scp", d.scpArgs(tmpPath, user, targetIP.String(), remoteZip)...); err != nil {
 		return fmt.Errorf("fallo al copiar el paquete a %s: %w (%s)", targetIP, err, strings.TrimSpace(string(stderr)))
 	}
 
+	d.log("INFO", "Descomprimiendo el contenido y publicando el virtual host", map[string]any{"instancia": hostname})
 	script := d.deployScript(hostname, remoteZip)
 	encoded := base64.StdEncoding.EncodeToString([]byte(script))
 	remote := "echo '" + encoded + "' | base64 -d | sudo -n bash -s"
@@ -100,6 +98,39 @@ func (d *ApacheDeployer) DeployWebZip(ctx context.Context, hostname string, targ
 	}
 
 	d.log("INFO", "Despliegue web completado", map[string]any{"instancia": hostname, "ip": targetIP.String()})
+	return nil
+}
+
+// guestUserName resuelve el usuario efectivo del invitado.
+func (d *ApacheDeployer) guestUserName() string {
+	if d.guestUser != nil {
+		if value := d.guestUser(); value != "" {
+			return value
+		}
+	}
+	return "debian"
+}
+
+// RestartWebService reinicia Apache en la instancia y comprueba que quede activo.
+func (d *ApacheDeployer) RestartWebService(ctx context.Context, hostname string, targetIP netip.Addr) error {
+	if d.keyPath == "" {
+		return fmt.Errorf("falta la clave SSH del entorno")
+	}
+	user := d.guestUserName()
+	d.log("INFO", "Reiniciando Apache en la instancia", map[string]any{"instancia": hostname, "ip": targetIP.String()})
+
+	if err := d.waitSSH(ctx, user, targetIP.String(), 60*time.Second); err != nil {
+		return err
+	}
+	const command = "sudo -n systemctl restart apache2 && sudo -n systemctl is-active apache2"
+	if _, stderr, err := d.executor.Execute(ctx, "ssh", d.sshArgs(user, targetIP.String(), command)...); err != nil {
+		detail := strings.TrimSpace(string(stderr))
+		if detail == "" {
+			detail = err.Error()
+		}
+		return fmt.Errorf("fallo al reiniciar Apache en %s: %s", targetIP, detail)
+	}
+	d.log("INFO", "Apache reiniciado y activo", map[string]any{"instancia": hostname})
 	return nil
 }
 

@@ -129,7 +129,7 @@ func (h *HypervisorAdapter) CreateInstanceFromBase(ctx context.Context, name str
 CreateInstanceFromBase crea una máquina virtual enlazando el disco multiconexión base.
 
 <a name="HypervisorAdapter.Destroy"></a>
-### func \(\*HypervisorAdapter\) [Destroy](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/vbox/vbox.go#L415>)
+### func \(\*HypervisorAdapter\) [Destroy](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/vbox/vbox.go#L417>)
 
 ```go
 func (h *HypervisorAdapter) Destroy(ctx context.Context, vmName string) error
@@ -138,7 +138,7 @@ func (h *HypervisorAdapter) Destroy(ctx context.Context, vmName string) error
 Destroy destruye la VM y elimina todos sus archivos.
 
 <a name="HypervisorAdapter.GetIPAddress"></a>
-### func \(\*HypervisorAdapter\) [GetIPAddress](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/vbox/vbox.go#L277>)
+### func \(\*HypervisorAdapter\) [GetIPAddress](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/vbox/vbox.go#L279>)
 
 ```go
 func (h *HypervisorAdapter) GetIPAddress(ctx context.Context, vmName string) (netip.Addr, error)
@@ -147,7 +147,7 @@ func (h *HypervisorAdapter) GetIPAddress(ctx context.Context, vmName string) (ne
 GetIPAddress obtiene la dirección IP de la VM. La imagen cloud no incluye el servicio de usuario de Guest Additions, así que la fuente principal es la concesión DHCP consultada por MAC; guestproperty queda como último recurso.
 
 <a name="HypervisorAdapter.Start"></a>
-### func \(\*HypervisorAdapter\) [Start](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/vbox/vbox.go#L262>)
+### func \(\*HypervisorAdapter\) [Start](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/vbox/vbox.go#L263>)
 
 ```go
 func (h *HypervisorAdapter) Start(ctx context.Context, vmName string) error
@@ -156,7 +156,7 @@ func (h *HypervisorAdapter) Start(ctx context.Context, vmName string) error
 Start inicia la máquina virtual en modo headless.
 
 <a name="HypervisorAdapter.Stop"></a>
-### func \(\*HypervisorAdapter\) [Stop](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/vbox/vbox.go#L405>)
+### func \(\*HypervisorAdapter\) [Stop](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/vbox/vbox.go#L407>)
 
 ```go
 func (h *HypervisorAdapter) Stop(ctx context.Context, vmName string) error

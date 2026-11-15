@@ -8,7 +8,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -61,7 +60,9 @@ func main() {
 	}
 
 	logBroker := logging.NewBroker(1000)
-	log.SetOutput(io.MultiWriter(os.Stderr, logBroker))
+	// El registro del panel solo recibe eventos estructurados; las trazas
+	// técnicas y las peticiones HTTP quedan en la salida estándar.
+	log.SetOutput(os.Stderr)
 
 	log.Println("================================================================")
 	log.Println("  HTTPaaS - Servicio Administrado de Servidores HTTP (2026-2)   ")
@@ -119,7 +120,12 @@ func main() {
 
 	// 4. Inicializar servicios de aplicación
 	orchestrator := services.NewOrchestrator(hyp, dns, dep, repo, *domainZone, baseDiskProvider, logBroker)
-	instanceService := services.NewInstanceService(repo, hyp, dns, logBroker)
+	instanceService := services.NewInstanceService(repo, hyp, dns, logBroker, services.InstanceOptions{
+		Operator:   dep,
+		Deployer:   dep,
+		GuestUser:  setupService.GuestUser,
+		SSHKeyPath: filepath.Join(layout.SSHDir, "id_ed25519"),
+	})
 
 	// 5. Inicializar manejadores HTTP
 	instanceHandler := handlers.NewInstanceHandler(orchestrator, instanceService, logBroker)

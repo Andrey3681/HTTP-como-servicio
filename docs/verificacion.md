@@ -126,3 +126,22 @@ Comprobación post-eliminación:
 - `VBoxManage list vms` ya no debe listar `paisajes`.
 - `dig @"$DNS_IP" paisajes.cloud.local +short` debe responder vacío (NXDOMAIN).
 
+### 2.8 Acceso SSH (`GET /api/instancias/{id}/acceso`)
+```bash
+curl -s http://localhost:8080/api/instancias/paisajes/acceso | jq '.datos'
+```
+Debe devolver usuario, host, IP, FQDN, puerto y un comando `ssh -i <clave> ...` utilizable.
+
+### 2.9 Reiniciar Servicios (`POST /api/instancias/{id}/servicios/reiniciar`)
+```bash
+curl -X POST http://localhost:8080/api/instancias/paisajes/servicios/reiniciar | jq .
+```
+Devuelve `200` con `resultado: apache2 activo`; una instancia no `ACTIVA` responde `409`.
+
+### 2.10 Actualizar Despliegue (`POST /api/instancias/{id}/despliegue`)
+```bash
+curl -X POST http://localhost:8080/api/instancias/paisajes/despliegue \
+  -F "archivo=@/tmp/nueva-pagina.zip" | jq '.mensaje'
+```
+Reemplaza el contenido sin recrear la VM ni el registro DNS; un `.zip` inválido responde `400` y una instancia no `ACTIVA`, `409`.
+

@@ -64,7 +64,7 @@ El diseño técnico (`arquitectura.md`/`diseno-solucion.md`) concreta el flujo t
 | Módulo | Ruta/vista | Propósito | RF principales | API |
 |---|---|---|---|---|
 | M1. Instancias (Consola de aprovisionamiento) | `/index.html` | Crear y listar instancias; punto de entrada operativo. | RF-01,02,03,04,06,09,10,11,12 | `GET/POST /api/instancias`, `GET/DELETE /api/instancias/{id}` |
-| M2. Detalle de instancia (drawer lateral) | Drawer en `/index.html` (se abre con `id` de instancia) | Inspección de una instancia (datos, estado, VHost/DNS de referencia) sin abandonar el listado. | RF-05,09,10,12,13 | `GET /api/instancias/{id}` (+ futuro VHost/DNS por instancia) |
+| M2. Detalle de instancia (drawer lateral) | Drawer en `/index.html` (se abre con `id` de instancia o deep-link `#detalle=<id>`) | Inspección y operación de una instancia (datos, estado, VHost/DNS de referencia): reiniciar servicios, acceso SSH y actualizar despliegue. | RF-05,09,10,12,13 | `GET /api/instancias/{id}`, `GET .../acceso`, `POST .../servicios/reiniciar`, `POST .../despliegue` (+ futuro VHost/DNS por instancia) |
 | M3. DNS / Zonas | `/dns.html` | Visibilidad de registros A en `cloud.local.`. | RF-07,10,11,12 | `GET /api/dns/registros` |
 | M4. Salud / Diagnóstico | `/salud.html` | Estado de dependencias del entorno. | RF-08,10,11 | `GET /api/salud` |
 | M5. VHosts / Apache (vista operativa) | `/vhosts.html` | Visibilidad de VirtualHosts/ServerName/DocumentRoot por instancia (y estado lógico). | RF-13,12,10,11 | *futuro* `GET /api/vhosts` o derivado de instancias |
@@ -102,11 +102,12 @@ Componentes transversales (presentes en todos los módulos, RNF-02/07/10): **hea
 ### M2. Detalle de instancia (drawer lateral en `/index.html`)
 - **Objetivo:** inspeccionar una instancia concreta y su relación VHost/DNS (RF-05/13) desde un panel lateral sin salir del listado.
 - **Trazabilidad:** RF-05,09,10,12,13; RNF-01,02,05,06,08,11,12.
-- **Funciones:** abrir el drawer desde la acción «Ver detalle» del listado; cargar el detalle por identificador; mostrar atributos; enlazar al FQDN; presentar referencias de VHost y registro DNS; permitir cerrar el panel y volver al contexto del listado.
-- **Formulario/controles:** no hay selector independiente; el contexto lo define la instancia elegida desde M1.
-- **Botones/acciones:** `Ver detalle` (abre drawer, RF-05), `Cerrar`/overlay/Escape (cierra drawer), enlace al sitio publicado (RF-09), (recomendado) `Actualizar`, `Eliminar` con confirmación (reusa patrón RF-06) y `Copiar FQDN/IP`.
-- **Elementos UI:** panel lateral deslizable (drawer) con encabezado, botón de cierre, bloque de metadatos (ID/nombre, FQDN, IP, estado con badge, enlace, `creado_en`), bloque **Apache VHost (referencia/real)** (ServerName, DocumentRoot, log), bloque **Registro DNS Bind9 (referencia/real)** (registro A, TTL/IP), estados de carga/error.
-- **Estados:** cerrado, cargando, encontrado, `404` no encontrado, error/inaccesible. *Evolutivo (RF-13):* reemplazar “referencia” por datos reales cuando exista endpoint de VHost/DNS por instancia.
+- **Funciones:** abrir el drawer desde la acción «Ver detalle» del listado o deep-link `#detalle=<id>`; cargar el detalle por identificador; mostrar atributos; enlazar al FQDN; presentar referencias de VHost y registro DNS; **reiniciar el servicio web**, **mostrar el comando SSH de acceso** y **actualizar el despliegue con un nuevo `.zip`**; cerrar el panel y volver al contexto del listado.
+- **Formulario/controles:** no hay selector independiente; el contexto lo define la instancia elegida desde M1. Se admite deep-link `#detalle=<id>` y una zona de carga `.zip` para actualizar el despliegue.
+- **Botones/acciones:** `Ver detalle` (abre drawer, RF-05), `Cerrar`/overlay/Escape (cierra drawer), enlace al sitio publicado (RF-09), `Actualizar`, `Eliminar` con confirmación (reusa patrón RF-06), `Copiar FQDN/IP`, `Reiniciar servicios` (`POST /api/instancias/{id}/servicios/reiniciar`), `Acceso SSH` con comando copiable (`GET /api/instancias/{id}/acceso`) y `Actualizar despliegue` (`POST /api/instancias/{id}/despliegue`, multipart `archivo`).
+- **Estados de las acciones:** las tres acciones se deshabilitan si la instancia no está `ACTIVA` o no tiene IP; muestran `aria-busy` mientras corren y un mensaje de éxito o error (404, 409, 400/500). El reinicio no modifica DNS; la actualización de despliegue conserva la VM y el registro DNS.
+- **Elementos UI:** panel lateral deslizable (drawer) con encabezado, botón de cierre, bloque de metadatos (ID/nombre, FQDN, IP, estado con badge, enlace, `creado_en`), bloque **Apache VHost (referencia/real)** (ServerName, DocumentRoot, log), bloque **Registro DNS Bind9 (referencia/real)** (registro A, TTL/IP), zona de carga `.zip` para el despliegue, estados de carga/error y feedback de acciones.
+- **Estados:** cerrado, cargando, encontrado, `404` no encontrado, error/inaccesible; estados de acción en curso/éxito/error. *Evolutivo (RF-13):* reemplazar “referencia” por datos reales cuando exista endpoint de VHost/DNS por instancia.
 
 ### M3. DNS (`/dns.html`)
 - **Objetivo:** visibilidad operativa de los registros DNS (RF-07).

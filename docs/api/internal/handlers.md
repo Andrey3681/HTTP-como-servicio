@@ -195,13 +195,13 @@ func NewInstanceHandler(orchestrator *services.Orchestrator, instanceService *se
 NewInstanceHandler crea un nuevo InstanceHandler con los servicios requeridos.
 
 <a name="InstanceHandler.HandleInstance"></a>
-### func \(\*InstanceHandler\) [HandleInstance](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/instance_handler.go#L47>)
+### func \(\*InstanceHandler\) [HandleInstance](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/instance_handler.go#L48>)
 
 ```go
 func (h *InstanceHandler) HandleInstance(w http.ResponseWriter, r *http.Request)
 ```
 
-HandleInstance enruta las peticiones individuales \(/api/instancias/\{id\}\).
+HandleInstance enruta las peticiones individuales \(/api/instancias/\{id\}\) y sus subrutas de operación.
 
 <a name="InstanceHandler.HandleInstances"></a>
 ### func \(\*InstanceHandler\) [HandleInstances](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/instance_handler.go#L35>)

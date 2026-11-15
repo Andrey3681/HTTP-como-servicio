@@ -89,3 +89,15 @@ func NewInstance(name string, domainZone string) (*Instance, error) {
 		CreatedAt: time.Now().UTC(),
 	}, nil
 }
+
+// InstanceAccess describe cómo acceder por SSH a una instancia aprovisionada.
+type InstanceAccess struct {
+	Usuario             string `json:"usuario"`
+	Host                string `json:"host"`
+	IP                  string `json:"ip"`
+	FQDN                string `json:"fqdn"`
+	Puerto              int    `json:"puerto"`
+	Comando             string `json:"comando"`
+	UsaClaveLaboratorio bool   `json:"usa_clave_laboratorio"`
+	NotaClave           string `json:"nota_clave"`
+}

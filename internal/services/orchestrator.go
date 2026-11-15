@@ -86,6 +86,7 @@ func (o *Orchestrator) Provision(ctx context.Context, req ProvisionRequest) (*do
 	o.log("INFO", "Iniciando aprovisionamiento de instancia", map[string]any{"instancia": trimmedName})
 
 	// 4. Crear máquina virtual a partir del disco multiconexión base
+	o.log("INFO", "Creando la máquina virtual de la instancia", map[string]any{"instancia": trimmedName})
 	baseDisk := ""
 	if o.baseDiskPath != nil {
 		baseDisk = o.baseDiskPath()
@@ -117,11 +118,13 @@ func (o *Orchestrator) Provision(ctx context.Context, req ProvisionRequest) (*do
 	}()
 
 	// 5. Iniciar la máquina virtual
+	o.log("INFO", "Arrancando la máquina virtual", map[string]any{"instancia": trimmedName})
 	if err = o.hypervisor.Start(ctx, trimmedName); err != nil {
 		return nil, fmt.Errorf("fallo al iniciar máquina virtual '%s': %w", trimmedName, err)
 	}
 
 	// 6. Obtener dirección IP asignada
+	o.log("INFO", "Esperando la dirección IP", map[string]any{"instancia": trimmedName})
 	var ip netip.Addr
 	ip, err = o.hypervisor.GetIPAddress(ctx, trimmedName)
 	if err != nil {
@@ -145,6 +148,7 @@ func (o *Orchestrator) Provision(ctx context.Context, req ProvisionRequest) (*do
 	o.log("INFO", "Registro DNS creado para la instancia", map[string]any{"instancia": trimmedName, "fqdn": inst.FQDN})
 
 	// 8. Desplegar paquete web .zip en Apache
+	o.log("INFO", "Desplegando el paquete web", map[string]any{"instancia": trimmedName})
 	if err = o.deployer.DeployWebZip(ctx, trimmedName, ip, req.ZipStream, req.ZipSize); err != nil {
 		return nil, fmt.Errorf("fallo al desplegar archivos web en Apache: %w", err)
 	}

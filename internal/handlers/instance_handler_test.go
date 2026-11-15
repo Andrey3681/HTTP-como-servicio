@@ -105,7 +105,7 @@ func TestInstanceHandler_List(t *testing.T) {
 	dep := &dummyDeployer{}
 
 	orc := services.NewOrchestrator(hyp, dns, dep, repo, "cloud.local", func() string { return "ApacheServer.vdi" }, nil)
-	svc := services.NewInstanceService(repo, hyp, dns, nil)
+	svc := services.NewInstanceService(repo, hyp, dns, nil, services.InstanceOptions{})
 	handler := handlers.NewInstanceHandler(orc, svc, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/instancias", nil)
@@ -125,7 +125,7 @@ func TestInstanceHandler_GetNotFound(t *testing.T) {
 	dep := &dummyDeployer{}
 
 	orc := services.NewOrchestrator(hyp, dns, dep, repo, "cloud.local", func() string { return "ApacheServer.vdi" }, nil)
-	svc := services.NewInstanceService(repo, hyp, dns, nil)
+	svc := services.NewInstanceService(repo, hyp, dns, nil, services.InstanceOptions{})
 	handler := handlers.NewInstanceHandler(orc, svc, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/instancias/no-existe", nil)
@@ -145,7 +145,7 @@ func TestInstanceHandler_ListInternalError(t *testing.T) {
 	dep := &dummyDeployer{}
 
 	orc := services.NewOrchestrator(hyp, dns, dep, repo, "cloud.local", func() string { return "ApacheServer.vdi" }, nil)
-	svc := services.NewInstanceService(repo, hyp, dns, nil)
+	svc := services.NewInstanceService(repo, hyp, dns, nil, services.InstanceOptions{})
 	handler := handlers.NewInstanceHandler(orc, svc, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/instancias", nil)
