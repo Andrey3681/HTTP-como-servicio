@@ -64,13 +64,12 @@ El diseño técnico (`arquitectura.md`/`diseno-solucion.md`) concreta el flujo t
 | Módulo | Ruta/vista | Propósito | RF principales | API |
 |---|---|---|---|---|
 | M1. Instancias (Consola de aprovisionamiento) | `/index.html` | Crear y listar instancias; punto de entrada operativo. | RF-01,02,03,04,06,09,10,11,12 | `GET/POST /api/instancias`, `GET/DELETE /api/instancias/{id}` |
-| M2. Detalle de instancia | `/detalle.html?id={id}` | Inspección de una instancia (datos, estado, VHost/DNS de referencia). | RF-05,09,10,12,13 | `GET /api/instancias/{id}` (+ futuro VHost/DNS por instancia) |
+| M2. Detalle de instancia (drawer lateral) | Drawer en `/index.html` (se abre con `id` de instancia) | Inspección de una instancia (datos, estado, VHost/DNS de referencia) sin abandonar el listado. | RF-05,09,10,12,13 | `GET /api/instancias/{id}` (+ futuro VHost/DNS por instancia) |
 | M3. DNS / Zonas | `/dns.html` | Visibilidad de registros A en `cloud.local.`. | RF-07,10,11,12 | `GET /api/dns/registros` |
 | M4. Salud / Diagnóstico | `/salud.html` | Estado de dependencias del entorno. | RF-08,10,11 | `GET /api/salud` |
 | M5. VHosts / Apache (vista operativa) | `/vhosts.html` | Visibilidad de VirtualHosts/ServerName/DocumentRoot por instancia (y estado lógico). | RF-13,12,10,11 | *futuro* `GET /api/vhosts` o derivado de instancias |
 | M6. Operaciones / Eventos (logs) | componente `logs-dock` (global) *(extensible a `/eventos.html`)* | Observabilidad de eventos de aprovisionamiento/operación. | RF-14,10 | `GET/DELETE /api/logs`, `GET /api/logs/stream` (SSE) |
 | M8. Preparación del entorno | página completa `setup-wizard` (bloquea la consola hasta completar) | Prepara el laboratorio real guiando al usuario paso a paso. | RF-15,10 | `GET /api/setup/estado`, `POST /api/setup/configuracion`, `POST /api/setup/iniciar`, `GET /api/setup/stream` |
-| M7. Ayuda / Verificación operativa | `/ayuda.html` | Guía rápida: formato hostname/zip, zona/red, pasos de verificación (dig/curl) y resolución de errores comunes. | RF-03,08,10,12 (soporte a RF-02/06) | ninguno (estático, enlaza conceptos de `verificacion.md`) |
 
 Componentes transversales (presentes en todos los módulos, RNF-02/07/10): **header** (marca, nav, estado de servicios/nodo), **footer** (contexto zona/DocumentRoot/versiones + toggle de logs), **dock de logs** (M6), **router** (navegación sin recarga), utilidades comunes (escape, formato fecha, feedback/loading).
 
@@ -90,54 +89,52 @@ Componentes transversales (presentes en todos los módulos, RNF-02/07/10): **hea
 - **Formulario (Aprovisionar instancia):**
   - Campo **Nombre de host** (texto, requerido, `name=nombre`, patrón hostname, placeholder `mi-app`, prefijo `http://`, sufijo fijo `.cloud.local` mostrado). *Elemento:* input + addons/prefijo-sufijo + etiqueta + ayuda.
   - Campo **Contenido web** (archivo, requerido, `name=archivo`, `accept=.zip,application/zip`). *Elemento:* input file + ayuda (despliegue en `/var/www/vhosts/<host>/`).
-  - *Elementos de contexto:* badges/ayuda `AUTO-VHOST-DNS`, texto de recarga (`systemctl reload apache2`, `rndc reload cloud.local`), zona/red/DocumentRoot.
+  - *Elementos de contexto:* badge/ayuda `AUTO-VHOST-DNS`, zona/red/DocumentRoot. Las acciones operativas por instancia (reinicio de servicios, acceso SSH, actualización de despliegue) se gestionan desde el drawer de detalle.
 - **Botones/acciones:**
   - `Verificar` (disponibilidad, RF-04) — secundario; deshabilitar si vacío/inválido.
   - `Aprovisionar` (submit RF-02) — primario; **deshabilitar + indicador de carga** durante la operación (RNF-03).
   - `Sync/Actualizar` (refresca listado, RF-11).
-  - Por instancia: `Ver detalle` (navega a M2, RF-05), `Eliminar` (abre confirmación, RF-06), enlace externo `open_in_new` (RF-09).
+  - Por instancia: `Ver detalle` (abre drawer M2, RF-05), `Eliminar` (abre confirmación, RF-06), enlace externo `open_in_new` (RF-09).
   - Modal eliminación: `Cancelar`, `Eliminar` (destructivo, con texto/ruta/comandos de referencia).
 - **Elementos UI:** cabecera de sección, panel formulario, panel resumen operativo (zona/red/DocumentRoot/recarga), panel/listado de instancias activas (contador, búsqueda/filtro, tarjetas/tabla con estado `ACTIVA/CREANDO/ERROR/ELIMINADA`, IP, FQDN/enlace), área de feedback `statusMessage` (`aria-live`), overlay/loading, modal de confirmación.
 - **Estados:** vacío (“no hay instancias”), cargando, éxito, error de validación (`400`), nombre duplicado, error de infraestructura (`500`/rollback comunicado), backend inaccesible.
 
-### M2. Detalle de instancia (`/detalle.html?id={id}`)
-- **Objetivo:** inspeccionar una instancia concreta y su relación VHost/DNS (RF-05/13).
+### M2. Detalle de instancia (drawer lateral en `/index.html`)
+- **Objetivo:** inspeccionar una instancia concreta y su relación VHost/DNS (RF-05/13) desde un panel lateral sin salir del listado.
 - **Trazabilidad:** RF-05,09,10,12,13; RNF-01,02,05,06,08,11,12.
-- **Funciones:** seleccionar instancia (desde query o selector) y cargar su detalle; mostrar atributos; enlazar al FQDN; presentar referencias de VHost y registro DNS; permitir volver al listado.
-- **Formulario/controles:**
-  - Selector **Instancia** (dropdown poblado desde `GET /api/instancias`).
-  - (Implícito) parámetro de ruta `?id=` para deep-link desde M1.
-- **Botones/acciones:** `Cargar` (consulta por id), `Volver al listado` (navega a M1), enlace al sitio publicado (RF-09), (recomendado) `Actualizar`, `Eliminar` con confirmación (reusa patrón RF-06) y `Copiar FQDN/IP`.
-- **Elementos UI:** encabezado + contexto API, bloque de metadatos (ID/nombre, FQDN, IP, estado con badge, enlace, `creado_en`), bloque **Apache VHost (referencia/real)** (ServerName, DocumentRoot, log) y bloque **Registro DNS Bind9 (referencia/real)** (registro A, TTL/IP), estado vacío/instrucción, aviso de conexión.
-- **Estados:** sin selección, cargando, encontrado, `404` no encontrado, error/inaccesible. *Evolutivo (RF-13):* reemplazar “referencia” por datos reales cuando exista endpoint de VHost/DNS por instancia.
+- **Funciones:** abrir el drawer desde la acción «Ver detalle» del listado; cargar el detalle por identificador; mostrar atributos; enlazar al FQDN; presentar referencias de VHost y registro DNS; permitir cerrar el panel y volver al contexto del listado.
+- **Formulario/controles:** no hay selector independiente; el contexto lo define la instancia elegida desde M1.
+- **Botones/acciones:** `Ver detalle` (abre drawer, RF-05), `Cerrar`/overlay/Escape (cierra drawer), enlace al sitio publicado (RF-09), (recomendado) `Actualizar`, `Eliminar` con confirmación (reusa patrón RF-06) y `Copiar FQDN/IP`.
+- **Elementos UI:** panel lateral deslizable (drawer) con encabezado, botón de cierre, bloque de metadatos (ID/nombre, FQDN, IP, estado con badge, enlace, `creado_en`), bloque **Apache VHost (referencia/real)** (ServerName, DocumentRoot, log), bloque **Registro DNS Bind9 (referencia/real)** (registro A, TTL/IP), estados de carga/error.
+- **Estados:** cerrado, cargando, encontrado, `404` no encontrado, error/inaccesible. *Evolutivo (RF-13):* reemplazar “referencia” por datos reales cuando exista endpoint de VHost/DNS por instancia.
 
-### M3. DNS / Zonas (`/dns.html`)
-- **Objetivo:** visibilidad operativa de la zona `cloud.local.` (RF-07).
+### M3. DNS (`/dns.html`)
+- **Objetivo:** visibilidad operativa de los registros DNS (RF-07).
 - **Trazabilidad:** RF-07,10,11,12; RNF-01,02,05,06,11,12.
-- **Funciones:** consultar y listar registros A; refrescar; mostrar zona/red/servidor.
+- **Funciones:** consultar y listar registros A; refrescar; mostrar la zona reportada por la API.
 - **Formulario:** no requiere formulario de alta (el alta DNS la dispara el aprovisionamiento, RF-02). *Evolutivo:* filtro/búsqueda por nombre/IP.
-- **Botones/acciones:** `Actualizar` (RF-11). (Recomendado evolutivo) `Copiar` valor, filtro cliente.
-- **Elementos UI:** tarjetas de contexto (Zona `cloud.local.`, servidor Bind9/rndc, red derivada de la interfaz host-only), tabla (Nombre, Tipo, IP, TTL) con tipografía monoespaciada para valores técnicos, estado vacío/error.
+- **Botones/acciones:** `Actualizar` (RF-11).
+- **Elementos UI:** encabezado con zona (`dnsZone`) y tabla de registros (Nombre, Tipo, IP, TTL), estado vacío/error.
 - **Estados:** cargando, con datos, sin registros, backend inaccesible.
 
-### M4. Salud / Diagnóstico (`/salud.html`)
-- **Objetivo:** verificar dependencias críticas (RF-08) para diagnosticar fallos de aprovisionamiento.
+### M4. Salud (`/salud.html`)
+- **Objetivo:** verificar dependencias críticas y ofrecer un resumen operativo del entorno, priorizando la respuesta a “¿el sistema está listo?” (RF-08).
 - **Trazabilidad:** RF-08,10,11; RNF-01,02,05,06,11.
-- **Funciones:** ejecutar comprobación y representar estado general, `vboxmanage` y `bind9`; mostrar payload crudo para soporte.
+- **Funciones:** ejecutar comprobación y representar estado general, VirtualBox y DNS con lenguaje claro; mostrar resúmenes de instancias, registros DNS y resolución del anfitrión; orientar recuperación ante fallos/prerrequisitos; exponer datos crudos para soporte como detalle progresivo (no como contenido principal).
 - **Formulario:** ninguno (acción directa de comprobación).
-- **Botones/acciones:** `Comprobar ahora` (primario). (Recomendado) auto-refresco opcional con intervalo visible/apagable.
-- **Elementos UI:** tarjetas de estado (general/VBoxManage/Bind9) con badges semánticos (ok/error/pendiente/sin datos), bloque `pre` con JSON de `/api/salud`, mensajes de error.
-- **Estados:** pendiente/sin comprobar, ok, degradado/error, backend inaccesible. Mapear explícitamente `null/false/true`.
+- **Botones/acciones:** `Comprobar ahora` (primario, con estado de carga y sin doble envío).
+- **Elementos UI:** indicador/encabezado de preparación general, tarjetas de estado (`h-overall`, `h-vbox`, `h-bind9`) con explicación breve, tarjetas de resumen (instancias, registros DNS, resolución del anfitrión) con contexto/acciones sugeridas, y diagnóstico técnico en detalle colapsable (`healthRaw`).
+- **Estados:** pendiente/sin comprobar, comprobando, listo/ok, degradado, error, backend inaccesible. Mapear explícitamente `null/false/true` y mostrar mensajes accionables.
 
-### M5. VHosts / Apache — vista operativa (`/vhosts.html`)
-- **Objetivo:** visibilidad por VHost (RF-13), complementando M1/M2, alineado al nav de diseño (“VHosts”).
+### M5. VHosts (`/vhosts.html`)
+- **Objetivo:** visibilidad por VHost (RF-13), complementando M1/M2.
 - **Trazabilidad:** RF-13,12,10,11; RNF-01,02,05,06,11,12.
-- **Funciones:** listar VHosts asociados a instancias (ServerName/FQDN, DocumentRoot, enlace, estado coherente con instancia); refrescar; navegar a detalle.
-- **Formulario:** ninguno de mutación. Filtro/búsqueda por ServerName.
+- **Funciones:** listar VHosts asociados a instancias; refrescar; filtrar; abrir sitio; abrir detalle de instancia desde Instancias.
+- **Formulario:** ninguno de mutación. Filtro por ServerName.
 - **Botones/acciones:** `Actualizar`, `Ver detalle`, `Abrir sitio` (RF-09), filtro.
-- **Elementos UI:** tabla (ServerName, DocumentRoot `/var/www/vhosts/<host>/`, FQDN, estado, acciones), nota de origen de datos.
+- **Elementos UI:** tabla (ServerName, DocumentRoot, FQDN/enlace, estado, acciones).
 - **Elementos/IDs requeridos (contrato):** `vhostsTableBody`, `refreshVhostsBtn`, `vhostsFilter` (opcional), `data-page="vhosts"`.
-- **Estados:** cargando, vacío, error. *Contrato futuro:* `GET /api/vhosts` o enriquecimiento de `/api/instancias`; mientras tanto, vista derivada del listado de instancias (datos de referencia reales: fqdn/estado/enlace).
+- **Estados:** cargando, vacío, error. *Contrato futuro:* `GET /api/vhosts` o enriquecimiento de `/api/instancias`; mientras tanto, vista derivada del listado de instancias.
 
 ### M6. Operaciones / Eventos — logs (componente global, extensible)
 - **Objetivo:** observabilidad de operaciones (RF-14) ante un flujo con rollback (arquitectura §5).
@@ -161,38 +158,28 @@ Componentes transversales (presentes en todos los módulos, RNF-02/07/10): **hea
 - **Bloqueo:** mientras `completado` sea falso, la consola (cabecera, páginas y pie) queda oculta y no se puede cerrar la preparación. La API rechaza escrituras con `409` hasta completar.
 - **Contrato de componentes:** `#setup-wizard`, `[data-screen="credenciales|resumen|ejecucion|listo"]`, `#setup-user`, `#setup-pass`, `#setup-steps`, `#setup-progress-track`, `#setup-start-btn`, `#setup-log` (con `#setup-copy-log`), `#setup-error`, `[data-setup-step]`, `#setup-open-btn` (pie), API `window.openSetupWizard()`.
 
-### M7. Ayuda / Verificación operativa (`/ayuda.html`)
-- **Objetivo:** reducir errores de entrada y apoyar diagnóstico (RF-03/08/10) con guía alineada a specs.
-- **Trazabilidad:** RF-03,08,10,12; RNF-01,02,05,08.
-- **Funciones:** presentar reglas de hostname/zip, contexto de red/zona, checklist de verificación (salud, `dig`, `curl`), interpretación de errores comunes (`400` duplicado, `404`, `500` rollback) y enlaces a módulos.
-- **Formulario:** ninguno (contenido estático). (Opcional) buscador local de ayuda.
-- **Botones/acciones:** enlaces a M1/M3/M4/M2/M5, `Copiar` comandos de verificación (recomendado).
-- **Elementos UI:** secciones/paneles, bloques de código (comandos de `verificacion.md`), lista de nombres reservados, notas de seguridad (zip/hostname).
-- **Elementos/IDs requeridos (contrato):** `data-page="ayuda"`, presencia de reglas hostname/patrón, zona `cloud.local`, referencia a `.zip` y enlaces de navegación.
-- **Estados:** estático; no depende del backend (RNF-11).
-
 ---
 
 ## 6. Matriz RF/RNF → módulo
 
-| Req | M1 | M2 | M3 | M4 | M5 | M6 | M7 | Transversal |
-|---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
-| RF-01 | ● | ○ | | | ○ | | | nav |
-| RF-02 | ● | | | | | ○ | ○ | feedback/load |
-| RF-03 | ● | | | | | | ● | validación |
-| RF-04 | ● | | | | | | | |
-| RF-05 | ○ | ● | | | ○ | | | |
-| RF-06 | ● | ○ | | | | ○ | ○ | modal |
-| RF-07 | | | ● | | | | | |
-| RF-08 | | | | ● | | | ○ | |
-| RF-09 | ● | ● | | | ● | | | |
-| RF-10 | ● | ● | ● | ● | ● | ● | ● | mensajes/estados |
-| RF-11 | ● | ○ | ● | ● | ● | | | |
-| RF-12 | ● | ● | ● | ○ | ● | | ● | header/footer |
-| RF-13 | | ● | | | ● | | | |
-| RF-14 | | | | | | ● | | dock |
-| RF-15 | | | | | | | | M8 |
-| RNF-01..12 | ● | ● | ● | ● | ● | ● | ● | ● |
+| Req | M1 | M2 | M3 | M4 | M5 | M6 | Transversal |
+|---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| RF-01 | ● | ○ | | | ○ | | nav |
+| RF-02 | ● | | | | | ○ | feedback/load |
+| RF-03 | ● | | | | | | validación |
+| RF-04 | ● | | | | | | |
+| RF-05 | ○ | ● | | | ○ | | |
+| RF-06 | ● | ○ | | | | ○ | modal |
+| RF-07 | | | ● | | | | |
+| RF-08 | | | | ● | | | |
+| RF-09 | ● | ● | | | ● | | |
+| RF-10 | ● | ● | ● | ● | ● | ● | mensajes/estados |
+| RF-11 | ● | ○ | ● | ● | ● | | |
+| RF-12 | ● | ● | ● | ○ | ● | | header/footer |
+| RF-13 | | ● | | | ● | | |
+| RF-14 | | | | | | ● | dock |
+| RF-15 | | | | | | | M8 |
+| RNF-01..12 | ● | ● | ● | ● | ● | ● | ● |
 
 (● responsabilidad principal, ○ apoyo/navegación)
 
@@ -211,21 +198,22 @@ Componentes transversales (presentes en todos los módulos, RNF-02/07/10): **hea
 Estos contratos deben cumplirse para considerar la interfaz “reconstruida” según esta especificación (TDD: los tests validan estos contratos).
 
 ### 8.1 Shell y componentes compartidos (todas las páginas)
-- Cada página HTML de módulo (`index.html`, `dns.html`, `salud.html`, `detalle.html`, `vhosts.html`, `ayuda.html`) incluye: `lang="es"`, `<div id="site-header-mount"></div>`, `<div id="site-footer-mount"></div>`, y carga `js/common.js`, `js/components.js`, `js/logs-dock.js`, `js/router.js` y los módulos `js/pages/*.js` requeridos.
-- `components.js` expone `window.updateActiveNav` y renderiza nav (`id="site-nav"`, `aria-label`) con enlaces a `index.html`, `dns.html`, `salud.html`, `detalle.html`, `vhosts.html`, `ayuda.html`. En anchos <1024px provee un control accesible de menú (`id="nav-toggle"`, `button`, `aria-expanded`, `aria-controls="site-nav"`); Escape/click fuera/enlace cierran el menú y el foco retorna al toggle.
-- **Verdad operativa del header:** `components.js` renderiza estado de salud (`id="header-health-pill"`, `data-health-state="ok|error|unknown|unreachable"`, `aria-live="polite"`) consultando `/api/salud`; **no** afirma “Online” sin evidencia. Estados desconocidos/inaccesibles se muestran explícitamente.
+- Cada página HTML de módulo (`index.html`, `dns.html`, `salud.html`, `vhosts.html`) incluye: `lang="es"`, landmarks/montajes principales (`id="site-header-mount"`, `id="site-footer-mount"`, `<main>`), y `body` con `data-page="<modulo>"` (`index|dns|salud|vhosts`). La navegación y el contexto esencial deben seguir siendo comprensibles si la mejora progresiva tarda o falla; el enrutamiento SPA y mejoras dinámicas son incrementales.
+- **CSS local y sin runtime:** las páginas cargan `css/stitch.css` (componentes/estilos base) y `css/utilities.css` (utilidades locales equivalentes a las clases usadas). No se depende de `cdn.tailwindcss.com` ni de configuración inline de Tailwind. Las fuentes se cargan con `preconnect` desde el `<head>` y `font-display=swap` para reducir bloqueos de renderizado.
+- **Carga de módulos por página:** cada página incluye solo su módulo de página (`js/pages/<modulo>.js`) y el drawer compartido (`js/pages/detalle.js`); el router carga bajo demanda los módulos de otras vistas al navegar por SPA, reduciendo el JS inicial.
+- `components.js` expone `window.updateActiveNav`, monta/mejora el encabezado (marca y acceso a **Configurar sistemas**) y el dock vertical de módulos (`id="side-dock"`, `aria-label="Módulos"`) con accesos a `index.html`, `dns.html`, `vhosts.html`, `salud.html`, resaltando el módulo activo. No existe entrada de navegación independiente para «Detalle» (el detalle se presenta como drawer en M1).
 - `logs-dock.js` expone `window.toggleLogsDock`, `window.openLogsDock`, `window.closeLogsDock` y monta toggle/dock (cierres deslizantes, sin cambio de opacidad). El toggle expone `aria-expanded` y `aria-controls="system-logs-dock"`; controles del dock son accesibles por teclado/nombre.
-- Cada `<body>` o `<main>` declara `data-page="<modulo>"` con el identificador del módulo (`index|dns|salud|detalle|vhosts|ayuda`).
+- El pie es persistente y de tema oscuro; incluye un área visible con el **último log en vivo** (`id="footer-latest-log"`, actualizado en tiempo real) y el acceso/montaje de logs del sistema (`#logs-toggle-mount`).
+- **Preparación/gating:** el asistente de preparación (RF-15) bloquea funcionalmente la consola mientras el entorno no esté completado, pero no debe dejar una interfaz en blanco prolongada por fallos o demoras de carga; los estados de espera/carga deben ser explícitos y el shell debe recuperarse con elegancia.
 
 ### 8.2 Contratos por módulo (IDs/elementos mínimos)
-- **M1/index (`data-page="index"`):** `provisionForm`, `hostnameInput`, `zipInput`, `checkHostBtn`, `instancesList` (o tabla equivalente), `instancesCount`, `refreshInstancesBtn`, `delete-modal` (o equivalente, `role="dialog"`, `aria-modal="true"`, `aria-labelledby`, contenedor enfocable `tabindex="-1"`), `loadingOverlay` (`role="status"`, `aria-live`, sin `aria-hidden` contradictorio mientras visible), `statusMessage`. El flujo JS gestiona foco del modal (guardar/atrapar/restaurar) y estados pendientes de acciones async (`disabled`/`aria-busy` donde aplique).
-- **M2/detalle:** `instanceSelect` (o `detailInstanceSelect`), `loadBtn` (o `loadDetailBtn`), contenedor de detalle/estado vacío; acepta `?id=`.
+- **M1/index (`data-page="index"`):** `provisionForm`, `hostnameInput`, `zipInput`, `checkHostBtn`, `instancesList` (o tabla equivalente), `instancesCount`, `refreshInstancesBtn`, `delete-modal` (o equivalente, `role="dialog"`, `aria-modal="true"`, `aria-labelledby`, contenedor enfocable `tabindex="-1"`), `loadingOverlay` (`role="status"`, `aria-live`, sin `aria-hidden` contradictorio mientras visible), `statusMessage`, y drawer de detalle `instance-detail-drawer` con `instance-detail-close`, `instance-detail-overlay`, `instance-detail-content` y estado accesible (`aria-hidden`/`hidden`, foco gestionado al abrir/cerrar). El flujo JS gestiona foco del modal y del drawer, y estados pendientes de acciones async (`disabled`/`aria-busy` donde aplique).
+- **M2/detalle (drawer, integrado en M1):** se abre desde la acción de detalle del listado; no existe página `detalle.html` ni navegación independiente. Debe mostrar metadatos, bloques VHost/DNS de referencia y permitir cierre por botón, overlay y `Escape`.
 - **M3/dns:** `dnsTableBody`, `refreshDnsBtn`, `dnsZone`/etiqueta de zona.
-- **M4/salud:** `checkBtn`/`checkHealthBtn`, indicadores de estado general/VBoxManage/Bind9, `healthRaw`.
+- **M4/salud:** `checkBtn`/`checkHealthBtn`, indicadores de estado general/VBoxManage/Bind9, resumen operativo legible y diagnóstico técnico en detalle progresivo (`healthRaw` y/o contenedor equivalente).
 - **M5/vhosts:** `vhostsTableBody`, `refreshVhostsBtn`.
-- **M6/logs (global):** `system-logs-dock` (inyectado), `toggle-logs-btn` (inyectado, con `aria-expanded` y `aria-controls="system-logs-dock"`), `terminal-output-container` (inyectado). Controles con nombre accesible; resize no depende solo de puntero.
+- **M6/logs (global):** `system-logs-dock` (inyectado), `toggle-logs-btn` (inyectado, con `aria-expanded` y `aria-controls="system-logs-dock"`), `terminal-output-container` (inyectado), y `footer-latest-log` (último log en vivo en el pie). Controles con nombre accesible; resize no depende solo de puntero.
 - **M8/preparación:** `setup-wizard`, `[data-screen]`, `setup-user`, `setup-pass`, `setup-iso-mode`, `setup-steps`, `setup-progress-track`, `setup-start-btn`, `setup-open-btn` (pie) y `[data-setup-step]`; la preparación se abre solo cuando `requiere_configuracion` es verdadero.
-- **M7/ayuda:** contenido estático con reglas de hostname/patrón, referencia `.zip`, zona `cloud.local` y enlaces a módulos.
 
 ### 8.3 Reglas de reutilización
 - Cero duplicación de header/footer/dock entre páginas (solo mounts + componentes).

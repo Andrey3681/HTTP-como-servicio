@@ -75,11 +75,11 @@
     if (!list || !list.length) {
       instancesList.innerHTML = '<div class="p-4 text-center text-[13px] text-on-surface-variant">No hay instancias aprovisionadas en este momento.</div>';
       if (instancesCount) instancesCount.textContent = '0';
-      if (instancesBindCount) instancesBindCount.textContent = 'Bind9: 0 hosts';
+      if (instancesBindCount) instancesBindCount.textContent = '0 instancias';
       return;
     }
     if (instancesCount) instancesCount.textContent = String(list.length);
-    if (instancesBindCount) instancesBindCount.textContent = 'Bind9: ' + list.length + ' hosts';
+    if (instancesBindCount) instancesBindCount.textContent = list.length + ' instancia' + (list.length === 1 ? '' : 's');
     instancesList.innerHTML = list.map(function (inst) {
       var id = inst.id || inst.nombre || '';
       var nombre = inst.nombre || id;
@@ -101,13 +101,16 @@
             '<span class="mono text-outline shrink-0">' + esc(ip) + '</span>' +
           '</div>' +
           '<div class="flex justify-between items-center pt-1">' +
-            '<a class="text-[11px] text-primary-container hover:underline mono" href="/detalle.html?id=' + encodeURIComponent(id) + '">Ver detalle</a>' +
+            '<button class="text-[11px] text-primary-container hover:underline mono bg-transparent border-0 p-0 cursor-pointer" type="button" data-detail="' + escA(id) + '">Ver detalle</button>' +
             '<button class="inline-flex items-center gap-1 px-2.5 py-1 bg-secondary-container hover:bg-[#b91c1c] text-white text-xs rounded-xl font-medium" type="button" data-del="' + escA(id) + '" data-fqdn="' + escA(fqdn) + '" data-host="' + escA(nombre) + '"><span class="material-symbols-outlined text-[14px]">delete</span> Eliminar</button>' +
           '</div>' +
         '</div>';
     }).join('');
     instancesList.querySelectorAll('[data-del]').forEach(function (btn) {
       btn.addEventListener('click', function () { openDeleteModal(btn.getAttribute('data-fqdn'), btn.getAttribute('data-host'), btn.getAttribute('data-del')); });
+    });
+    instancesList.querySelectorAll('[data-detail]').forEach(function (btn) {
+      btn.addEventListener('click', function () { if (window.openInstanceDrawer) window.openInstanceDrawer(btn.getAttribute('data-detail')); });
     });
   }
 

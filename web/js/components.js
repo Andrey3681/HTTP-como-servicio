@@ -7,62 +7,9 @@
   }
   function active(path) { return currentPath().indexOf(path) !== -1 ? ' class="active"' : ''; }
 
-  function setHealth(state, text) {
+  async function refreshHeaderHealth() {
     var pill = document.getElementById('header-health-pill');
     if (!pill) return;
-    pill.dataset.healthState = state;
-    var label = document.getElementById('header-health-text');
-    if (label) label.textContent = text;
-    pill.setAttribute('aria-label', 'Estado de salud: ' + text);
-  }
-
-  async function refreshHeaderHealth() {
-    setHealth('unknown', 'Salud: verificando…');
-    try {
-      var res = await fetch('/api/salud', { headers: { 'Accept': 'application/json' } });
-      var data = await res.json().catch(function () { return {}; });
-      var overallOk = res.ok && (data.estado === 'ok' || data.estado === 'OK');
-      if (overallOk) setHealth('ok', 'Salud: OK');
-      else if (res.ok) setHealth('error', 'Salud: degradada');
-      else setHealth('error', 'Salud: error');
-    } catch (e) {
-      setHealth('unreachable', 'Salud: sin conexión');
-    }
-  }
-
-  function closeNav(nav, toggle) {
-    if (!nav || !nav.classList.contains('is-open')) return;
-    nav.classList.remove('is-open');
-    if (toggle) toggle.setAttribute('aria-expanded', 'false');
-  }
-
-  function bindNavToggle() {
-    var toggle = document.getElementById('nav-toggle');
-    var nav = document.getElementById('site-nav');
-    if (!toggle || !nav || toggle.dataset.bound) return;
-    toggle.dataset.bound = '1';
-    toggle.addEventListener('click', function () {
-      var open = nav.classList.toggle('is-open');
-      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-      if (open) {
-        var first = nav.querySelector('a');
-        if (first) first.focus();
-      }
-    });
-    nav.addEventListener('click', function (e) {
-      if (e.target && e.target.tagName === 'A') closeNav(nav, toggle);
-    });
-    document.addEventListener('click', function (e) {
-      if (!nav.classList.contains('is-open')) return;
-      if (nav.contains(e.target) || toggle.contains(e.target)) return;
-      closeNav(nav, toggle);
-    });
-    document.addEventListener('keydown', function (e) {
-      if (e.key !== 'Escape') return;
-      if (!nav.classList.contains('is-open')) return;
-      closeNav(nav, toggle);
-      toggle.focus();
-    });
   }
 
   function mountHeader() {
@@ -73,30 +20,33 @@
       '<header class="site-header">' +
         '<div class="flex items-center gap-3">' +
           '<div class="brand"><span class="material-symbols-outlined" data-icon="dns">dns</span><span class="header-brand-outfit">HTTPaaS</span></div>' +
-          '<div id="header-health-pill" class="header-pill" data-health-state="unknown" aria-live="polite" aria-label="Estado de salud: verificando">' +
-            '<span class="header-health-dot" aria-hidden="true"></span><span id="header-health-text">Salud: verificando…</span>' +
-          '</div>' +
         '</div>' +
-        '<button id="nav-toggle" class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Abrir menú de navegación">' +
-          '<span class="material-symbols-outlined" aria-hidden="true">menu</span>' +
-        '</button>' +
-        '<nav id="site-nav" class="site-nav" aria-label="Navegación principal">' +
-          '<a' + active('index.html') + ' href="/index.html">Instancias</a>' +
-          '<a' + active('dns.html') + ' href="/dns.html">DNS</a>' +
-          '<a' + active('vhosts.html') + ' href="/vhosts.html">VHosts</a>' +
-          '<a' + active('detalle.html') + ' href="/detalle.html">Detalle</a>' +
-          '<a' + active('salud.html') + ' href="/salud.html">Salud</a>' +
-          '<a' + active('ayuda.html') + ' href="/ayuda.html">Ayuda</a>' +
-        '</nav>' +
-        '<div class="hidden lg:flex items-center gap-3">' +
-          '<div class="flex items-center gap-2 px-2.5 py-1 border border-blue-400/40 rounded-xl" style="background:linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.04) 100%);">' +
-            '<span class="material-symbols-outlined text-blue-200">terminal</span>' +
-            '<div class="flex flex-col text-left"><span class="text-[11px] font-semibold text-white leading-none">Nodo local</span><span class="text-[10px] text-blue-200 leading-tight">contexto lab</span></div>' +
-          '</div>' +
+        '<div class="flex items-center gap-2">' +
+          '<button id="setup-open-btn" class="header-config-btn" type="button" title="Configurar sistemas" aria-label="Configurar sistemas">' +
+            '<span class="material-symbols-outlined" aria-hidden="true">settings_suggest</span>' +
+            '<span>Configurar sistemas</span>' +
+          '</button>' +
         '</div>' +
       '</header>';
-    bindNavToggle();
-    refreshHeaderHealth();
+    var setupBtn = document.getElementById('setup-open-btn');
+    if (setupBtn) {
+      setupBtn.addEventListener('click', function () { if (window.openSetupWizard) window.openSetupWizard(); });
+    }
+  }
+
+  function mountDock() {
+    if (document.getElementById('side-dock')) return;
+    var dock = document.createElement('nav');
+    dock.id = 'side-dock';
+    dock.className = 'side-dock';
+    dock.setAttribute('aria-label', 'Módulos'); // aria-label="Módulos"
+    dock.innerHTML =
+      '<a data-path="index.html" href="/index.html" title="Agregar"><span class="material-symbols-outlined" aria-hidden="true">add_circle</span><span>Agregar</span></a>' +
+      '<a data-path="dns.html" href="/dns.html" title="DNS"><span class="material-symbols-outlined" aria-hidden="true">language</span><span>DNS</span></a>' +
+      '<a data-path="vhosts.html" href="/vhosts.html" title="VHosts"><span class="material-symbols-outlined" aria-hidden="true">public</span><span>VHosts</span></a>' +
+      '<a data-path="salud.html" href="/salud.html" title="Salud"><span class="material-symbols-outlined" aria-hidden="true">monitor_heart</span><span>Salud</span></a>';
+    document.body.appendChild(dock);
+    updateActiveNav();
   }
 
   function mountFooter() {
@@ -104,47 +54,85 @@
     if (!mount || mount.dataset.ready) return;
     mount.dataset.ready = '1';
     mount.innerHTML =
-      '<footer class="relative w-full bg-[#f8fafc] border-t-standard px-4 sm:px-6 py-2 shrink-0 z-[60]" style="border-top:1px solid rgba(19,78,74,0.2);">' +
-        '<div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3 text-[11px] mono text-on-surface-variant">' +
-          '<div class="flex flex-wrap items-center justify-center md:justify-start gap-x-3 gap-y-1">' +
-            '<div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-[#16a34a] inline-block" aria-hidden="true"></span><span class="font-medium text-on-surface">Zona DNS:</span><span class="text-outline">cloud.local</span></div>' +
-            '<span class="text-outline hidden sm:inline">•</span>' +
-            '<div class="flex items-center gap-1"><span class="text-outline">DocumentRoot:</span><span class="px-1 rounded bg-surface-container border-standard text-on-surface">/var/www/vhosts/</span></div>' +
-          '</div>' +
-          '<div class="flex flex-wrap items-center justify-center md:justify-end gap-3 shrink-0">' +
-            '<button id="setup-open-btn" class="inline-flex items-center gap-1.5 px-2.5 py-1 mono text-[11px] transition-colors cursor-pointer" title="Abrir la configuración inicial del entorno" aria-label="Abrir la configuración inicial del entorno" style="background-color:rgb(236,253,245);border:1px solid rgba(19,78,74,0.25);border-radius:4px;color:#0f766e;" type="button">' +
-              '<span class="material-symbols-outlined text-[14px]" aria-hidden="true">settings_suggest</span>' +
-              '<span class="font-semibold">Configuración</span>' +
-            '</button>' +
+      '<footer class="relative w-full px-4 sm:px-6 py-2 shrink-0 z-[60]" style="background-color:rgb(36,40,50);border-top:1px solid rgb(51,56,66);color:#e2e8f0;">' +
+        '<div class="max-w-7xl mx-auto flex items-center justify-between gap-3 text-[11px] mono">' +
+          '<div id="footer-latest-log" class="flex-1 min-w-0 truncate text-[#d4d4d8]" aria-live="polite" title="Último log">Esperando logs…</div>' +
+          '<div class="flex items-center justify-end gap-3 shrink-0">' +
             '<div id="logs-toggle-mount"></div>' +
-            '<span class="text-outline">|</span>' +
-            '<span class="text-on-surface-variant">BIND <span class="text-on-surface">9.18.28-1</span></span><span class="text-outline">|</span><span class="text-on-surface-variant">Apache <span class="text-on-surface">2.4.58</span></span>' +
           '</div>' +
         '</div>' +
       '</footer>';
-    var setupBtn = document.getElementById('setup-open-btn');
-    if (setupBtn) {
-      setupBtn.addEventListener('click', function () {
-        if (window.openSetupWizard) window.openSetupWizard();
-      });
+    startFooterLiveLog();
+  }
+
+  function escHtml(s) {
+    var H = (window.HTTPaaS && window.HTTPaaS.escapeHtml);
+    if (H) return H(s);
+    return String(s == null ? '' : s).replace(/[&<>"\']/g, function (c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+    });
+  }
+
+  function formatFooterLog(entry) {
+    if (!entry) return 'Esperando logs…';
+    var ts = '—';
+    if (entry.ts) {
+      try { var d = new Date(entry.ts); if (!isNaN(d.getTime())) ts = d.toLocaleTimeString('es-CO', { hour12: false }); } catch (e) { ts = String(entry.ts); }
     }
+    var lvl = entry.nivel || 'INFO';
+    var comp = entry.componente || 'system';
+    var msg = entry.mensaje || '';
+    return ts + ' ' + lvl + ' [' + comp + '] ' + msg;
+  }
+
+  function setFooterLatestLog(entry) {
+    var el = document.getElementById('footer-latest-log');
+    if (!el) return;
+    var text = formatFooterLog(entry);
+    el.textContent = text;
+    el.title = text;
+  }
+
+  function startFooterLiveLog() {
+    if (window.__httpaasFooterLogStarted) return;
+    window.__httpaasFooterLogStarted = true;
+
+    fetch('/api/logs?limit=1', { headers: { 'Accept': 'application/json' } })
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .then(function (data) {
+        var items = data && Array.isArray(data.datos) ? data.datos : [];
+        if (items.length) setFooterLatestLog(items[items.length - 1]);
+      })
+      .catch(function () {});
+
+    if (typeof EventSource === 'undefined') return;
+    try {
+      var es = new EventSource('/api/logs/stream');
+      es.onmessage = function (ev) {
+        try { setFooterLatestLog(JSON.parse(ev.data)); } catch (e) {}
+      };
+    } catch (e) {}
   }
 
   function updateActiveNav() {
-    var mount = document.getElementById('site-header-mount');
-    if (!mount) return;
     var p = currentPath();
-    mount.querySelectorAll('nav a').forEach(function (a) {
+    var dock = document.getElementById('side-dock');
+    if (!dock) return;
+    dock.querySelectorAll('a[data-path]').forEach(function (a) {
       var href = a.getAttribute('href') || '';
-      var on = (p === href) || (p.indexOf(href.replace('/','')) !== -1 && href !== '/');
+      var on = (p === href) || (p.indexOf(href.replace('/', '')) !== -1 && href !== '/');
       if (href === '/index.html' && (p === '/index.html' || p === '/' || p === '')) on = true;
       a.classList.toggle('active', on);
+      if (on) a.setAttribute('aria-current', 'page');
+      else a.removeAttribute('aria-current');
     });
   }
 
   function init() {
     mountHeader();
+    mountDock();
     mountFooter();
+    updateActiveNav();
     if (window.mountLogsDock) window.mountLogsDock();
   }
   window.updateActiveNav = updateActiveNav;

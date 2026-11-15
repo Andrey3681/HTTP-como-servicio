@@ -28,18 +28,23 @@ func assertContains(t *testing.T, haystack, needle, ctx string) {
 
 func TestModulePagesExist(t *testing.T) {
 	pages := []string{
-		"index.html", "dns.html", "salud.html", "detalle.html", "vhosts.html", "ayuda.html",
+		"index.html", "dns.html", "salud.html", "vhosts.html",
 	}
 	for _, p := range pages {
 		if _, err := os.Stat(p); err != nil {
 			t.Fatalf("debe existir la página de módulo %s: %v", p, err)
 		}
 	}
+	for _, removed := range []string{"detalle.html", "ayuda.html"} {
+		if _, err := os.Stat(removed); err == nil {
+			t.Fatalf("%s no debe existir", removed)
+		}
+	}
 }
 
 func TestAllPagesUseSharedShell(t *testing.T) {
 	pages := []string{
-		"index.html", "dns.html", "salud.html", "detalle.html", "vhosts.html", "ayuda.html",
+		"index.html", "dns.html", "salud.html", "vhosts.html",
 	}
 	required := []string{
 		`lang="es"`,
@@ -60,14 +65,29 @@ func TestAllPagesUseSharedShell(t *testing.T) {
 	}
 }
 
+func TestNoTailwindRuntimeAndLocalUtilities(t *testing.T) {
+	pages := []string{"index.html", "dns.html", "salud.html", "vhosts.html"}
+	for _, p := range pages {
+		content := readFile(t, p)
+		if strings.Contains(content, "cdn.tailwindcss.com") {
+			t.Fatalf("%s: no debe cargar el runtime CDN de Tailwind", p)
+		}
+		if strings.Contains(content, "tailwind.config") {
+			t.Fatalf("%s: no debe incluir configuración inline de Tailwind", p)
+		}
+		assertContains(t, content, `/css/utilities.css`, p+" (utilidades locales)")
+	}
+	if _, err := os.Stat(filepath.Join("css", "utilities.css")); err != nil {
+		t.Fatalf("debe existir css/utilities.css: %v", err)
+	}
+}
+
 func TestPagesDeclareDataPage(t *testing.T) {
 	cases := map[string]string{
-		"index.html":   `data-page="index"`,
-		"dns.html":     `data-page="dns"`,
-		"salud.html":   `data-page="salud"`,
-		"detalle.html": `data-page="detalle"`,
-		"vhosts.html":  `data-page="vhosts"`,
-		"ayuda.html":   `data-page="ayuda"`,
+		"index.html":  `data-page="index"`,
+		"dns.html":    `data-page="dns"`,
+		"salud.html":  `data-page="salud"`,
+		"vhosts.html": `data-page="vhosts"`,
 	}
 	for p, needle := range cases {
 		assertContains(t, readFile(t, p), needle, p+" (data-page)")
@@ -79,12 +99,10 @@ func TestModuleContracts(t *testing.T) {
 		page    string
 		needles []string
 	}{
-		{"index.html", []string{`id="provisionForm"`, `id="hostnameInput"`, `id="zipInput"`, `id="zipDropZone"`, `id="checkHostBtn"`, `id="instancesList"`, `id="instancesCount"`, `id="refreshInstancesBtn"`, `id="delete-modal"`, `id="loadingOverlay"`, `id="statusMessage"`}},
-		{"detalle.html", []string{`id="instanceSelect"`, `id="loadBtn"`}},
+		{"index.html", []string{`id="provisionForm"`, `id="hostnameInput"`, `id="zipInput"`, `id="zipDropZone"`, `id="checkHostBtn"`, `id="statusMessage"`, `id="instances-panel-mount"`}},
 		{"dns.html", []string{`id="dnsTableBody"`, `id="refreshDnsBtn"`, `id="dnsZone"`}},
-		{"salud.html", []string{`id="checkBtn"`, `id="healthRaw"`, `id="h-overall"`, `id="h-vbox"`, `id="h-bind9"`}},
+		{"salud.html", []string{`id="checkBtn"`, `id="healthRaw"`, `id="h-overall"`, `id="h-vbox"`, `id="h-bind9"`, `id="health-readiness"`, `id="health-raw-details"`}},
 		{"vhosts.html", []string{`id="vhostsTableBody"`, `id="refreshVhostsBtn"`}},
-		{"ayuda.html", []string{`cloud.local`, `.zip`, `hostname`, `/index.html`}},
 	}
 	for _, tc := range cases {
 		content := readFile(t, tc.page)
@@ -96,8 +114,13 @@ func TestModuleContracts(t *testing.T) {
 
 func TestReusableComponentAPIs(t *testing.T) {
 	components := readFile(t, filepath.Join("js", "components.js"))
-	for _, needle := range []string{`window.updateActiveNav`, `vhosts.html`, `ayuda.html`} {
-		assertContains(t, components, needle, "js/components.js (API/navegación)")
+	for _, needle := range []string{`window.updateActiveNav`, `side-dock`, `vhosts.html`, `salud.html`, `footer-latest-log`, `/api/logs/stream`} {
+		assertContains(t, components, needle, "js/components.js (API/navegación y estado en vivo)")
+	}
+	for _, bad := range []string{`detalle.html`, `>Detalle<`, `ayuda.html`, `>Ayuda<`, `site-nav`, `nav-toggle`} {
+		if strings.Contains(components, bad) {
+			t.Fatalf("js/components.js: no debe exponer módulo/página o navegación removida (%q)", bad)
+		}
 	}
 
 	logs := readFile(t, filepath.Join("js", "logs-dock.js"))
@@ -117,14 +140,13 @@ func TestReusableComponentAPIs(t *testing.T) {
 func TestA11yAndOperationalTruthContracts(t *testing.T) {
 	components := readFile(t, filepath.Join("js", "components.js"))
 	for _, needle := range []string{
-		`nav-toggle`, `aria-expanded`, `site-nav`, `aria-controls`,
-		`header-health-pill`, `data-health-state`, `/api/salud`,
+		`side-dock`, `aria-label="Módulos"`, `data-path="index.html"`, `data-path="dns.html"`, `data-path="vhosts.html"`, `data-path="salud.html"`,
 	} {
-		assertContains(t, components, needle, "js/components.js (nav accesible + verdad operativa)")
+		assertContains(t, components, needle, "js/components.js (dock de navegación)")
 	}
-	for _, bad := range []string{`Apache 2.4 + Bind9 Online`} {
+	for _, bad := range []string{`Apache 2.4 + Bind9 Online`, `Salud: OK`} {
 		if strings.Contains(components, bad) {
-			t.Fatalf("js/components.js: no debe afirmar estado estático engañoso %q", bad)
+			t.Fatalf("js/components.js: no debe incluir texto/estado estático engañoso %q", bad)
 		}
 	}
 
@@ -133,9 +155,9 @@ func TestA11yAndOperationalTruthContracts(t *testing.T) {
 		assertContains(t, logs, needle, "js/logs-dock.js (a11y toggle/dock)")
 	}
 
-	index := readFile(t, "index.html")
-	for _, needle := range []string{`role="dialog"`, `aria-modal="true"`, `aria-labelledby`, `role="status"`, `id="delete-modal-panel"`} {
-		assertContains(t, index, needle, "index.html (modal/loading a11y)")
+	panel := readFile(t, filepath.Join("js", "instances-panel.js"))
+	for _, needle := range []string{`id="delete-modal"`, `role="dialog"`, `aria-modal="true"`, `aria-labelledby`, `id="delete-modal-panel"`, `id="loadingOverlay"`, `role="status"`, `id="instancesList"`, `id="instancesCount"`, `id="refreshInstancesBtn"`, `id="instance-detail-drawer"`, `id="instance-detail-overlay"`, `id="instance-detail-close"`} {
+		assertContains(t, panel, needle, "js/instances-panel.js (panel compartido/a11y)")
 	}
 	common := readFile(t, filepath.Join("js", "common.js"))
 	for _, needle := range []string{`aria-hidden`, `aria-busy`, `loadingOverlay`} {
@@ -143,26 +165,36 @@ func TestA11yAndOperationalTruthContracts(t *testing.T) {
 	}
 
 	page := readFile(t, filepath.Join("js", "pages", "index.js"))
-	for _, needle := range []string{`focus`, `aria-busy`, `Escape`} {
-		assertContains(t, page, needle, "js/pages/index.js (gestión foco/estados pendientes)")
+	assertContains(t, page, `aria-busy`, "js/pages/index.js (estados pendientes)")
+	for _, needle := range []string{`focus`, `Escape`} {
+		assertContains(t, panel, needle, "js/instances-panel.js (gestión foco/modal)")
 	}
 
 	css := readFile(t, filepath.Join("css", "stitch.css"))
-	if !strings.Contains(css, `nav-toggle`) && !strings.Contains(css, `site-nav`) {
-		t.Fatalf("css/stitch.css: debe definir estilos para navegación accesible <1024px (nav-toggle/site-nav)")
+	if !strings.Contains(css, `side-dock`) {
+		t.Fatalf("css/stitch.css: debe definir estilos para el dock de navegación (side-dock)")
 	}
 }
 
 func TestPageModulesExist(t *testing.T) {
-	mods := []string{"index.js", "dns.js", "salud.js", "detalle.js", "vhosts.js", "ayuda.js"}
+	mods := []string{"index.js", "dns.js", "salud.js", "detalle.js", "vhosts.js"}
 	for _, m := range mods {
 		if _, err := os.Stat(filepath.Join("js", "pages", m)); err != nil {
 			t.Fatalf("debe existir módulo de página js/pages/%s: %v", m, err)
 		}
 	}
+	if _, err := os.Stat(filepath.Join("js", "instances-panel.js")); err != nil {
+		t.Fatalf("debe existir js/instances-panel.js: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join("js", "pages", "ayuda.js")); err == nil {
+		t.Fatalf("js/pages/ayuda.js no debe existir")
+	}
 	router := readFile(t, filepath.Join("js", "router.js"))
-	for _, needle := range []string{`vhosts`, `ayuda`} {
+	for _, needle := range []string{`vhosts`, `salud`} {
 		assertContains(t, router, needle, "js/router.js (enrutamiento)")
+	}
+	if strings.Contains(router, "ayuda") {
+		t.Fatalf("js/router.js: no debe referenciar ayuda")
 	}
 }
 

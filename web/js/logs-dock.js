@@ -45,7 +45,7 @@
     if (document.getElementById('system-logs-dock')) return;
     ensureStyles();
     var main = document.querySelector('main');
-    if (main) main.style.paddingBottom = '18rem';
+    if (main) main.style.paddingBottom = '2rem';
     var wrap = document.createElement('div');
     wrap.innerHTML =
       '<div class="fixed bottom-8 left-0 right-0 z-40 flex flex-col text-[#e2e8f0] select-none rounded-t border-t shadow-lg logs-open" id="system-logs-dock" style="height:260px;background-color:rgb(30,34,41);border-top:1px solid rgb(51,56,66);border-top-left-radius:4px;border-top-right-radius:4px;">' +

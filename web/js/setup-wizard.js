@@ -20,6 +20,7 @@
   var logStream = null;
   var logLastID = 0;
   var logLines = [];
+  var userOpened = false;
 
   function esc(s) {
     var H = (window.HTTPaaS && window.HTTPaaS.escapeHtml);
@@ -60,31 +61,31 @@
     var wrap = document.createElement('div');
     wrap.innerHTML =
       '<div class="setup-page bg-surface-container-lowest text-on-surface" id="setup-wizard" hidden>' +
-        '<div class="max-w-3xl mx-auto px-4 sm:px-6 py-8">' +
-          '<div class="flex items-center gap-3 pb-4 border-b-standard">' +
+        '<div class="max-w-4xl mx-auto px-4 sm:px-6 py-8">' +
+          '<div id="setup-header-bar" class="flex items-center gap-3 pb-4 border-b-standard">' +
             '<div class="w-9 h-9 rounded-xl bg-surface-container-low border-standard flex items-center justify-center text-primary-container shrink-0">' +
               '<span class="material-symbols-outlined text-[18px]" aria-hidden="true">settings</span>' +
             '</div>' +
-            '<span class="text-[13px] font-semibold">HTTPaaS</span>' +
+            '<span class="text-[13px] font-semibold" id="setup-title">Configuración</span>' +
             '<span class="setup-live ml-auto text-[11px] mono text-primary-container items-center gap-1.5" id="setup-live" hidden><span class="w-1.5 h-1.5 rounded-full bg-[#f59e0b]" id="setup-live-dot" aria-hidden="true"></span><span id="setup-live-text">en vivo</span></span>' +
+            '<button id="setup-close-btn" class="ml-auto hidden items-center justify-center w-8 h-8 border-standard rounded-xl bg-white hover:bg-surface-container-low" type="button" aria-label="Cerrar"><span class="material-symbols-outlined text-[18px]">close</span></button>' +
           '</div>' +
-          '<div class="mt-4 mb-5">' + navMarkup() + '</div>' +
+          '<div class="mt-4 mb-5" id="setup-nav-wrap">' + navMarkup() + '</div>' +
 
           '<section class="setup-screen hidden" data-screen="bienvenida" aria-labelledby="setup-h-bienvenida">' +
             '<div class="bg-surface-container-lowest border-standard rounded-xl p-6 space-y-4">' +
               '<h1 class="text-[16px] font-semibold" id="setup-h-bienvenida">Preparación del entorno</h1>' +
-              '<p class="text-[12px] text-on-surface-variant">Se descarga la imagen cloud de Debian 13 (~3 GB) y se crean la red, el servidor DNS y la plantilla Apache. Tarda entre 15 y 30 minutos.</p>' +
+              '<p class="text-[12px] text-on-surface-variant">Configura el entorno inicial para comenzar a usar la consola.</p>' +
               '<div class="flex justify-end"><button class="px-3 py-1.5 text-white text-[13px] font-semibold rounded-xl" style="background:rgb(15,118,110);border:1px solid rgb(13,95,88);" id="setup-begin-btn" type="button">Comenzar</button></div>' +
             '</div>' +
           '</section>' +
 
           '<section class="setup-screen hidden" data-screen="credenciales" aria-labelledby="setup-h-credenciales">' +
             '<div class="bg-surface-container-lowest border-standard rounded-xl p-6 space-y-4">' +
-              '<div><h1 class="text-[16px] font-semibold" id="setup-h-credenciales">Credenciales del invitado</h1>' +
-              '<p class="text-[12px] text-on-surface-variant mt-1">Se crean en ambas máquinas.</p></div>' +
+              '<div><h1 class="text-[16px] font-semibold" id="setup-h-credenciales">Credenciales</h1></div>' +
               '<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">' +
-                '<div><label class="text-[12px] font-semibold block mb-1" for="setup-user">Usuario</label><input class="w-full border-standard rounded-xl bg-surface-container-lowest px-3 py-2 text-[13px] mono text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container" id="setup-user" type="text" autocomplete="username" spellcheck="false" placeholder="http"><p class="text-[11px] text-outline mt-1">Minúsculas, números, guion o guion bajo.</p></div>' +
-                '<div><label class="text-[12px] font-semibold block mb-1" for="setup-pass">Contraseña</label><input class="w-full border-standard rounded-xl bg-surface-container-lowest px-3 py-2 text-[13px] mono text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container" id="setup-pass" type="password" autocomplete="new-password"><p class="text-[11px] text-outline mt-1">No se guarda en disco.</p></div>' +
+                '<div><label class="text-[12px] font-semibold block mb-1" for="setup-user">Usuario</label><input class="w-full border-standard rounded-xl bg-surface-container-lowest px-3 py-2 text-[13px] mono text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container" id="setup-user" type="text" autocomplete="username" spellcheck="false" placeholder="http"></div>' +
+                '<div><label class="text-[12px] font-semibold block mb-1" for="setup-pass">Contraseña</label><input class="w-full border-standard rounded-xl bg-surface-container-lowest px-3 py-2 text-[13px] mono text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container" id="setup-pass" type="password" autocomplete="new-password"></div>' +
               '</div>' +
               '<div><label class="text-[12px] font-semibold block mb-1" for="setup-pass2">Repetir contraseña</label><input class="w-full border-standard rounded-xl bg-surface-container-lowest px-3 py-2 text-[13px] mono text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container" id="setup-pass2" type="password" autocomplete="new-password"></div>' +
               '<p class="setup-error hidden whitespace-pre-wrap break-words text-[12px] rounded-xl border-standard px-3 py-2 text-error" id="setup-error-creds" role="alert"></p>' +
@@ -99,7 +100,6 @@
                 '<dt class="text-on-surface-variant">Usuario</dt><dd class="mono break-all" id="setup-sum-usuario">—</dd>' +
                 '<dt class="text-on-surface-variant">Red</dt><dd class="mono" id="setup-sum-red">—</dd>' +
                 '<dt class="text-on-surface-variant">DNS</dt><dd class="mono" id="setup-sum-dns">—</dd>' +
-                '<dt class="text-on-surface-variant">Máquinas</dt><dd class="mono">ns + ApacheServer</dd>' +
               '</dl>' +
               '<p class="setup-error hidden whitespace-pre-wrap break-words text-[12px] rounded-xl border-standard px-3 py-2 text-error" id="setup-error-resumen" role="alert"></p>' +
               '<div class="flex justify-between gap-2"><button class="px-3 py-1.5 border-standard rounded-xl text-[13px] font-medium" data-back="credenciales" type="button">Atrás</button><button class="px-3 py-1.5 text-white text-[13px] font-semibold rounded-xl" style="background:rgb(15,118,110);border:1px solid rgb(13,95,88);" id="setup-start-btn" type="button">Comenzar</button></div>' +
@@ -126,10 +126,61 @@
           '<section class="setup-screen hidden" data-screen="listo" aria-labelledby="setup-h-listo">' +
             '<div class="bg-surface-container-lowest border-standard rounded-xl p-6 space-y-4">' +
               '<h1 class="text-[16px] font-semibold" id="setup-h-listo">Entorno listo</h1>' +
-              '<p class="text-[12px] text-on-surface-variant">Ya puedes aprovisionar instancias.</p>' +
               '<div class="flex justify-between gap-2"><button class="px-3 py-1.5 border-standard rounded-xl text-[13px] font-medium" id="setup-restart-done-btn" type="button">Reiniciar</button><button class="px-3 py-1.5 text-white text-[13px] font-semibold rounded-xl" style="background:rgb(15,118,110);border:1px solid rgb(13,95,88);" id="setup-done-btn" type="button">Ir a la consola</button></div>' +
             '</div>' +
           '</section>' +
+
+          '<section class="setup-screen hidden" data-screen="sistema">' +
+            '<div class="space-y-6">' +
+              '<div class="bg-surface-container-lowest border-standard rounded-xl p-6 space-y-4">' +
+                '<h2 class="text-[15px] font-semibold m-0">Restablecer credenciales</h2>' +
+                '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">' +
+                  '<div><label class="text-[12px] font-semibold block mb-1" for="sys-user">Usuario</label><input class="w-full border-standard rounded-xl bg-surface-container-lowest px-3 py-2 text-[13px] mono text-on-surface" id="sys-user" type="text" autocomplete="username" spellcheck="false"></div>' +
+                  '<div><label class="text-[12px] font-semibold block mb-1" for="sys-pass">Contraseña</label><input class="w-full border-standard rounded-xl bg-surface-container-lowest px-3 py-2 text-[13px] mono text-on-surface" id="sys-pass" type="password" autocomplete="new-password"></div>' +
+                '</div>' +
+                '<div><label class="text-[12px] font-semibold block mb-1" for="sys-pass2">Repetir contraseña</label><input class="w-full md:w-1/2 border-standard rounded-xl bg-surface-container-lowest px-3 py-2 text-[13px] mono text-on-surface" id="sys-pass2" type="password" autocomplete="new-password"></div>' +
+                '<p id="sys-cred-msg" class="text-[12px] hidden"></p>' +
+                '<div class="flex gap-2"><button class="px-3 py-1.5 text-white text-[13px] font-semibold rounded-xl" style="background:rgb(15,118,110);border:1px solid rgb(13,95,88);" id="sys-save-creds" type="button">Guardar credenciales</button></div>' +
+              '</div>' +
+              '<div class="bg-surface-container-lowest border-standard rounded-xl p-6 space-y-3">' +
+                '<div class="flex items-center justify-between"><h2 class="text-[15px] font-semibold m-0">Hipervisor y entorno</h2><button class="btn-flat" id="sys-refresh" type="button"><span class="material-symbols-outlined text-[16px]">refresh</span> Actualizar</button></div>' +
+                '<div class="grid grid-cols-1 md:grid-cols-3 gap-3">' +
+                  '<div class="card"><div class="card-body"><div class="kv-label">VirtualBox</div><div class="kv-value" id="sys-vbox">—</div></div></div>' +
+                  '<div class="card"><div class="card-body"><div class="kv-label">DNS</div><div class="kv-value" id="sys-bind9">—</div></div></div>' +
+                  '<div class="card"><div class="card-body"><div class="kv-label">Red</div><div class="kv-value mono" id="sys-net">—</div></div></div>' +
+                '</div>' +
+                '<pre class="code-block" id="sys-env" style="max-height:220px;overflow:auto;">Cargando…</pre>' +
+              '</div>' +
+              '<div class="bg-surface-container-lowest border-standard rounded-xl p-6 space-y-3">' +
+                '<h2 class="text-[15px] font-semibold m-0">Máquinas virtuales registradas</h2>' +
+                '<div style="overflow-x:auto;"><table class="simple-table"><thead><tr><th>Nombre</th><th>FQDN</th><th>IP</th><th>Estado</th></tr></thead><tbody id="sys-vms"><tr><td colspan="4" class="empty-state">Cargando…</td></tr></tbody></table></div>' +
+              '</div>' +
+              '<div class="flex justify-start items-center gap-2">' +
+                '<button class="px-3 py-1.5 text-white text-[13px] font-semibold rounded-xl" style="background:#dc2626;border:1px solid #b91c1c;" id="sys-reset-open-btn" type="button">Restablecer sistema</button>' +
+              '</div>' +
+            '</div>' +
+          '</section>' +
+        '</div>' +
+        '<div id="sys-reset-dialog" class="hidden fixed inset-0 z-[120]" role="dialog" aria-modal="true" aria-labelledby="sys-reset-title">' +
+          '<div class="absolute inset-0 bg-black/40" data-sys-reset-cancel="backdrop"></div>' +
+          '<div class="relative max-w-lg mx-auto mt-24 bg-surface-container-lowest border-standard rounded-xl p-6 space-y-4 shadow-lg">' +
+            '<div class="flex items-start gap-3">' +
+              '<span class="material-symbols-outlined text-error text-[22px]" aria-hidden="true">warning</span>' +
+              '<div class="space-y-1">' +
+                '<h2 id="sys-reset-title" class="text-[15px] font-semibold m-0">¿Seguro que deseas continuar?</h2>' +
+                '<p class="text-[12px] text-on-surface-variant m-0"><strong class="text-error">Acción destructiva:</strong> se eliminarán las máquinas virtuales <span class="mono">ns</span> y <span class="mono">ApacheServer</span> y se reiniciará la preparación del entorno. La imagen y el VDI base se conservan, pero la configuración y el estado actual de esas VMs se perderán.</p>' +
+              '</div>' +
+            '</div>' +
+            '<div>' +
+              '<label class="text-[12px] font-semibold block mb-1" for="sys-reset-confirm-input">Escribe <span class="mono">Confirmar</span> para continuar</label>' +
+              '<input id="sys-reset-confirm-input" class="w-full border-standard rounded-xl bg-surface-container-lowest px-3 py-2 text-[13px] mono text-on-surface" type="text" autocomplete="off" spellcheck="false" placeholder="Confirmar">' +
+            '</div>' +
+            '<p id="sys-reset-error" class="text-[12px] text-error hidden"></p>' +
+            '<div class="flex justify-end gap-2">' +
+              '<button id="sys-reset-cancel-btn" class="px-3 py-1.5 border-standard rounded-xl text-[13px] font-medium" type="button">Cancelar</button>' +
+              '<button id="sys-reset-confirm-btn" class="px-3 py-1.5 text-white text-[13px] font-semibold rounded-xl opacity-50 cursor-not-allowed" style="background:#dc2626;border:1px solid #b91c1c;" type="button" disabled>Restablecer</button>' +
+            '</div>' +
+          '</div>' +
         '</div>' +
       '</div>';
     document.body.appendChild(wrap.firstChild);
@@ -141,21 +192,38 @@
     document.getElementById('setup-retry-btn').addEventListener('click', startSetup);
     document.getElementById('setup-reset-btn').addEventListener('click', resetSetup);
     document.getElementById('setup-restart-done-btn').addEventListener('click', resetSetup);
-    document.getElementById('setup-done-btn').addEventListener('click', finish);
+    document.getElementById('setup-done-btn').addEventListener('click', function () { if (lastState && lastState.completado) showScreen('sistema'); else finish(); });
+    var closeBtn = document.getElementById('setup-close-btn');
+    if (closeBtn) closeBtn.addEventListener('click', finish);
+
+    var sysRefresh = document.getElementById('sys-refresh');
+    if (sysRefresh) sysRefresh.addEventListener('click', loadSystemInfo);
+    var sysSave = document.getElementById('sys-save-creds');
+    if (sysSave) sysSave.addEventListener('click', saveSystemCreds);
+    var sysResetOpen = document.getElementById('sys-reset-open-btn');
+    if (sysResetOpen) sysResetOpen.addEventListener('click', openSystemResetDialog);
+    var sysResetCancel = document.getElementById('sys-reset-cancel-btn');
+    if (sysResetCancel) sysResetCancel.addEventListener('click', closeSystemResetDialog);
+    var sysResetBackdrop = root.parentNode && root.parentNode.querySelector('[data-sys-reset-cancel="backdrop"]');
+    if (sysResetBackdrop) sysResetBackdrop.addEventListener('click', closeSystemResetDialog);
+    var sysResetInput = document.getElementById('sys-reset-confirm-input');
+    if (sysResetInput) sysResetInput.addEventListener('input', updateSystemResetConfirmState);
+    var sysResetConfirm = document.getElementById('sys-reset-confirm-btn');
+    if (sysResetConfirm) sysResetConfirm.addEventListener('click', confirmSystemReset);
     var copyBtn = document.getElementById('setup-copy-log');
     if (copyBtn) {
       copyBtn.addEventListener('click', function (event) {
         event.preventDefault();
         event.stopPropagation();
-        var text = logLines.join('\n');
+        var textVal = logLines.join('\\n');
         var done = function () {
           copyBtn.textContent = 'Copiado';
           setTimeout(function () { copyBtn.textContent = 'Copiar'; }, 1500);
         };
         if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(done).catch(function () { fallbackCopy(text); done(); });
+          navigator.clipboard.writeText(textVal).then(done).catch(function () { fallbackCopy(textVal); done(); });
         } else {
-          fallbackCopy(text);
+          fallbackCopy(textVal);
           done();
         }
       });
@@ -174,7 +242,27 @@
     if (!root) return;
     root.querySelectorAll('.setup-screen').forEach(function (section) {
       section.classList.toggle('hidden', section.getAttribute('data-screen') !== name);
+      section.classList.toggle('active', section.getAttribute('data-screen') === name);
     });
+    var navWrap = document.getElementById('setup-nav-wrap');
+    if (navWrap) navWrap.classList.toggle('hidden', name === 'sistema');
+    var closeBtn = document.getElementById('setup-close-btn');
+    var live = document.getElementById('setup-live');
+    var headerBar = document.getElementById('setup-header-bar');
+    if (closeBtn) {
+      closeBtn.classList.toggle('hidden', name !== 'sistema');
+      if (name === 'sistema') closeBtn.classList.add('inline-flex'); else closeBtn.classList.remove('inline-flex');
+    }
+    if (live) {
+      if (name === 'sistema') {
+        live.hidden = true;
+        live.classList.add('hidden');
+        live.classList.remove('inline-flex');
+      }
+    }
+    if (headerBar) headerBar.classList.toggle('border-b-standard', name !== 'sistema');
+    var title = document.getElementById('setup-title');
+    if (title) title.textContent = name === 'sistema' ? 'Configurar sistemas' : 'Configuración';
     var order = ['credenciales', 'resumen'];
     var index = order.indexOf(name);
     root.querySelectorAll('[data-nav]').forEach(function (item) {
@@ -186,15 +274,18 @@
     });
     if (name === 'ejecucion') {
       root.querySelectorAll('[data-nav]').forEach(function (item) { item.classList.toggle('done', item.getAttribute('data-nav') !== 'ejecucion'); });
+      connectLogStream();
     }
     if (name === 'listo') {
       root.querySelectorAll('[data-nav]').forEach(function (item) { item.classList.add('done'); item.classList.remove('active'); });
+    }
+    if (name === 'sistema') {
+      loadSystemInfo();
     }
     if (name === 'credenciales') {
       var input = document.getElementById('setup-user');
       if (input && !input.value) input.focus();
     }
-    if (name === 'ejecucion') connectLogStream();
   }
 
   function errorBox(id, message) {
@@ -306,19 +397,30 @@
     updateNetworkSummary(state);
 
     if (state.ejecutando) {
-      if (currentScreen() !== 'ejecucion' && currentScreen() !== 'listo') showScreen('ejecucion');
+      if (root && root.hidden) { root.hidden = false; userOpened = true; }
+      if (currentScreen() !== 'ejecucion') showScreen('ejecucion');
       setLive('', 'en vivo');
-    } else {
-      if (state.completado) {
-        setLive('live', 'completado');
-        showScreen('listo');
-      } else if (state.error) {
-        setLive('error', 'detenido');
-        if (currentScreen() !== 'ejecucion') showScreen('ejecucion');
-      } else {
-        var live = document.getElementById('setup-live');
-        if (live) live.hidden = true;
+    } else if (state.completado) {
+      document.body.classList.remove('setup-gate');
+      if (userOpened) {
+        var cs = currentScreen();
+        if (cs === 'sistema') {
+          var liveEl = document.getElementById('setup-live');
+          if (liveEl) { liveEl.hidden = true; liveEl.classList.add('hidden'); liveEl.classList.remove('inline-flex'); }
+        } else {
+          if (cs !== 'listo') showScreen('listo');
+          setLive('', 'en vivo');
+        }
+      } else if (root) {
+        root.hidden = true;
       }
+    } else if (state.error) {
+      setLive('error', 'detenido');
+      if (root && root.hidden) { root.hidden = false; userOpened = true; }
+      if (currentScreen() !== 'ejecucion') showScreen('ejecucion');
+    } else {
+      var live = document.getElementById('setup-live');
+      if (live) live.hidden = true;
     }
 
     if (state.configuracion && state.configuracion.usuario) {
@@ -495,11 +597,183 @@
     if (stream) { stream.close(); stream = null; }
   }
 
-  function open() {
+  async function loadSystemInfo() {
+    var vbox = document.getElementById('sys-vbox');
+    var bind9 = document.getElementById('sys-bind9');
+    var net = document.getElementById('sys-net');
+    var env = document.getElementById('sys-env');
+    var vms = document.getElementById('sys-vms');
+    var sysUser = document.getElementById('sys-user');
+    if (sysUser && lastState && lastState.configuracion && lastState.configuracion.usuario && !sysUser.value) {
+      sysUser.value = lastState.configuracion.usuario;
+    }
+    var summary = {};
+    try {
+      var saludRes = await fetch('/api/salud', { headers: { 'Accept': 'application/json' } });
+      var salud = await saludRes.json().catch(function () { return {}; });
+      if (vbox) vbox.textContent = salud.vboxmanage === true ? 'Disponible' : salud.vboxmanage === false ? 'No disponible' : 'Sin datos';
+      if (bind9) bind9.textContent = salud.bind9 === true ? 'Disponible' : salud.bind9 === false ? 'No disponible' : 'Sin datos';
+      summary.salud = salud;
+    } catch (e) {
+      if (vbox) vbox.textContent = 'No disponible';
+      if (bind9) bind9.textContent = 'No disponible';
+      summary.salud = { error: e.message };
+    }
+    try {
+      var stRes = await fetch('/api/setup/estado', { headers: { 'Accept': 'application/json' } });
+      var st = await stRes.json().catch(function () { return {}; });
+      var red = st.red || {};
+      if (net) net.textContent = red.cidr ? (red.cidr + (red.ip_dns ? ' · DNS ' + red.ip_dns : '')) : '—';
+      if (sysUser && st.configuracion && st.configuracion.usuario && !sysUser.value) sysUser.value = st.configuracion.usuario;
+      summary.estado_setup = { completado: st.completado, red: st.red, imagen: st.imagen, configuracion: st.configuracion };
+    } catch (e) {
+      if (net) net.textContent = '—';
+      summary.estado_setup = { error: e.message };
+    }
+    try {
+      var instRes = await fetch('/api/instancias', { headers: { 'Accept': 'application/json' } });
+      var instData = await instRes.json().catch(function () { return {}; });
+      var list = instRes.ok ? (Array.isArray(instData.datos) ? instData.datos : (Array.isArray(instData) ? instData : [])) : [];
+      if (vms) {
+        if (!instRes.ok) {
+          vms.innerHTML = '<tr><td colspan="4" class="empty-state">No disponible</td></tr>';
+        } else if (!list.length) {
+          vms.innerHTML = '<tr><td colspan="4" class="empty-state">No hay máquinas registradas</td></tr>';
+        } else {
+          vms.innerHTML = list.map(function (i) {
+            var estado = (i.estado || '—').toUpperCase();
+            return '<tr><td class="mono">' + esc(i.nombre || i.id || '—') + '</td><td class="mono">' + esc(i.fqdn || '—') + '</td><td class="mono">' + esc(i.ip || '—') + '</td><td>' + esc(estado) + '</td></tr>';
+          }).join('');
+        }
+      }
+      summary.instancias = { total: list.length };
+    } catch (e) {
+      if (vms) vms.innerHTML = '<tr><td colspan="4" class="empty-state">No disponible</td></tr>';
+      summary.instancias = { error: e.message };
+    }
+    if (env) env.textContent = JSON.stringify(summary, null, 2);
+  }
+
+  async function saveSystemCreds() {
+    var user = (document.getElementById('sys-user').value || '').trim();
+    var pass = document.getElementById('sys-pass').value || '';
+    var pass2 = document.getElementById('sys-pass2').value || '';
+    var msg = document.getElementById('sys-cred-msg');
+    var btn = document.getElementById('sys-save-creds');
+    function showMsg(text, ok) {
+      if (!msg) return;
+      msg.textContent = text || '';
+      msg.className = 'text-[12px] ' + (ok ? 'text-[#059669]' : 'text-error');
+      msg.classList.toggle('hidden', !text);
+    }
+    if (!/^[a-z][a-z0-9_-]{2,31}$/.test(user)) { showMsg('Usuario inválido.', false); return; }
+    if (!pass) { showMsg('La contraseña es obligatoria.', false); return; }
+    if (pass !== pass2) { showMsg('Las contraseñas no coinciden.', false); return; }
+    if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
+    showMsg('', true);
+    try {
+      var res = await fetch('/api/setup/configuracion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ usuario: user, contrasena: pass })
+      });
+      var body = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(body.error || ('HTTP ' + res.status));
+      showMsg('Credenciales guardadas.', true);
+      document.getElementById('sys-pass').value = '';
+      document.getElementById('sys-pass2').value = '';
+      if (lastState && lastState.configuracion) lastState.configuracion.usuario = user;
+    } catch (e) {
+      showMsg(e.message || 'No se pudieron guardar las credenciales.', false);
+    } finally {
+      if (btn) { btn.disabled = false; btn.setAttribute('aria-busy', 'false'); }
+    }
+  }
+
+  var sysResetLastFocus = null;
+  function sysResetFocusables() {
+    var dlg = document.getElementById('sys-reset-dialog');
+    if (!dlg) return [];
+    return Array.prototype.slice.call(dlg.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')).filter(function (el) { return !el.disabled && el.offsetParent !== null; });
+  }
+  function trapSysResetFocus(e) {
+    var dlg = document.getElementById('sys-reset-dialog');
+    if (!dlg || dlg.classList.contains('hidden')) return;
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeSystemResetDialog(); return; }
+    if (e.key !== 'Tab') return;
+    var nodes = sysResetFocusables();
+    if (!nodes.length) return;
+    var first = nodes[0], last = nodes[nodes.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+  function openSystemResetDialog() {
+    var dlg = document.getElementById('sys-reset-dialog');
+    var input = document.getElementById('sys-reset-confirm-input');
+    var err = document.getElementById('sys-reset-error');
+    if (!dlg) return;
+    sysResetLastFocus = document.activeElement;
+    if (input) input.value = '';
+    if (err) { err.textContent = ''; err.classList.add('hidden'); }
+    updateSystemResetConfirmState();
+    dlg.classList.remove('hidden');
+    document.addEventListener('keydown', trapSysResetFocus, true);
+    if (input) input.focus();
+  }
+
+  function closeSystemResetDialog() {
+    var dlg = document.getElementById('sys-reset-dialog');
+    var input = document.getElementById('sys-reset-confirm-input');
+    var err = document.getElementById('sys-reset-error');
+    document.removeEventListener('keydown', trapSysResetFocus, true);
+    if (dlg) dlg.classList.add('hidden');
+    if (input) input.value = '';
+    if (err) { err.textContent = ''; err.classList.add('hidden'); }
+    updateSystemResetConfirmState();
+    if (sysResetLastFocus && sysResetLastFocus.focus) try { sysResetLastFocus.focus(); } catch (e) {}
+    sysResetLastFocus = null;
+  }
+
+  function updateSystemResetConfirmState() {
+    var input = document.getElementById('sys-reset-confirm-input');
+    var btn = document.getElementById('sys-reset-confirm-btn');
+    if (!btn) return;
+    var ok = input && input.value === 'Confirmar';
+    btn.disabled = !ok;
+    btn.classList.toggle('opacity-50', !ok);
+    btn.classList.toggle('cursor-not-allowed', !ok);
+  }
+
+  async function confirmSystemReset() {
+    var input = document.getElementById('sys-reset-confirm-input');
+    var btn = document.getElementById('sys-reset-confirm-btn');
+    var err = document.getElementById('sys-reset-error');
+    if (!input || input.value !== 'Confirmar') { updateSystemResetConfirmState(); return; }
+    if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
+    if (err) { err.textContent = ''; err.classList.add('hidden'); }
+    try {
+      var res = await fetch('/api/setup/reiniciar', { method: 'POST', headers: { 'Accept': 'application/json' } });
+      var body = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(body.error || ('HTTP ' + res.status));
+      window.location.reload();
+    } catch (e) {
+      if (err) { err.textContent = 'No se pudo restablecer: ' + (e.message || 'error'); err.classList.remove('hidden'); }
+      if (btn) { btn.disabled = false; btn.setAttribute('aria-busy', 'false'); }
+      updateSystemResetConfirmState();
+    }
+  }
+
+  function open(mode) {
     mount();
+    userOpened = true;
+    var systemMode = mode === 'sistema' || (mode && mode.mode === 'sistema');
     root.hidden = false;
+    if (systemMode || (lastState && lastState.completado)) {
+      document.body.classList.remove('setup-gate');
+      showScreen('sistema');
+      return;
+    }
     if (!lastState) showScreen('bienvenida');
-    else if (lastState.completado) showScreen('listo');
     else if (lastState.ejecutando) showScreen('ejecucion');
     else showScreen('bienvenida');
     var begin = document.getElementById('setup-begin-btn');
@@ -508,6 +782,7 @@
 
   function finish() {
     if (lastState && !lastState.completado) return;
+    userOpened = false;
     if (root) root.hidden = true;
     document.body.classList.remove('setup-gate');
     stopLogStream();
@@ -516,16 +791,17 @@
 
   function init() {
     mount();
-    connectStream();
     fetch('/api/setup/estado', { headers: { 'Accept': 'application/json' } })
       .then(function (res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
       .then(function (state) {
         render(state);
         document.documentElement.classList.remove('setup-checking');
         if (state.completado) {
-          root.hidden = true;
+          if (!userOpened && root) root.hidden = true;
           return;
         }
+        connectStream();
+        userOpened = true;
         root.hidden = false;
         if (state.ejecutando) {
           showScreen('ejecucion');

@@ -4,61 +4,75 @@
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
   <title>HTTPaaS - Zonas DNS Bind9</title>
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@900&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
   <link href="/css/stitch.css" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-  <script>tailwind.config={theme:{extend:{colors:{"on-surface":"#181c21","on-surface-variant":"#3e4947","surface-bright":"#f8f9ff","surface-container-lowest":"#ffffff","surface-container-low":"#f1f4fb","surface-container":"#ebeef5","primary-container":"#0f766e","secondary-container":"#e02928",outline:"#6e7977",error:"#ba1a1a"},borderRadius:{xl:"0.5rem",full:"0.75rem"}}}};</script>
+  <link href="/css/utilities.css" rel="stylesheet">
 </head>
 <body data-page="dns" class="h-full bg-surface-container-lowest text-on-surface antialiased flex flex-col text-[14px]">
   <script>
-    // Oculta la consola hasta conocer el estado de preparación (evita el parpadeo).
+    // Marca el estado inicial de preparación sin ocultar la consola.
     document.documentElement.classList.add('setup-checking');
-    window.setTimeout(function () { document.documentElement.classList.remove('setup-checking'); }, 8000);
   </script>
-  <div id="site-header-mount"></div>
+  <a class="skip-link" href="#contenido-principal">Saltar al contenido</a>
+  <div id="site-header-mount">
+    <header class="site-header">
+      <div class="brand"><span class="material-symbols-outlined" data-icon="dns">dns</span><span class="header-brand-outfit">HTTPaaS</span></div>
+    </header>
+  </div>
 
-  <main class="page-main">
-    <div class="page-container">
-      <div class="page-title">
-        <h1>Zonas DNS Bind9</h1>
-        <p>Registros de tipo A en la zona local <code class="mono">cloud.local</code> (<code class="mono">GET /api/dns/registros</code>).</p>
+  <main id="contenido-principal" tabindex="-1" class="flex-1 overflow-y-auto bg-surface-bright pb-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+      <div class="page-title mb-4">
+        <h1>DNS</h1>
+        <p>Consulta los registros A de la zona local. Cada instancia aprovisionada registra su nombre para poder acceder por <span class="mono">*.cloud.local</span>.</p>
       </div>
-
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <div class="card"><div class="card-body"><div class="kv-label">Zona</div><div class="kv-value mono" id="dnsZone">cloud.local.</div></div></div>
-        <div class="card"><div class="card-body"><div class="kv-label">Servidor</div><div class="kv-value mono">Bind9 / rndc</div></div></div>
-        <div class="card"><div class="card-body"><div class="kv-label">Red</div><div class="kv-value mono">192.168.10.0/24</div></div></div>
-      </div>
-
-      <div class="card">
-        <div class="card-head">
-          <div><h2>Registros activos</h2></div>
-          <div class="flex items-center gap-2">
-            <button class="btn-flat" id="refreshDnsBtn" type="button"><span class="material-symbols-outlined text-[16px]">refresh</span> Actualizar</button>
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <section class="lg:col-span-2">
+          <div class="card">
+            <div class="card-head">
+              <div><h2>Registros</h2><p class="text-[12px] text-on-surface-variant m-0 mt-1">Zona: <span class="mono" id="dnsZone">cloud.local.</span></p></div>
+              <div class="flex items-center gap-2">
+                <button class="btn-flat" id="refreshDnsBtn" type="button"><span class="material-symbols-outlined text-[16px]">refresh</span> Actualizar</button>
+              </div>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="simple-table">
+                <caption class="visually-hidden">Registros DNS de la zona local</caption>
+                <thead><tr><th scope="col">Nombre</th><th scope="col">Tipo</th><th scope="col">Dirección IP</th><th scope="col">TTL</th></tr></thead>
+                <tbody id="dnsTableBody"><tr><td colspan="4" class="empty-state">Cargando registros…</td></tr></tbody>
+              </table>
+            </div>
           </div>
-        </div>
-        <div style="overflow-x:auto;">
-          <table class="simple-table">
-            <thead><tr><th>Nombre</th><th>Tipo</th><th>Dirección IP</th><th>TTL</th></tr></thead>
-            <tbody id="dnsTableBody"><tr><td colspan="4" class="empty-state">Cargando registros…</td></tr></tbody>
-          </table>
-        </div>
+        </section>
+        <div id="instances-panel-mount" class="lg:col-span-1"></div>
       </div>
     </div>
   </main>
 
-  <div id="site-footer-mount"></div>
+  <nav id="side-dock" class="side-dock" aria-label="Módulos">
+    <a data-path="index.html" href="/index.html" title="Agregar"><span class="material-symbols-outlined" aria-hidden="true">add_circle</span><span>Agregar</span></a>
+    <a data-path="dns.html" href="/dns.html" class="active" title="DNS"><span class="material-symbols-outlined" aria-hidden="true">language</span><span>DNS</span></a>
+    <a data-path="vhosts.html" href="/vhosts.html" title="VHosts"><span class="material-symbols-outlined" aria-hidden="true">public</span><span>VHosts</span></a>
+    <a data-path="salud.html" href="/salud.html" title="Salud"><span class="material-symbols-outlined" aria-hidden="true">monitor_heart</span><span>Salud</span></a>
+  </nav>
+  <div id="site-footer-mount">
+    <footer class="relative w-full px-4 sm:px-6 py-2 shrink-0" style="background-color:rgb(36,40,50);border-top:1px solid rgb(51,56,66);color:#e2e8f0;">
+      <div class="max-w-7xl mx-auto flex items-center justify-between gap-3 text-[11px] mono">
+        <div class="flex-1 min-w-0 truncate text-[#d4d4d8]">Cargando estado…</div>
+        <div id="logs-toggle-mount"></div>
+      </div>
+    </footer>
+  </div>
 
   <script src="/js/common.js"></script>
   <script src="/js/components.js"></script>
+  <script src="/js/instances-panel.js"></script>
   <script src="/js/logs-dock.js"></script>
   <script src="/js/setup-wizard.js"></script>
-  <script src="/js/pages/index.js"></script>
   <script src="/js/pages/dns.js"></script>
-  <script src="/js/pages/salud.js"></script>
   <script src="/js/pages/detalle.js"></script>
-  <script src="/js/pages/vhosts.js"></script>
-  <script src="/js/pages/ayuda.js"></script>
   <script src="/js/router.js"></script>
 </body>
 </html>

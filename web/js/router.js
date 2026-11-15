@@ -1,6 +1,13 @@
 // router.js - Navegación sin recarga completa (intercambia <main>, preserva header/footer/dock).
 (function () {
-  var PAGE_SCRIPTS = ['/js/pages/index.js','/js/pages/dns.js','/js/pages/salud.js','/js/pages/detalle.js','/js/pages/vhosts.js','/js/pages/ayuda.js'];
+  var PAGE_SCRIPTS = {
+    index: '/js/pages/index.js',
+    dns: '/js/pages/dns.js',
+    salud: '/js/pages/salud.js',
+    vhosts: '/js/pages/vhosts.js',
+    detalle: '/js/pages/detalle.js'
+  };
+  var loaded = {};
 
   function pageKey(pathname) {
     var p = (pathname || location.pathname).split('?')[0].replace(/\/$/, '');
@@ -8,12 +15,11 @@
     if (p.indexOf('dns') !== -1) return 'dns';
     if (p.indexOf('vhosts') !== -1) return 'vhosts';
     if (p.indexOf('salud') !== -1) return 'salud';
-    if (p.indexOf('detalle') !== -1) return 'detalle';
-    if (p.indexOf('ayuda') !== -1) return 'ayuda';
     return 'index';
   }
 
   function runPage() {
+    if (window.HTTPaaSInstancesPanel && window.HTTPaaSInstancesPanel.init) window.HTTPaaSInstancesPanel.init();
     var key = pageKey();
     var pages = window.HTTPaaSPages || {};
     if (typeof pages[key] === 'function') pages[key]();
@@ -34,9 +40,9 @@
       if (doc.title) document.title = doc.title;
       if (push !== false) history.pushState({ href: url.pathname + url.search }, '', url.pathname + url.search);
       // re-asegurar padding para dock
-      var m = document.querySelector('main'); if (m) m.style.paddingBottom = '18rem';
+      var m = document.querySelector('main'); if (m) m.style.paddingBottom = '2rem';
       if (window.updateActiveNav) window.updateActiveNav();
-      runPage();
+      ensurePage(pageKey(), runPage);
       window.scrollTo(0, 0);
     } catch (e) { location.href = href; }
   }
@@ -57,15 +63,25 @@
 
   window.addEventListener('popstate', function () { navigate(location.pathname + location.search, false); });
 
+  function ensureScript(src, cb) {
+    if (!src) { cb(); return; }
+    if (loaded[src] || document.querySelector('script[src="' + src + '"]')) { cb(); return; }
+    var s = document.createElement('script');
+    s.src = src;
+    s.onload = function () { loaded[src] = 1; cb(); };
+    s.onerror = function () { loaded[src] = 1; cb(); };
+    document.body.appendChild(s);
+  }
+
+  function ensurePage(key, cb) {
+    // El drawer de detalle está disponible en todos los módulos.
+    ensureScript(PAGE_SCRIPTS.detalle, function () {
+      ensureScript(PAGE_SCRIPTS[key], cb);
+    });
+  }
+
   function boot() {
-    // garantizar scripts de páginas disponibles
-    var pending = 0, done = false;
-    function ready() { if (done) return; done = true; runPage(); }
-    function ensure(src, cb) {
-      if (document.querySelector('script[src="' + src + '"]')) { cb(); return; }
-      var s = document.createElement('script'); s.src = src; s.onload = cb; s.onerror = cb; document.body.appendChild(s);
-    }
-    var i = 0; (function next(){ if(i>=PAGE_SCRIPTS.length){ ready(); return; } ensure(PAGE_SCRIPTS[i++], next); })();
+    ensurePage(pageKey(), runPage);
   }
 
   window.HTTPaaSRouter = { navigate: navigate, runPage: runPage };

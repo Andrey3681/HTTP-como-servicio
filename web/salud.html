@@ -4,60 +4,104 @@
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
   <title>HTTPaaS - Salud del sistema</title>
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@900&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
   <link href="/css/stitch.css" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-  <script>tailwind.config={theme:{extend:{colors:{"on-surface":"#181c21","on-surface-variant":"#3e4947","surface-bright":"#f8f9ff","surface-container-lowest":"#ffffff","surface-container-low":"#f1f4fb","surface-container":"#ebeef5","primary-container":"#0f766e","secondary-container":"#e02928",outline:"#6e7977",error:"#ba1a1a"},borderRadius:{xl:"0.5rem",full:"0.75rem"}}}};</script>
+  <link href="/css/utilities.css" rel="stylesheet">
 </head>
 <body data-page="salud" class="h-full bg-surface-container-lowest text-on-surface antialiased flex flex-col text-[14px]">
   <script>
-    // Oculta la consola hasta conocer el estado de preparación (evita el parpadeo).
+    // Marca el estado inicial de preparación sin ocultar la consola.
     document.documentElement.classList.add('setup-checking');
-    window.setTimeout(function () { document.documentElement.classList.remove('setup-checking'); }, 8000);
   </script>
-  <div id="site-header-mount"></div>
+  <a class="skip-link" href="#contenido-principal">Saltar al contenido</a>
+  <div id="site-header-mount">
+    <header class="site-header">
+      <div class="brand"><span class="material-symbols-outlined" data-icon="dns">dns</span><span class="header-brand-outfit">HTTPaaS</span></div>
+    </header>
+  </div>
 
-  <main class="page-main">
-    <div class="page-container">
-      <div class="page-title">
-        <h1>Salud del sistema</h1>
-        <p>Disponibilidad de dependencias del entorno (<code class="mono">GET /api/salud</code>): VirtualBox/VBoxManage y Bind9.</p>
+  <main id="contenido-principal" tabindex="-1" class="flex-1 overflow-y-auto bg-surface-bright pb-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+      <div class="page-title mb-4">
+        <h1>Salud</h1>
+        <p>Comprueba si el entorno está listo y qué hacer si algo necesita atención.</p>
       </div>
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <section class="lg:col-span-2 space-y-6">
+          <div id="health-readiness" class="card" role="status" aria-live="polite">
+            <div class="card-body">
+              <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                <div class="space-y-2">
+                  <div class="kv-label">Preparación del entorno</div>
+                  <div id="health-readiness-title" class="text-[18px] font-semibold text-on-surface">Sin comprobar</div>
+                  <p id="health-readiness-message" class="m-0 text-[13px] text-on-surface-variant">Ejecuta una comprobación para ver el estado de VirtualBox, DNS y la resolución del anfitrión.</p>
+                </div>
+                <button class="btn-flat primary shrink-0" id="checkBtn" type="button"><span class="material-symbols-outlined text-[16px]">stethoscope</span> Comprobar ahora</button>
+              </div>
+            </div>
+          </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div class="card"><div class="card-body"><div class="kv-label">Estado general</div><div id="h-overall" class="pill-state" style="margin-top:8px;"><span class="dot warn"></span><span>Sin comprobar</span></div></div></div>
-        <div class="card"><div class="card-body"><div class="kv-label">VBoxManage</div><div id="h-vbox" class="pill-state" style="margin-top:8px;"><span class="dot warn"></span><span>Sin comprobar</span></div></div></div>
-        <div class="card"><div class="card-body"><div class="kv-label">Bind9</div><div id="h-bind9" class="pill-state" style="margin-top:8px;"><span class="dot warn"></span><span>Sin comprobar</span></div></div></div>
-      </div>
+          <div>
+            <h2 class="text-[14px] font-semibold text-on-surface mb-2">Dependencias principales</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="card"><div class="card-body space-y-2"><div class="kv-label">Estado general</div><div id="h-overall" class="pill-state"><span class="dot warn"></span><span>Sin comprobar</span></div><p id="h-overall-desc" class="m-0 text-[12px] text-on-surface-variant">Resumen del estado reportado por el sistema.</p></div></div>
+              <div class="card"><div class="card-body space-y-2"><div class="kv-label">VirtualBox</div><div id="h-vbox" class="pill-state"><span class="dot warn"></span><span>Sin comprobar</span></div><p id="h-vbox-desc" class="m-0 text-[12px] text-on-surface-variant">Necesario para crear y administrar máquinas virtuales.</p></div></div>
+              <div class="card"><div class="card-body space-y-2"><div class="kv-label">DNS (Bind9)</div><div id="h-bind9" class="pill-state"><span class="dot warn"></span><span>Sin comprobar</span></div><p id="h-bind9-desc" class="m-0 text-[12px] text-on-surface-variant">Necesario para resolver los nombres <span class="mono">*.cloud.local</span>.</p></div></div>
+            </div>
+          </div>
 
-      <div class="card">
-        <div class="card-head">
-          <div><h2>Comprobación</h2></div>
-          <button class="btn-flat primary" id="checkBtn" type="button"><span class="material-symbols-outlined text-[16px]">stethoscope</span> Comprobar ahora</button>
-        </div>
-        <div class="card-body">
-          <pre class="code-block" id="healthRaw">{
+          <div>
+            <h2 class="text-[14px] font-semibold text-on-surface mb-2">Resumen operativo</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="card"><div class="card-body space-y-1"><div class="kv-label">Instancias</div><div class="kv-value" id="health-instances">—</div><p id="health-instances-desc" class="m-0 text-[12px] text-on-surface-variant">Servicios HTTP aprovisionados.</p></div></div>
+              <div class="card"><div class="card-body space-y-1"><div class="kv-label">Registros DNS</div><div class="kv-value" id="health-dns-records">—</div><p id="health-dns-records-desc" class="m-0 text-[12px] text-on-surface-variant">Entradas activas en la zona local.</p></div></div>
+              <div class="card"><div class="card-body space-y-1"><div class="kv-label">Resolución del anfitrión</div><div class="kv-value" id="health-host-dns">—</div><p id="health-host-dns-desc" class="m-0 text-[12px] text-on-surface-variant">Permite abrir los sitios <span class="mono">.cloud.local</span> desde este equipo.</p></div></div>
+            </div>
+          </div>
+
+          <details id="health-raw-details" class="card">
+            <summary class="card-head cursor-pointer select-none" style="list-style:none;">
+              <div><h2>Detalles técnicos</h2><p class="m-0 mt-1 text-[12px] text-on-surface-variant">Diagnóstico completo para soporte (JSON).</p></div>
+              <span class="material-symbols-outlined text-on-surface-variant" aria-hidden="true">expand_more</span>
+            </summary>
+            <div class="card-body border-t-standard">
+              <pre class="code-block" id="healthRaw">{
   "estado": "pendiente",
   "vboxmanage": null,
   "bind9": null
 }</pre>
-        </div>
+            </div>
+          </details>
+        </section>
+        <div id="instances-panel-mount" class="lg:col-span-1"></div>
       </div>
     </div>
   </main>
 
-  <div id="site-footer-mount"></div>
+  <nav id="side-dock" class="side-dock" aria-label="Módulos">
+    <a data-path="index.html" href="/index.html" title="Agregar"><span class="material-symbols-outlined" aria-hidden="true">add_circle</span><span>Agregar</span></a>
+    <a data-path="dns.html" href="/dns.html" title="DNS"><span class="material-symbols-outlined" aria-hidden="true">language</span><span>DNS</span></a>
+    <a data-path="vhosts.html" href="/vhosts.html" title="VHosts"><span class="material-symbols-outlined" aria-hidden="true">public</span><span>VHosts</span></a>
+    <a data-path="salud.html" href="/salud.html" class="active" title="Salud"><span class="material-symbols-outlined" aria-hidden="true">monitor_heart</span><span>Salud</span></a>
+  </nav>
+  <div id="site-footer-mount">
+    <footer class="relative w-full px-4 sm:px-6 py-2 shrink-0" style="background-color:rgb(36,40,50);border-top:1px solid rgb(51,56,66);color:#e2e8f0;">
+      <div class="max-w-7xl mx-auto flex items-center justify-between gap-3 text-[11px] mono">
+        <div class="flex-1 min-w-0 truncate text-[#d4d4d8]">Cargando estado…</div>
+        <div id="logs-toggle-mount"></div>
+      </div>
+    </footer>
+  </div>
 
   <script src="/js/common.js"></script>
   <script src="/js/components.js"></script>
+  <script src="/js/instances-panel.js"></script>
   <script src="/js/logs-dock.js"></script>
   <script src="/js/setup-wizard.js"></script>
-  <script src="/js/pages/index.js"></script>
-  <script src="/js/pages/dns.js"></script>
   <script src="/js/pages/salud.js"></script>
   <script src="/js/pages/detalle.js"></script>
-  <script src="/js/pages/vhosts.js"></script>
-  <script src="/js/pages/ayuda.js"></script>
   <script src="/js/router.js"></script>
 </body>
 </html>
