@@ -549,7 +549,7 @@ paths:
     patch:
       operationId: renameDnsRecord
       summary: Renombrar un registro DNS
-      description: Cambia el nombre de un registro A de la zona. No modifica el nombre de la instancia ni el VHost de Apache.
+      description: Cambia el nombre de un registro A de la zona. No modifica el nombre de la instancia ni el VHost de Apache. El registro del servidor DNS (`ns`) es del sistema: no se lista y no se puede renombrar.
       requestBody:
         required: true
         content:
@@ -584,7 +584,7 @@ paths:
                       ttl:
                         type: integer
         '400':
-          description: Datos inválidos o nombre no permitido
+          description: Datos inválidos, nombre no permitido o registro del sistema
           content:
             application/json:
               schema:

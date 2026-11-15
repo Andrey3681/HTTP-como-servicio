@@ -516,3 +516,15 @@ func TestSetupService_ReiniciarClearsProgress(t *testing.T) {
 		t.Error("expected ResetEnvironment to be called")
 	}
 }
+
+func TestSetupService_RestoresGuestUserFromState(t *testing.T) {
+	dir := t.TempDir()
+	stateFile := filepath.Join(dir, "setup-estado.json")
+	if err := os.WriteFile(stateFile, []byte(`{"usuario":"jorge"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	svc := services.NewSetupService(testConfig(dir), &fakeProvisioner{}, &fakeImages{}, nil, stateFile)
+	if got := svc.GuestUser(); got != "jorge" {
+		t.Errorf("expected guest user 'jorge', got %q", got)
+	}
+}

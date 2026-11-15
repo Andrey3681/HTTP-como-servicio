@@ -317,3 +317,45 @@ func TestDnsHandler_ConfigureHostReportsAuthorizationError(t *testing.T) {
 		t.Errorf("expected the authorization message, got %s", rec.Body.String())
 	}
 }
+
+func TestDnsHandler_RecordsHideSystemRecord(t *testing.T) {
+	provider := &stubDnsProvider{records: []domain.DnsRecord{
+		{Name: "ns.cloud.local.", Type: "A", IP: "192.168.57.10", TTL: 300},
+		{Name: "mario.cloud.local.", Type: "A", IP: "192.168.57.105", TTL: 300},
+	}}
+	handler := handlers.NewDnsHandler(provider, "cloud.local", nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/dns/registros", nil)
+	rec := httptest.NewRecorder()
+	handler.HandleRecords(rec, req)
+
+	var body struct {
+		Registros []struct {
+			Nombre string `json:"nombre"`
+		} `json:"registros"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("respuesta inválida: %v", err)
+	}
+	if len(body.Registros) != 1 || body.Registros[0].Nombre != "mario.cloud.local." {
+		t.Errorf("el registro del sistema no debe listarse: %+v", body.Registros)
+	}
+}
+
+func TestDnsHandler_RenameRejectsSystemRecord(t *testing.T) {
+	provider := &stubDnsProvider{records: []domain.DnsRecord{
+		{Name: "ns.cloud.local.", Type: "A", IP: "192.168.57.10", TTL: 300},
+	}}
+	handler := handlers.NewDnsHandler(provider, "cloud.local", nil)
+
+	req := httptest.NewRequest(http.MethodPatch, "/api/dns/registros", strings.NewReader(`{"nombre":"ns","nuevo_nombre":"otro"}`))
+	rec := httptest.NewRecorder()
+	handler.HandleRecords(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if len(provider.added) != 0 || len(provider.removed) != 0 {
+		t.Error("no se debe modificar un registro del sistema")
+	}
+}

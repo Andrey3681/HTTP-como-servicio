@@ -985,6 +985,11 @@ func (s *SetupService) loadRecord() {
 	s.state.Configuracion = domain.SetupConfiguracion{
 		Usuario: record.Usuario,
 	}
+	// El usuario se conserva para el acceso SSH y las operaciones sobre las
+	// instancias; la contraseña no se persiste.
+	if record.Usuario != "" {
+		s.cfg.GuestUser = record.Usuario
+	}
 	if record.Completado {
 		s.state.Completado = true
 		s.state.RequiereConfiguracion = false

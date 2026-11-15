@@ -112,7 +112,7 @@ Componentes transversales (presentes en todos los módulos, RNF-02/07/10): **hea
 ### M3. DNS (`/dns.html`)
 - **Objetivo:** visibilidad operativa de los registros DNS (RF-07).
 - **Trazabilidad:** RF-07,10,11,12; RNF-01,02,05,06,11,12.
-- **Funciones:** consultar y listar registros A; refrescar; mostrar la zona reportada por la API; **renombrar un registro A** (cambia solo el nombre DNS, sin renombrar la instancia ni el VHost de Apache).
+- **Funciones:** consultar y listar registros A; refrescar; mostrar la zona reportada por la API; **renombrar un registro A** (cambia solo el nombre DNS, sin renombrar la instancia ni el VHost de Apache). El registro del servidor DNS (`ns`) se oculta y no se puede renombrar.
 - **Formulario:** no requiere formulario de alta (el alta DNS la dispara el aprovisionamiento, RF-02). El renombrado usa un diálogo con validación de hostname.
 - **Botones/acciones:** `Actualizar` (RF-11), `Renombrar` por registro (abre diálogo) y `Cancelar`/`Renombrar` en el diálogo.
 - **Elementos UI:** encabezado con zona (`dnsZone`) y tabla de registros (Nombre, Tipo, IP, TTL, Acciones), diálogo de renombrado, aviso de que no cambia el nombre de la instancia/VHost, estado vacío/error.

@@ -34,6 +34,7 @@ zone "cloud.local" {
     type master;
     file "/var/lib/bind/db.cloud.local";
     allow-update { ${ZONE_NET}; };
+    allow-transfer { ${ZONE_NET}; };
 };
 EOF
 

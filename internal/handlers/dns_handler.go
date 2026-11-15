@@ -147,6 +147,11 @@ func (h *DnsHandler) HandleRecords(w http.ResponseWriter, r *http.Request) {
 		if items, err := h.dnsProvider.ListRecords(r.Context()); err == nil {
 			registros = make([]any, 0, len(items))
 			for _, item := range items {
+				// El registro del propio servidor DNS es del sistema: no se
+				// lista ni se puede renombrar.
+				if shortDNSName(item.Name, zone) == "ns" {
+					continue
+				}
 				registros = append(registros, item)
 			}
 		}
@@ -204,6 +209,10 @@ func (h *DnsHandler) renameRecord(w http.ResponseWriter, r *http.Request) {
 	}
 	if old == nil {
 		Error(w, http.StatusNotFound, "El registro DNS indicado no existe")
+		return
+	}
+	if oldShort == "ns" {
+		Error(w, http.StatusBadRequest, "El registro del servidor DNS es del sistema y no se puede renombrar")
 		return
 	}
 	if oldShort == newName {

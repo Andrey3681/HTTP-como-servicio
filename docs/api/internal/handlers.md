@@ -98,7 +98,7 @@ func RequireSetup(setup SetupStateProvider) func(http.Handler) http.Handler
 RequireSetup bloquea las operaciones que modifican el laboratorio mientras la configuración inicial no haya finalizado. Las lecturas y los endpoints del propia preparación permanecen disponibles.
 
 <a name="DnsHandler"></a>
-## type [DnsHandler](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/dns_handler.go#L18-L25>)
+## type [DnsHandler](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/dns_handler.go#L21-L28>)
 
 DnsHandler maneja las peticiones de consulta de zona DNS y salud del entorno.
 
@@ -109,7 +109,7 @@ type DnsHandler struct {
 ```
 
 <a name="NewDnsHandler"></a>
-### func [NewDnsHandler](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/dns_handler.go#L35>)
+### func [NewDnsHandler](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/dns_handler.go#L38>)
 
 ```go
 func NewDnsHandler(dnsProvider ports.DnsProvider, zone string, logger ports.EventLogger) *DnsHandler
@@ -118,7 +118,7 @@ func NewDnsHandler(dnsProvider ports.DnsProvider, zone string, logger ports.Even
 NewDnsHandler crea un nuevo DnsHandler para la zona DNS indicada.
 
 <a name="DnsHandler.HandleConfigureHost"></a>
-### func \(\*DnsHandler\) [HandleConfigureHost](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/dns_handler.go#L66>)
+### func \(\*DnsHandler\) [HandleConfigureHost](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/dns_handler.go#L69>)
 
 ```go
 func (h *DnsHandler) HandleConfigureHost(w http.ResponseWriter, r *http.Request)
@@ -127,7 +127,7 @@ func (h *DnsHandler) HandleConfigureHost(w http.ResponseWriter, r *http.Request)
 HandleConfigureHost configura el resolver del anfitrión para cloud.local \(/api/dns/anfitrion/configurar\). Usa pkexec, que pide autorización.
 
 <a name="DnsHandler.HandleHealth"></a>
-### func \(\*DnsHandler\) [HandleHealth](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/dns_handler.go#L49>)
+### func \(\*DnsHandler\) [HandleHealth](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/dns_handler.go#L52>)
 
 ```go
 func (h *DnsHandler) HandleHealth(w http.ResponseWriter, r *http.Request)
@@ -136,7 +136,7 @@ func (h *DnsHandler) HandleHealth(w http.ResponseWriter, r *http.Request)
 HandleHealth responde el estado de salud de las herramientas del sistema \(/api/salud\).
 
 <a name="DnsHandler.HandleHostResolve"></a>
-### func \(\*DnsHandler\) [HandleHostResolve](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/dns_handler.go#L90>)
+### func \(\*DnsHandler\) [HandleHostResolve](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/dns_handler.go#L93>)
 
 ```go
 func (h *DnsHandler) HandleHostResolve(w http.ResponseWriter, r *http.Request)
@@ -145,16 +145,16 @@ func (h *DnsHandler) HandleHostResolve(w http.ResponseWriter, r *http.Request)
 HandleHostResolve comprueba si el resolver del anfitrión resuelve un nombre de la zona \(/api/dns/anfitrion\). No usa el DNS del laboratorio: reproduce la vista del navegador.
 
 <a name="DnsHandler.HandleRecords"></a>
-### func \(\*DnsHandler\) [HandleRecords](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/dns_handler.go#L126>)
+### func \(\*DnsHandler\) [HandleRecords](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/dns_handler.go#L130>)
 
 ```go
 func (h *DnsHandler) HandleRecords(w http.ResponseWriter, r *http.Request)
 ```
 
-HandleRecords responde con los registros A de la zona DNS administrada \(/api/dns/registros\). Si la consulta al proveedor falla o no está disponible, retorna una lista vacía manteniendo el contrato.
+HandleRecords responde con los registros A de la zona DNS administrada \(/api/dns/registros\). Si la consulta al proveedor falla o no está disponible, retorna una lista vacía manteniendo el contrato. También admite PATCH para renombrar un registro A de la zona.
 
 <a name="DnsHandler.SetHostDNS"></a>
-### func \(\*DnsHandler\) [SetHostDNS](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/dns_handler.go#L29>)
+### func \(\*DnsHandler\) [SetHostDNS](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/handlers/dns_handler.go#L32>)
 
 ```go
 func (h *DnsHandler) SetHostDNS(network ports.NetworkInfoProvider, hostDNS ports.HostDNS)

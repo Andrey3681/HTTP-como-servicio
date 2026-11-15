@@ -14,6 +14,8 @@ Package services implementa los casos de uso y la lógica de orquestación trans
 - [type InstanceOptions](<#InstanceOptions>)
 - [type InstanceService](<#InstanceService>)
   - [func NewInstanceService\(repo ports.Repository, hypervisor ports.Hypervisor, dnsProvider ports.DnsProvider, logger ports.EventLogger, opts InstanceOptions\) \*InstanceService](<#NewInstanceService>)
+  - [func \(s \*InstanceService\) Activate\(ctx context.Context, id string\) \(\*domain.Instance, error\)](<#InstanceService.Activate>)
+  - [func \(s \*InstanceService\) Deactivate\(ctx context.Context, id string\) \(\*domain.Instance, error\)](<#InstanceService.Deactivate>)
   - [func \(s \*InstanceService\) DeleteInstance\(ctx context.Context, id string\) error](<#InstanceService.DeleteInstance>)
   - [func \(s \*InstanceService\) GetAccess\(ctx context.Context, id string\) \(domain.InstanceAccess, error\)](<#InstanceService.GetAccess>)
   - [func \(s \*InstanceService\) GetInstance\(ctx context.Context, id string\) \(\*domain.Instance, error\)](<#InstanceService.GetInstance>)
@@ -92,8 +94,26 @@ func NewInstanceService(repo ports.Repository, hypervisor ports.Hypervisor, dnsP
 
 NewInstanceService crea una nueva instancia del servicio de gestión.
 
+<a name="InstanceService.Activate"></a>
+### func \(\*InstanceService\) [Activate](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L76>)
+
+```go
+func (s *InstanceService) Activate(ctx context.Context, id string) (*domain.Instance, error)
+```
+
+Activate enciende una instancia detenida, actualiza su IP y refresca el registro DNS si la dirección cambió.
+
+<a name="InstanceService.Deactivate"></a>
+### func \(\*InstanceService\) [Deactivate](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L122>)
+
+```go
+func (s *InstanceService) Deactivate(ctx context.Context, id string) (*domain.Instance, error)
+```
+
+Deactivate apaga una instancia activa sin destruirla ni eliminar su DNS.
+
 <a name="InstanceService.DeleteInstance"></a>
-### func \(\*InstanceService\) [DeleteInstance](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L158>)
+### func \(\*InstanceService\) [DeleteInstance](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L233>)
 
 ```go
 func (s *InstanceService) DeleteInstance(ctx context.Context, id string) error
@@ -102,7 +122,7 @@ func (s *InstanceService) DeleteInstance(ctx context.Context, id string) error
 DeleteInstance apaga y destruye la máquina virtual, remueve el registro DNS y elimina el registro del inventario.
 
 <a name="InstanceService.GetAccess"></a>
-### func \(\*InstanceService\) [GetAccess](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L124>)
+### func \(\*InstanceService\) [GetAccess](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L199>)
 
 ```go
 func (s *InstanceService) GetAccess(ctx context.Context, id string) (domain.InstanceAccess, error)
@@ -129,7 +149,7 @@ func (s *InstanceService) ListInstances(ctx context.Context) ([]domain.Instance,
 ListInstances retorna todas las instancias registradas en el inventario.
 
 <a name="InstanceService.Redeploy"></a>
-### func \(\*InstanceService\) [Redeploy](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L98>)
+### func \(\*InstanceService\) [Redeploy](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L173>)
 
 ```go
 func (s *InstanceService) Redeploy(ctx context.Context, id string, content io.ReaderAt, size int64) (*domain.Instance, error)
@@ -138,7 +158,7 @@ func (s *InstanceService) Redeploy(ctx context.Context, id string, content io.Re
 Redeploy reemplaza el contenido web de una instancia activa sin recrear la VM ni el registro DNS.
 
 <a name="InstanceService.RestartServices"></a>
-### func \(\*InstanceService\) [RestartServices](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L75>)
+### func \(\*InstanceService\) [RestartServices](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L150>)
 
 ```go
 func (s *InstanceService) RestartServices(ctx context.Context, id string) (*domain.Instance, error)

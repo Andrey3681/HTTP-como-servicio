@@ -73,7 +73,7 @@ var (
 ```
 
 <a name="ValidateHostname"></a>
-## func [ValidateHostname](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/instance.go#L55>)
+## func [ValidateHostname](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/instance.go#L58>)
 
 ```go
 func ValidateHostname(name string) error
@@ -127,7 +127,7 @@ type EnvironmentStatus struct {
 ```
 
 <a name="Instance"></a>
-## type [Instance](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/instance.go#L31-L39>)
+## type [Instance](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/instance.go#L34-L42>)
 
 Instance representa una máquina virtual que aloja una instancia del servidor web Apache.
 
@@ -144,7 +144,7 @@ type Instance struct {
 ```
 
 <a name="NewInstance"></a>
-### func [NewInstance](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/instance.go#L73>)
+### func [NewInstance](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/instance.go#L76>)
 
 ```go
 func NewInstance(name string, domainZone string) (*Instance, error)
@@ -153,7 +153,7 @@ func NewInstance(name string, domainZone string) (*Instance, error)
 NewInstance crea una nueva entidad de instancia inicializada en estado de creación.
 
 <a name="InstanceAccess"></a>
-## type [InstanceAccess](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/instance.go#L94-L103>)
+## type [InstanceAccess](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/instance.go#L97-L106>)
 
 InstanceAccess describe cómo acceder por SSH a una instancia aprovisionada.
 
@@ -191,6 +191,9 @@ const (
 
     // StatusError indica que ocurrió una falla durante el aprovisionamiento o ejecución.
     StatusError InstanceStatus = "ERROR"
+
+    // StatusStopped indica que la instancia está apagada y puede reactivarse.
+    StatusStopped InstanceStatus = "DETENIDA"
 
     // StatusTerminated indica que la instancia ha sido apagada y desmantelada.
     StatusTerminated InstanceStatus = "ELIMINADA"
