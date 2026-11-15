@@ -267,3 +267,20 @@ func TestParseFirstProjectInterface(t *testing.T) {
 		t.Errorf("expected empty result for only the default network, got %q", got)
 	}
 }
+
+func TestParseWindowsARP(t *testing.T) {
+	output := "Interfaz: 192.168.57.1 --- 0x9\r\n" +
+		"  Dirección de Internet          Dirección física      Tipo\r\n" +
+		"  192.168.57.10          08-00-27-19-68-f6     dinámico\r\n" +
+		"  192.168.57.105         08-00-27-ad-09-bd     dinámico\r\n"
+	ip, err := vbox.ParseWindowsARP(output, "080027AD09BD")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if ip.String() != "192.168.57.105" {
+		t.Errorf("unexpected IP: %s", ip)
+	}
+	if _, err := vbox.ParseWindowsARP(output, "080027000000"); err == nil {
+		t.Error("expected an error for an unknown MAC")
+	}
+}

@@ -16,7 +16,7 @@ Package hostdns configura el resolver del anfitrión para la zona cloud.local.
 
 
 <a name="Adapter"></a>
-## type [Adapter](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/hostdns/hostdns.go#L18-L21>)
+## type [Adapter](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/hostdns/hostdns.go#L19-L22>)
 
 Adapter ejecuta el configurador del DNS del anfitrión a través de pkexec.
 
@@ -27,7 +27,7 @@ type Adapter struct {
 ```
 
 <a name="New"></a>
-### func [New](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/hostdns/hostdns.go#L24>)
+### func [New](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/hostdns/hostdns.go#L25>)
 
 ```go
 func New(executor ports.Executor) *Adapter
@@ -36,7 +36,7 @@ func New(executor ports.Executor) *Adapter
 New crea el configurador apuntando al script del repositorio.
 
 <a name="Adapter.Configure"></a>
-### func \(\*Adapter\) [Configure](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/hostdns/hostdns.go#L34>)
+### func \(\*Adapter\) [Configure](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/hostdns/hostdns.go#L35>)
 
 ```go
 func (a *Adapter) Configure(ctx context.Context, iface, dnsIP string) error

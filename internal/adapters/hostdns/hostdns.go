@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/Andrey3681/httpaas-orchestrator/internal/core/ports"
@@ -32,6 +33,9 @@ func New(executor ports.Executor) *Adapter {
 // Configure aplica la configuración con pkexec (diálogo de autorización) o
 // directamente si ya se ejecuta como administrador.
 func (a *Adapter) Configure(ctx context.Context, iface, dnsIP string) error {
+	if runtime.GOOS != "linux" {
+		return fmt.Errorf("la configuración automática del DNS del anfitrión solo está disponible en Linux con systemd-resolved")
+	}
 	command := a.script
 	args := []string{iface, dnsIP}
 	if _, err := exec.LookPath("pkexec"); err == nil {

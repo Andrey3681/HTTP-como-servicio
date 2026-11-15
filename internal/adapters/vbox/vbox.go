@@ -10,6 +10,7 @@ import (
 	"net/netip"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -351,6 +352,13 @@ func (h *HypervisorAdapter) runCommandLocked(ctx context.Context, command string
 
 // neighborIP busca en la tabla de vecinos del anfitrión la IP de la MAC.
 func (h *HypervisorAdapter) neighborIP(ctx context.Context, iface, mac string) (netip.Addr, error) {
+	if runtime.GOOS == "windows" {
+		stdout, _, err := h.runCommandLocked(ctx, "arp", "-a")
+		if err != nil {
+			return netip.Addr{}, err
+		}
+		return ParseWindowsARP(string(stdout), mac)
+	}
 	stdout, _, err := h.runCommandLocked(ctx, "ip", "neigh", "show", "dev", iface)
 	if err != nil {
 		return netip.Addr{}, err
@@ -367,8 +375,26 @@ func (h *HypervisorAdapter) arpScanIP(ctx context.Context, iface, mac string) (n
 	if base == "" {
 		return netip.Addr{}, fmt.Errorf("no hay subred para el barrido ARP")
 	}
-	script := fmt.Sprintf("for i in $(seq 100 199); do ping -c 1 -W 1 %s.$i >/dev/null 2>&1 & done; wait", base)
-	_, _, _ = h.runCommandLocked(ctx, "sh", "-c", script)
+	var wg sync.WaitGroup
+	limit := make(chan struct{}, 32)
+	for i := 100; i <= 199; i++ {
+		target := fmt.Sprintf("%s.%d", base, i)
+		wg.Add(1)
+		limit <- struct{}{}
+		go func(ip string) {
+			defer wg.Done()
+			defer func() { <-limit }()
+			var args []string
+			if runtime.GOOS == "windows" {
+				args = []string{"-n", "1", "-w", "750", ip}
+			} else {
+				args = []string{"-c", "1", "-W", "1", ip}
+			}
+			// El sondeo no toca VBoxSVC: se ejecuta sin la exclusión mutua.
+			_, _, _ = h.executor.Execute(ctx, "ping", args...)
+		}(target)
+	}
+	wg.Wait()
 	return h.neighborIP(ctx, iface, mac)
 }
 

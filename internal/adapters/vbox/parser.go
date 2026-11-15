@@ -82,9 +82,28 @@ func ParseNeighborIP(output, mac string) (netip.Addr, error) {
 	return netip.Addr{}, fmt.Errorf("la MAC %s no aparece en la tabla de vecinos", mac)
 }
 
+// ParseWindowsARP busca en "arp -a" de Windows la IP asociada a una MAC.
+func ParseWindowsARP(output, mac string) (netip.Addr, error) {
+	want := normalizeMAC(mac)
+	for _, line := range strings.Split(output, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+		if normalizeMAC(fields[1]) != want {
+			continue
+		}
+		addr, err := netip.ParseAddr(fields[0])
+		if err == nil && addr.Is4() && !addr.IsLoopback() {
+			return addr, nil
+		}
+	}
+	return netip.Addr{}, fmt.Errorf("la MAC %s no aparece en la tabla ARP", mac)
+}
+
 // normalizeMAC unifica el formato de las MAC para compararlas.
 func normalizeMAC(mac string) string {
-	clean := strings.ToLower(strings.ReplaceAll(mac, ":", ""))
+	clean := strings.ToLower(strings.NewReplacer(":", "", "-", "").Replace(mac))
 	if len(clean) != 12 {
 		return strings.ToLower(mac)
 	}

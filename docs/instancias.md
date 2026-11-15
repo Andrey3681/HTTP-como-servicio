@@ -64,6 +64,8 @@ El servidor DNS del laboratorio vive en `192.168.57.10`. Para abrir `http://<hos
 
 La consola muestra un aviso naranja con el botón **Configurar DNS** (y un tooltip que explica para qué sirve). El botón ejecuta el configurador con `pkexec`, que pide la contraseña de administrador una sola vez.
 
+En Windows y macOS este botón no aplica: la API responde que la configuración automática solo está disponible en Linux con `systemd-resolved`, y el DNS del adaptador host-only se ajusta manualmente.
+
 ```bash
 sudo ./scripts/configurar-dns-anfitrion.sh
 ```

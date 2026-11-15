@@ -134,13 +134,22 @@ La aplicación no lee ni escribe fuera de este directorio.
 
 ## 7. Requisitos
 
-- VirtualBox 7.x con `VBoxManage`.
-- `genisoimage` o `mkisofs` para crear las semillas.
+- VirtualBox 7.x con `VBoxManage` en el `PATH`.
+- `genisoimage` o `mkisofs` para crear las semillas en Linux/macOS; en Windows, `oscdimg` (Windows ADK).
 - Internet la primera vez (imagen y paquetes).
 - Sin privilegios de administrador: no se reconfiguran interfaces del host.
 - Las VM base usan una NIC NAT temporal para instalar paquetes; las instancias aprovisionadas solo llevan la NIC host-only.
-- `ssh` y `ssh-keygen` en el host para el seguimiento temprano de cloud-init.
-- Para abrir `http://<host>.cloud.local` en el navegador, el resolver del anfitrión debe usar el DNS del laboratorio. Se configura una vez con `sudo ./scripts/configurar-dns-anfitrion.sh`; la consola avisa si falta.
+- `ssh` y `ssh-keygen` en el host (OpenSSH incluido en Windows 10/11).
+- Para abrir `http://<host>.cloud.local` en el navegador, el resolver del anfitrión debe usar el DNS del laboratorio. En Linux se configura con `sudo ./scripts/configurar-dns-anfitrion.sh` (o con el botón de la consola, que usa `pkexec`); en Windows/macOS se configura manualmente el DNS del adaptador host-only.
+
+### 7.1 Windows y macOS
+
+- El proyecto compila para `windows/amd64` y `darwin/arm64` (`GOOS=windows GOARCH=amd64 go build ./...`); no hay dependencias nuevas.
+- El descubrimiento de IP usa `arp -a` y `ping -n 1 -w` en Windows, y `ip neigh`/`ping -c` en Linux/macOS.
+- El espacio libre se consulta con `GetDiskFreeSpaceExW` en Windows y `statfs` en el resto.
+- La configuración automática del DNS del anfitrión solo existe para Linux con `systemd-resolved`; en otros sistemas la API responde con un mensaje claro y el DNS se ajusta a mano.
+- Las semillas se generan con `genisoimage`/`mkisofs`/`xorriso` o, en Windows, con `oscdimg`.
+- Las rutas internas del invitado (`/tmp`, `/var/www`, `systemctl`) son del Linux de las VM, no del anfitrión.
 
 ---
 

@@ -13,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/Andrey3681/httpaas-orchestrator/internal/adapters/seediso"
@@ -741,16 +740,6 @@ func normalizeVersion(raw string) string {
 		return match
 	}
 	return raw
-}
-
-func freeDiskGB(path string) int64 {
-	for dir := path; dir != "" && dir != "/"; dir = filepath.Dir(dir) {
-		var stat syscall.Statfs_t
-		if err := syscall.Statfs(dir, &stat); err == nil {
-			return int64(stat.Bavail) * int64(stat.Bsize) / (1024 * 1024 * 1024)
-		}
-	}
-	return 0
 }
 
 // (sin privilegios: la red host-only se usa tal como VirtualBox la crea)

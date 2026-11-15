@@ -33,14 +33,20 @@ Proyecto correspondiente a la **Nota Parcial #3 de Computación en la Nube (2026
                                            +------------------+ +--------------+
 ```
 
-## 📋 Requisitos Previos
+## 📋 Requisitos
 
-- **Go**: 1.22+ (detectado `1.27.0`)
-- **Oracle VirtualBox**: 7.0+ (con herramienta `VBoxManage` en el PATH)
-- **Task**: Administrador de tareas `task`
-- **VM Base**: Máquina virtual Debian 13 CLI con Apache instalado y su disco virtual configurado en modo `multiattach` (`ApacheServer.vdi`)
-- **SSH**: `ssh` y `ssh-keygen` en el host (seguimiento de cloud-init y acceso de soporte).
-- **VM DNS**: Máquina virtual Debian 13 (`ns`) con Bind9 en la IP derivada de la red host-only (`.10`) para la zona `cloud.local.`
+### Dependencias del sistema (instalación manual)
+
+| Dependencia | Uso | Cómo obtenerla |
+|---|---|---|
+| **Go 1.22+** | Compilar y ejecutar el servidor | [go.dev/dl](https://go.dev/dl/) |
+| **Task** | Automatizar formato, lint, pruebas y documentación | [taskfile.dev/installation](https://taskfile.dev/installation/) |
+| **Git** | Clonar y versionar el proyecto | [git-scm.com/downloads](https://git-scm.com/downloads) |
+| **Oracle VirtualBox 7** | Hipervisor y `VBoxManage` en el PATH | [virtualbox.org/wiki/Downloads](https://www.virtualbox.org/wiki/Downloads) |
+| **OpenSSH** (`ssh`, `scp`, `ssh-keygen`) | Acceso y despliegue en las VM | Linux/macOS: preinstalado · Windows: [OpenSSH](https://learn.microsoft.com/windows-server/administration/openssh/openssh_install_firstuse) |
+| **Herramientas ISO** | Crear las semillas NoCloud | Linux: `genisoimage` ([paquete](https://packages.debian.org/stable/genisoimage)) o `xorriso` ([xorriso](https://www.gnu.org/software/xorriso/)) · Windows: `oscdimg` (incluido en Windows) |
+
+> Las VM **`ns`** y **`ApacheServer`** no se instalan a mano: las crea la preparación inicial. Lo mismo aplica a la imagen cloud, la red host-only y el disco `multiattach`.
 
 ## 🧭 Preparación inicial del laboratorio
 
