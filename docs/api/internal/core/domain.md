@@ -18,6 +18,7 @@ Package domain define las entidades centrales del modelo de negocio, reglas de d
 - [type EnvironmentStatus](<#EnvironmentStatus>)
 - [type Instance](<#Instance>)
   - [func NewInstance\(name string, domainZone string\) \(\*Instance, error\)](<#NewInstance>)
+- [type InstanceAccess](<#InstanceAccess>)
 - [type InstanceStatus](<#InstanceStatus>)
 - [type NetworkConfig](<#NetworkConfig>)
   - [func DeriveNetwork\(iface, hostIP, netmask string\) \(NetworkConfig, error\)](<#DeriveNetwork>)
@@ -65,6 +66,9 @@ var (
 
     // ErrZipSlipDetected indica un intento de path traversal dentro del archivo comprimido.
     ErrZipSlipDetected = errors.New("se detectó una ruta insegura (Zip Slip) en el archivo comprimido")
+
+    // ErrOperationNotAllowed indica que la instancia no admite la operación en su estado actual.
+    ErrOperationNotAllowed = errors.New("la operación no está permitida para el estado de la instancia")
 )
 ```
 
@@ -147,6 +151,24 @@ func NewInstance(name string, domainZone string) (*Instance, error)
 ```
 
 NewInstance crea una nueva entidad de instancia inicializada en estado de creación.
+
+<a name="InstanceAccess"></a>
+## type [InstanceAccess](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/instance.go#L94-L103>)
+
+InstanceAccess describe cómo acceder por SSH a una instancia aprovisionada.
+
+```go
+type InstanceAccess struct {
+    Usuario             string `json:"usuario"`
+    Host                string `json:"host"`
+    IP                  string `json:"ip"`
+    FQDN                string `json:"fqdn"`
+    Puerto              int    `json:"puerto"`
+    Comando             string `json:"comando"`
+    UsaClaveLaboratorio bool   `json:"usa_clave_laboratorio"`
+    NotaClave           string `json:"nota_clave"`
+}
+```
 
 <a name="InstanceStatus"></a>
 ## type [InstanceStatus](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/domain/instance.go#L14>)

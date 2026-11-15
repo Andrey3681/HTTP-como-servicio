@@ -17,6 +17,7 @@ Package ports define los contratos de interfaz que comunican el núcleo de la ap
 - [type HostDNS](<#HostDNS>)
 - [type Hypervisor](<#Hypervisor>)
 - [type ImageStore](<#ImageStore>)
+- [type InstanceOperator](<#InstanceOperator>)
 - [type NetworkInfoProvider](<#NetworkInfoProvider>)
 - [type ProgressFunc](<#ProgressFunc>)
 - [type Repository](<#Repository>)
@@ -131,6 +132,18 @@ type ImageStore interface {
 
     // Download descarga la ISO desde url y retorna la ruta final.
     Download(ctx context.Context, url, dir string, progress ProgressFunc) (string, error)
+}
+```
+
+<a name="InstanceOperator"></a>
+## type [InstanceOperator](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/ports/instance_operator.go#L12-L15>)
+
+InstanceOperator ejecuta operaciones dentro de una instancia ya aprovisionada.
+
+```go
+type InstanceOperator interface {
+    // RestartWebService reinicia Apache en la instancia y verifica que quede activo.
+    RestartWebService(ctx context.Context, hostname string, ip netip.Addr) error
 }
 ```
 

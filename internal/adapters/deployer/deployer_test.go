@@ -94,3 +94,29 @@ func TestApacheDeployer_RequiresKey(t *testing.T) {
 		t.Fatal("expected an error without an SSH key")
 	}
 }
+
+func TestApacheDeployer_RestartWebService(t *testing.T) {
+	exec := &recordingExecutor{}
+	dep := deployer.NewApacheDeployer(exec, nil, func() string { return "jorge" }, "/keys/id_ed25519")
+
+	err := dep.RestartWebService(context.Background(), "mario", netip.MustParseAddr("192.168.57.105"))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := false
+	for _, call := range exec.calls {
+		if strings.HasPrefix(call, "ssh ") && strings.Contains(call, "systemctl restart apache2") {
+			found = true
+			if !strings.Contains(call, "systemctl is-active apache2") {
+				t.Errorf("no se verifica Apache activo: %s", call)
+			}
+			if !strings.Contains(call, "jorge@192.168.57.105") {
+				t.Errorf("usuario o host incorrectos: %s", call)
+			}
+		}
+	}
+	if !found {
+		t.Errorf("no se ejecutó el reinicio por SSH: %v", exec.calls)
+	}
+}

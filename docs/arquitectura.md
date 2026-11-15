@@ -102,12 +102,23 @@ type EventLogger interface {
 ```go
 // Deployer transfiere y descomprime los paquetes web en la instancia Apache.
 type Deployer interface {
-    // DeployWebZip transfiere y descomprime el contenido web en /var/www/html/ de la máquina virtual objetivo.
-    DeployWebZip(ctx context.Context, targetIP netip.Addr, zipContent io.Reader, size int64) error
+    // DeployWebZip transfiere y descomprime el contenido web en
+    // /var/www/vhosts/<hostname>/public y publica su virtual host.
+    DeployWebZip(ctx context.Context, hostname string, targetIP netip.Addr, zipContent io.Reader, size int64) error
 }
 ```
 
-### 3.5 Repositorio de Persistencia (`Repository`)
+### 3.5 Operador de Instancia (`InstanceOperator`)
+```go
+// InstanceOperator ejecuta operaciones dentro de una instancia ya aprovisionada.
+type InstanceOperator interface {
+    // RestartWebService reinicia Apache en la instancia y verifica que quede activo.
+    RestartWebService(ctx context.Context, hostname string, ip netip.Addr) error
+}
+```
+El adaptador `deployer` implementa el reinicio por SSH (`systemctl restart apache2` y `systemctl is-active apache2`). El redespliegue reutiliza `Deployer.DeployWebZip` y el acceso SSH lo compone el servicio con el usuario configurado y la clave del entorno, sin exponer su contenido. Las tres operaciones exigen una instancia `ACTIVA` con IP y no alteran Bind9 salvo el redespliegue, que tampoco recrea el registro.
+
+### 3.6 Repositorio de Persistencia (`Repository`)
 ```go
 // Repository administra la persistencia del inventario de instancias aprovisionadas.
 type Repository interface {

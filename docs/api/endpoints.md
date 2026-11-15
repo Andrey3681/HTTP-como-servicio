@@ -18,6 +18,9 @@ Este documento identifica de forma exhaustiva los endpoints HTTP expuestos por e
 | 3 | `POST` | `/api/instancias` | Aprovisionar una instancia HTTP (VM + DNS + despliegue web). | `multipart/form-data`: `nombre` (subdominio), `archivo` (`.zip`, máx. 55 MB en handler / 50 MB validación de dominio) | `201` `{mensaje, datos:Instancia}` | `201`, `400`, `405`, `500` | Existe |
 | 4 | `GET` | `/api/instancias/{id}` | Obtener detalle de una instancia por identificador/nombre. | path `id` | `200` `{datos:Instancia}` | `200`, `400`, `404`, `405`, `500` | Existe |
 | 5 | `DELETE` | `/api/instancias/{id}` | Eliminar instancia (VM, DNS, inventario). | path `id` | `200` `{mensaje}` | `200`, `400`, `404`, `405`, `500` | Existe |
+| 5b | `GET` | `/api/instancias/{id}/acceso` | Datos y comando SSH de la instancia. | path `id` | `200` `{datos:{usuario,host,ip,fqdn,puerto,comando,usa_clave_laboratorio,nota_clave}}` | `200`, `404`, `405`, `409`, `500` | Existe |
+| 5c | `POST` | `/api/instancias/{id}/servicios/reiniciar` | Reiniciar Apache en la instancia activa. | path `id` | `200` `{mensaje,datos:{id,estado,resultado}}` | `200`, `404`, `405`, `409`, `500` | Existe |
+| 5d | `POST` | `/api/instancias/{id}/despliegue` | Reemplazar el contenido web con un nuevo `.zip` (multipart `archivo`). | path `id`, multipart | `200` `{mensaje,datos:<Instancia>}` | `200`, `400`, `404`, `405`, `409`, `500` | Existe |
 | 6 | `GET` | `/api/dns/registros` | Consultar registros A activos en la zona DNS administrada. | — | `200` `{zona, registros:[{nombre,tipo,ip,ttl}]}` | `200`, `405` | Existe |
 | 6b | `GET` | `/api/dns/anfitrion` | Comprobar si el resolver del anfitrión resuelve un nombre de la zona. | query `nombre` (def. `ns.<zona>`) | `200` `{resuelve, ip, mensaje}` | `200`, `405` | Existe |
 | 6c | `POST` | `/api/dns/anfitrion/configurar` | Configurar el resolver del anfitrión para `cloud.local` mediante `pkexec` (pide autorización). | — | `200` `{mensaje}` | `200`, `405`, `409`, `500` | Existe |
@@ -41,6 +44,9 @@ Este documento identifica de forma exhaustiva los endpoints HTTP expuestos por e
 
 ## Notas de rigor
 
+- `POST /api/instancias/{id}/servicios/reiniciar` solo actúa sobre instancias `ACTIVA` con IP; ejecuta `systemctl restart apache2` y verifica `is-active` por SSH. No modifica Bind9.
+- `POST /api/instancias/{id}/despliegue` valida el `.zip` con las mismas reglas del aprovisionamiento (extensión, tamaño y Zip Slip), reemplaza el contenido en `/var/www/vhosts/<host>/public` y publica el virtual host, sin recrear la VM ni el registro DNS.
+- `GET /api/instancias/{id}/acceso` devuelve el comando SSH con el usuario del entorno y la ruta local de la clave; nunca expone el contenido de la clave privada.
 - `POST /api/dns/anfitrion/configurar` ejecuta el configurador del anfitrión con `pkexec`: instala un drop-in persistente de `systemd-resolved` (`Domains=~cloud.local`) y aplica el DNS del laboratorio. Si el usuario cancela la autorización responde `500` con el motivo.
 - `GET /api/dns/anfitrion` consulta con el resolver del propio sistema (`net.LookupHost`) un nombre de la zona; si el anfitrión no usa el DNS del laboratorio, `resuelve` es `false` y `mensaje` explica cómo configurarlo.
 - `GET /api/dns/registros` consulta la zona mediante transferencia AXFR (`dig`) a través de `DnsProvider.ListRecords`; si la consulta no está disponible responde `200` con `registros` vacío para preservar el contrato (degradación explícita, no error).

@@ -120,7 +120,12 @@ func main() {
 
 	// 4. Inicializar servicios de aplicación
 	orchestrator := services.NewOrchestrator(hyp, dns, dep, repo, *domainZone, baseDiskProvider, logBroker)
-	instanceService := services.NewInstanceService(repo, hyp, dns, logBroker)
+	instanceService := services.NewInstanceService(repo, hyp, dns, logBroker, services.InstanceOptions{
+		Operator:   dep,
+		Deployer:   dep,
+		GuestUser:  setupService.GuestUser,
+		SSHKeyPath: filepath.Join(layout.SSHDir, "id_ed25519"),
+	})
 
 	// 5. Inicializar manejadores HTTP
 	instanceHandler := handlers.NewInstanceHandler(orchestrator, instanceService, logBroker)

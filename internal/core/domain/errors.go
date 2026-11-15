@@ -22,4 +22,7 @@ var (
 
 	// ErrZipSlipDetected indica un intento de path traversal dentro del archivo comprimido.
 	ErrZipSlipDetected = errors.New("se detectó una ruta insegura (Zip Slip) en el archivo comprimido")
+
+	// ErrOperationNotAllowed indica que la instancia no admite la operación en su estado actual.
+	ErrOperationNotAllowed = errors.New("la operación no está permitida para el estado de la instancia")
 )
