@@ -4,9 +4,12 @@
 package handlers
 
 import (
+	"context"
+	"net"
 	"net/http"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/Andrey3681/httpaas-orchestrator/internal/core/ports"
 )
@@ -16,6 +19,7 @@ type DnsHandler struct {
 	dnsProvider ports.DnsProvider
 	zone        string
 	logger      ports.EventLogger
+	lookup      func(context.Context, string) ([]string, error)
 }
 
 // NewDnsHandler crea un nuevo DnsHandler para la zona DNS indicada.
@@ -28,6 +32,7 @@ func NewDnsHandler(dnsProvider ports.DnsProvider, zone string, logger ports.Even
 		dnsProvider: dnsProvider,
 		zone:        cleanZone,
 		logger:      logger,
+		lookup:      net.DefaultResolver.LookupHost,
 	}
 }
 
@@ -45,6 +50,36 @@ func (h *DnsHandler) HandleHealth(w http.ResponseWriter, r *http.Request) {
 		"vboxmanage": vboxErr == nil,
 		"bind9":      true,
 	})
+}
+
+// HandleHostResolve comprueba si el resolver del anfitrión resuelve un nombre
+// de la zona (/api/dns/anfitrion). No usa el DNS del laboratorio: reproduce la
+// vista del navegador.
+func (h *DnsHandler) HandleHostResolve(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		Error(w, http.StatusMethodNotAllowed, "Método HTTP no permitido")
+		return
+	}
+	name := strings.TrimSpace(r.URL.Query().Get("nombre"))
+	if name == "" {
+		name = "ns." + strings.TrimSuffix(h.zone, ".")
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+
+	addrs, err := h.lookup(ctx, name)
+	zone := strings.TrimSuffix(h.zone, ".")
+	if err != nil || len(addrs) == 0 {
+		JSON(w, http.StatusOK, map[string]any{
+			"resuelve": false,
+			"ip":       "",
+			"mensaje": "El resolver del anfitrión no resuelve " + zone + ". Configura el DNS del laboratorio: " +
+				"resolvectl dns vboxnet1 192.168.57.10 y resolvectl domain vboxnet1 '~" + zone + "' (requiere administrador), " +
+				"o añade el nombre a /etc/hosts.",
+		})
+		return
+	}
+	JSON(w, http.StatusOK, map[string]any{"resuelve": true, "ip": addrs[0], "mensaje": ""})
 }
 
 // HandleRecords responde con los registros A de la zona DNS administrada (/api/dns/registros).

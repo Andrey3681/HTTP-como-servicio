@@ -116,7 +116,7 @@
         var result = await res.json().catch(function () { return {}; });
         if (!res.ok) throw new Error(result.error || 'Error al aprovisionar la instancia.');
         showMsg('Instancia "' + hostname + '" aprovisionada con éxito.', 'success');
-        provisionForm.reset(); fetchInstances();
+        provisionForm.reset(); fetchInstances(); checkHostDns();
       } catch (err) { showMsg('Error en el aprovisionamiento: ' + err.message, 'error'); }
       finally { setBusy(submitBtn, false); setBusy(checkHostBtn, false); showLoad(false); }
     });
@@ -151,6 +151,24 @@
       renderInstances(allInstances.filter(function (i) { return ((i.nombre||'')+' '+(i.fqdn||'')+' '+(i.ip||'')+' '+(i.id||'')).toLowerCase().indexOf(q)!==-1; }));
     }
     if (instancesFilter) instancesFilter.addEventListener('input', applyFilter);
+    async function checkHostDns() {
+      var banner = document.getElementById('hostDnsWarning');
+      if (!banner) return;
+      try {
+        var res = await fetch('/api/dns/anfitrion');
+        var data = await res.json().catch(function () { return {}; });
+        if (data && data.resuelve) {
+          banner.classList.add('hidden');
+          banner.textContent = '';
+        } else {
+          banner.textContent = (data && data.mensaje) || 'El resolver del anfitrión no resuelve la zona cloud.local.';
+          banner.classList.remove('hidden');
+        }
+      } catch (err) {
+        banner.classList.add('hidden');
+      }
+    }
+
     async function fetchInstances() {
       if (!instancesList) return;
       setBusy(refreshInstancesBtn, true);
@@ -217,6 +235,7 @@
     });
     if (refreshInstancesBtn) refreshInstancesBtn.addEventListener('click', fetchInstances);
     fetchInstances();
+    checkHostDns();
   }
   window.HTTPaaSPages = window.HTTPaaSPages || {};
   window.HTTPaaSPages.index = init;

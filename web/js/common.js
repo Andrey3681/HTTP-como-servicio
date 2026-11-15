@@ -21,9 +21,26 @@
     el.style.display = 'block';
   }
   function hideMessage() { var el = document.getElementById('statusMessage'); if (el) el.style.display = 'none'; }
+  var loadingTimer = null, loadingBase = '', loadingStarted = 0;
+
+  function paintLoading() {
+    var tx = document.getElementById('loadingText');
+    if (!tx) return;
+    var secs = Math.floor((Date.now() - loadingStarted) / 1000);
+    tx.textContent = loadingBase + ' · ' + secs + ' s';
+  }
+
   function showLoading(show, text) {
-    var ov = document.getElementById('loadingOverlay'), tx = document.getElementById('loadingText');
-    if (tx) tx.textContent = text || 'Procesando operación…';
+    var ov = document.getElementById('loadingOverlay');
+    if (show) {
+      loadingBase = text || 'Procesando operación…';
+      loadingStarted = Date.now();
+      paintLoading();
+      if (!loadingTimer) loadingTimer = setInterval(paintLoading, 1000);
+    } else if (loadingTimer) {
+      clearInterval(loadingTimer);
+      loadingTimer = null;
+    }
     if (ov) {
       ov.classList.toggle('open', !!show);
       ov.setAttribute('aria-hidden', show ? 'false' : 'true');

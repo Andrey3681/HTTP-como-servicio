@@ -195,6 +195,40 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorRespuesta'
 
+  /api/dns/anfitrion:
+    get:
+      operationId: resolveFromHost
+      summary: Comprobar la resolución DNS del anfitrión
+      description: Consulta con el resolver del propio sistema un nombre de la zona administrada. Si el anfitrión no usa el DNS del laboratorio, `resuelve` es falso y `mensaje` explica cómo configurarlo.
+      parameters:
+        - name: nombre
+          in: query
+          required: false
+          schema:
+            type: string
+            example: ns.cloud.local
+      responses:
+        '200':
+          description: Resultado de la consulta
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  resuelve:
+                    type: boolean
+                  ip:
+                    type: string
+                    example: 192.168.57.10
+                  mensaje:
+                    type: string
+        '405':
+          description: Método HTTP no permitido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+
   /api/dns/registros:
     get:
       operationId: listDnsRecords

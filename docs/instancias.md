@@ -58,7 +58,21 @@ ssh -i ~/.local/share/httpaas/ssh/id_ed25519 <usuario>@<ip> \
 
 ---
 
-## 5. Evidencia
+## 5. DNS del anfitrión
+
+El servidor DNS del laboratorio vive en `192.168.57.10`. Para abrir `http://<host>.cloud.local` en el navegador del anfitrión, el resolver del sistema debe consultarlo; sin privilegios no se puede cambiar, así que se configura una vez:
+
+```bash
+sudo ./scripts/configurar-dns-anfitrion.sh
+```
+
+El script lee la red derivada desde `/api/setup/estado` y ejecuta `resolvectl dns <interfaz> <ip_dns>` y `resolvectl domain <interfaz> '~cloud.local'`. Alternativa puntual: añadir `192.168.57.105 <host>.cloud.local` a `/etc/hosts`.
+
+La consola consulta `GET /api/dns/anfitrion` y muestra un aviso cuando el anfitrión todavía no resuelve la zona; el registro en Bind9 sí existe y se puede comprobar con `dig @192.168.57.10 <host>.cloud.local`.
+
+---
+
+## 6. Evidencia
 
 La prueba de extremo a extremo del 14 de noviembre de 2026 creó `paisajes` en 18 s:
 
@@ -71,7 +85,7 @@ Tras `DELETE /api/instancias/paisajes` desaparecieron el registro DNS, la máqui
 
 ---
 
-## 6. Limitaciones conocidas
+## 7. Limitaciones conocidas
 
 - Las instancias heredan las claves de host SSH y los paquetes de la plantilla; el nombre y la red se fijan en su propia semilla, y el FQDN se resuelve por DNS y el `ServerName` del virtual host.
 - No se aplican cuotas por instancia; el disco diferencial crece hasta el tamaño del disco plantilla.

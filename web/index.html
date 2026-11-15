@@ -85,7 +85,8 @@
         <!-- Instancias activas -->
         <section class="lg:col-span-1 bg-surface-container-lowest border-standard rounded-xl overflow-hidden flex flex-col justify-between" id="instancias">
           <div>
-            <div class="p-4 border-b-standard flex flex-col gap-3 bg-surface-container-lowest">
+            <div id="hostDnsWarning" class="hidden mx-4 mt-3 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 p-3 text-[12.5px] leading-relaxed" role="alert"></div>
+          <div class="p-4 border-b-standard flex flex-col gap-3 bg-surface-container-lowest">
               <div class="flex items-center justify-between gap-2">
                 <div class="flex items-center gap-2">
                   <h2 class="text-[16px] font-semibold text-on-surface">Instancias activas</h2>
@@ -134,13 +135,17 @@
       </div>
     </div>
 
-    <div id="loadingOverlay" class="loading-overlay" role="status" aria-live="polite" aria-atomic="true" aria-hidden="true" aria-busy="false">
-      <div class="bg-surface-container-lowest border-standard rounded-xl p-6 flex items-center gap-4 w-full max-w-md">
-        <span class="material-symbols-outlined text-primary-container" aria-hidden="true">progress_activity</span>
+  </main>
+
+  <div id="loadingOverlay" class="loading-overlay" role="status" aria-live="polite" aria-atomic="true" aria-hidden="true" aria-busy="false">
+    <div class="bg-surface-container-lowest border-standard rounded-xl p-6 flex items-center gap-4 w-full max-w-md">
+      <span class="material-symbols-outlined text-primary-container loading-spinner" aria-hidden="true">progress_activity</span>
+      <div class="min-w-0">
         <p id="loadingText" class="text-on-surface text-[14px] m-0">Procesando operación…</p>
+        <p class="text-[12px] text-on-surface-variant m-0 mt-1">La ventana se cerrará al terminar.</p>
       </div>
     </div>
-  </main>
+  </div>
 
   <div id="site-footer-mount"></div>
 

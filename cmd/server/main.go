@@ -139,11 +139,16 @@ func main() {
 	mux.HandleFunc("/api/instancias/", instanceHandler.HandleInstance)
 	mux.HandleFunc("/api/instancias", instanceHandler.HandleInstances)
 	mux.HandleFunc("/api/dns/registros", dnsHandler.HandleRecords)
+	mux.HandleFunc("/api/dns/anfitrion", dnsHandler.HandleHostResolve)
 	mux.HandleFunc("/api/salud", dnsHandler.HandleHealth)
 
 	// Servir archivos estáticos del dashboard (web/)
 	fileServer := http.FileServer(http.Dir(*webDir))
-	mux.Handle("/", fileServer)
+	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Evita que el navegador conserve versiones antiguas del panel.
+		w.Header().Set("Cache-Control", "no-cache")
+		fileServer.ServeHTTP(w, r)
+	}))
 
 	// Envolver con middlewares (CORS, Logger, Recoverer y bloqueo previo a la configuración)
 	handler := handlers.Recoverer(handlers.Logger(handlers.CORS(handlers.RequireSetup(setupService)(mux))))

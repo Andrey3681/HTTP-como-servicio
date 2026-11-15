@@ -140,6 +140,7 @@ La aplicación no lee ni escribe fuera de este directorio.
 - Sin privilegios de administrador: no se reconfiguran interfaces del host.
 - Las VM base usan una NIC NAT temporal para instalar paquetes; las instancias aprovisionadas solo llevan la NIC host-only.
 - `ssh` y `ssh-keygen` en el host para el seguimiento temprano de cloud-init.
+- Para abrir `http://<host>.cloud.local` en el navegador, el resolver del anfitrión debe usar el DNS del laboratorio. Se configura una vez con `sudo ./scripts/configurar-dns-anfitrion.sh`; la consola avisa si falta.
 
 ---
 

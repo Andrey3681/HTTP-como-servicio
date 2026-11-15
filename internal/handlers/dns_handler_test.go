@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
+	"strings"
 	"testing"
 
 	"github.com/Andrey3681/httpaas-orchestrator/internal/core/domain"
@@ -129,4 +130,45 @@ func TestDnsHandler_RecordsFromProvider(t *testing.T) {
 	if !ok || item["ip"] != "192.168.10.30" {
 		t.Fatalf("unexpected registro payload: %#v", registros[0])
 	}
+}
+
+func TestDnsHandler_HostResolve(t *testing.T) {
+	handler := handlers.NewDnsHandler(nil, "cloud.local", nil)
+
+	t.Run("resuelve", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/dns/anfitrion?nombre=localhost", nil)
+		rec := httptest.NewRecorder()
+		handler.HandleHostResolve(rec, req)
+
+		var body struct {
+			Resuelve bool   `json:"resuelve"`
+			IP       string `json:"ip"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatalf("respuesta inválida: %v", err)
+		}
+		if !body.Resuelve || body.IP == "" {
+			t.Errorf("se esperaba resolución de localhost: %+v", body)
+		}
+	})
+
+	t.Run("no resuelve", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/dns/anfitrion?nombre=..", nil)
+		rec := httptest.NewRecorder()
+		handler.HandleHostResolve(rec, req)
+
+		var body struct {
+			Resuelve bool   `json:"resuelve"`
+			Mensaje  string `json:"mensaje"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatalf("respuesta inválida: %v", err)
+		}
+		if body.Resuelve {
+			t.Error("no se esperaba resolución para un nombre inválido")
+		}
+		if !strings.Contains(body.Mensaje, "resolvectl") {
+			t.Errorf("el mensaje debe explicar la configuración: %q", body.Mensaje)
+		}
+	})
 }
