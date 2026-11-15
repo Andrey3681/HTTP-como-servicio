@@ -39,7 +39,7 @@ El sistema **HTTPaaS** adopta el patrón de **Arquitectura Hexagonal (Puertos y 
    - Orquestan la lógica de negocio consumiendo exclusivamente las interfaces de `ports`. No importan implementaciones concretas de `adapters`.
 3. **Los Adaptadores (`internal/adapters`)**:
    - Implementan las interfaces de `ports`. Interactúan con herramientas externas (`VBoxManage`, `nsupdate`, `dig`, sistema de archivos).
-   - `internal/adapters/provisioner` prepara el laboratorio real (red host-only, VMs, instalación desatendida, disco multiconexión) detrás del puerto `ports.SetupProvisioner`.
+   - `internal/adapters/provisioner` prepara el laboratorio real (red host-only, VMs, semillas cloud-init y seguimiento por SSH, disco multiconexión) detrás del puerto `ports.SetupProvisioner`.
 4. **Punto de Composición (`cmd/server/main.go`)**:
    - Es el único lugar donde se instancian los adaptadores concretos y se inyectan en los servicios de aplicación y controladores HTTP.
    - También compone el broker de observabilidad (`internal/logging.Broker`), que se inyecta como `ports.EventLogger` en adaptadores, servicios y handlers.
@@ -58,7 +58,8 @@ type Hypervisor interface {
     // Start inicia la máquina virtual en modo desatendido (headless).
     Start(ctx context.Context, vmName string) error
 
-    // GetIPAddress sondea la dirección IP asignada a la VM mediante Guest Additions.
+    // GetIPAddress sondea la dirección IP asignada a la VM. La preparación usa
+    // SSH y reservas DHCP; Guest Additions solo se usa si está disponible.
     GetIPAddress(ctx context.Context, vmName string) (netip.Addr, error)
 
     // Stop apaga la máquina virtual.

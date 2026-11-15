@@ -4,7 +4,7 @@ Esta guía contiene las instrucciones detalladas para inicializar, estructurar y
 
 El nuevo proyecto adopta y refina el estándar de ingeniería, calidad y automatización de `vm-console-automation`, aplicando **Arquitectura Hexagonal en Go**, ciclo de desarrollo **Docs → Tests → Implementación (TDD)**, gestión automatizada con **Taskfile**, documentación técnica en **Markdown + PlantUML + OpenAPI**, informe académico formal en **LaTeX (IEEEtran)** y un conjunto de **Skills para Agentes de IA (`.agents/skills`)** adaptadas al hipervisor VirtualBox con discos multiconexión y al servidor DNS Bind9.
 
-> **Nota:** las direcciones `192.168.10.x` de esta guía son ilustrativas. La implementación deriva la subred de la interfaz host-only que asigna VirtualBox (DNS en `.10`, DHCP en `.100–.199`).
+> **Nota:** las direcciones `192.168.10.x` de esta guía son ilustrativas. La implementación deriva la subred de la interfaz host-only que asigna VirtualBox (DNS en `.10`, plantilla en `.11` y DHCP en `.10–.199`).
 
 ---
 
@@ -320,8 +320,9 @@ Para garantizar que los agentes de IA (Antigravity, Claude, Copilot) operen con 
      ```
   3. **Concurrencia y Serialización:**
      - VirtualBox (`VBoxSVC`) no admite llamadas concurrentes que modifiquen el estado. El adaptador `internal/adapters/vbox` debe implementar un `sync.Mutex` global en su cliente para serializar toda invocación a `VBoxManage`.
-  4. **Lectura de IP vía Guest Additions:**
-     - Consultar `/VirtualBox/GuestInfo/Net/0/V4/IP` con reintentos y retroceso exponencial hasta obtener respuesta válida.
+  4. **Lectura de IP de la instancia:**
+     - La imagen cloud no trae el servicio de usuario de Guest Additions, así que `guestproperty` no publica la IP. Se consulta la reserva/concesión DHCP por MAC (`dhcpserver findlease`) y, como respaldo, SSH con la clave del laboratorio.
+     - `guestproperty` queda solo como último recurso si el invitado tiene Guest Additions completas.
   5. **Destrucción Limpia:**
      - Apagar la VM (`controlvm poweroff`), desasociar el medio de almacenamiento y desregistrar/borrar archivos (`unregistervm --delete`).
 

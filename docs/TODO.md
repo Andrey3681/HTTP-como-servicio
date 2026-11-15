@@ -12,15 +12,15 @@ Diseñar e implementar un entorno local automatizado para el aprovisionamiento y
 
 ## 1. Infraestructura Base y Virtualización
 > Automatizable desde el preparación de primer arranque (`docs/setup-inicial.md`, `/api/setup/iniciar`).
-- [ ] Desplegar y configurar la máquina virtual dedicada `ns` (Debian 13.0 CLI).
-  - [ ] Usar la subred host-only asignada por VirtualBox (DNS derivado en `.10`).
-  - [ ] Instalar y configurar Bind9 (`named`) para la zona `cloud.local.`.
-  - [ ] Habilitar actualizaciones dinámicas mediante TSIG (`nsupdate`) o scripts con clave SSH.
-- [ ] Configurar la máquina virtual plantilla base `ApacheServer` (Debian 13.0 CLI).
-  - [ ] Instalar Apache Web Server y verificar que inicie automáticamente.
-  - [ ] Instalar VirtualBox Guest Additions para permitir consulta de IP por `guestproperty`.
-  - [ ] Habilitar servidor SSH o permisos de escritura en `/var/www/html/`.
-  - [ ] Marcar el disco `ApacheServer.vdi` en modo multiconexión (`multiattach`):
+- [x] Desplegar y configurar la máquina virtual dedicada `ns` (Debian 13.0 CLI).
+  - [x] Usar la subred host-only asignada por VirtualBox (DNS derivado en `.10`).
+  - [x] Instalar y configurar Bind9 (`named`) para la zona `cloud.local.`.
+  - [x] Habilitar actualizaciones dinámicas (`allow-update` por subred y `nsupdate` desde el orquestador).
+- [x] Configurar la máquina virtual plantilla base `ApacheServer` (Debian 13.0 CLI).
+  - [x] Instalar Apache Web Server y verificar que inicie automáticamente.
+  - [x] Habilitar SSH con la clave del laboratorio (Guest Additions no es necesario: la imagen incluye el módulo `vboxguest`, pero no el servicio de usuario).
+  - [x] Habilitar servidor SSH y permisos de escritura en `/var/www/vhosts`.
+  - [x] Marcar el disco `ApacheServer.vdi` en modo multiconexión (`multiattach`):
     `VBoxManage modifymedium disk ApacheServer.vdi --type multiattach`.
 
 ## 2. Dominio y Puertos Hexagonales (Go)

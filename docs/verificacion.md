@@ -19,6 +19,7 @@ Comprobaciones posteriores:
 # La subred y la IP del DNS se derivan de la interfaz host-only real
 curl -s http://localhost:8080/api/setup/estado | jq '.red'
 DNS_IP=$(curl -s http://localhost:8080/api/setup/estado | jq -r '.red.ip_dns')
+BASE_IP=$(curl -s http://localhost:8080/api/setup/estado | jq -r '.red.ip_plantilla')
 
 # Interfaz host-only del proyecto (la que no es 192.168.56.1)
 VBoxManage list hostonlyifs
@@ -31,8 +32,8 @@ VBoxManage showvminfo ApacheServer --machinereadable | grep SATA-0-0
 VBoxManage showmediuminfo disk "<ruta-ApacheServer.vdi>" | grep -E '^Type'
 
 # Acceso SSH con la clave del laboratorio (seguimiento de cloud-init)
-VBoxManage guestproperty get ns /VirtualBox/GuestAdd/Version
-VBoxManage guestproperty get ApacheServer /VirtualBox/GuestAdd/Version
+ssh -i ~/.local/share/httpaas/ssh/id_ed25519 jorge@"$DNS_IP" "cloud-init status; ip -br a"
+ssh -i ~/.local/share/httpaas/ssh/id_ed25519 jorge@"$BASE_IP" "cloud-init status; ip -br a"
 
 # El servidor DNS se resuelve a sí mismo
 dig @"$DNS_IP" ns.cloud.local +short

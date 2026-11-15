@@ -14,6 +14,7 @@ La red del laboratorio se materializa como interfaz host-only de VirtualBox, sin
     \item \textbf{Host anfitrión:} ejecuta el orquestador HTTPaaS (por defecto en \texttt{localhost:8080}) y accede a las herramientas del entorno.
     \item \textbf{Servidor DNS (\texttt{ns}):} IP derivada de esa subred (\texttt{.10}), administrando la zona \texttt{cloud.local.} con Bind9.
     \item \textbf{Instancias dinámicas:} máquinas virtuales en el rango DHCP de la misma subred con FQDN \texttt{<host>.cloud.local}, creadas desde la plantilla Apache con disco base en modo multiconexión.
+    \item \textbf{Red de preparación:} durante la puesta en marcha, cada VM base lleva además un adaptador NAT para descargar paquetes; se desactiva IPv6 en ese adaptador porque VirtualBox anuncia una ruta sin salida real. Al terminar, las instancias conservan únicamente el adaptador host-only.
 \end{itemize}
 
 \begin{figure}[htbp]

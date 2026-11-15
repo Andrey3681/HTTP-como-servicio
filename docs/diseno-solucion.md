@@ -18,7 +18,7 @@ VM DNS (ns)
 
 VM Base (Plantilla / ApacheServer.vdi)
  └── Modo de disco: multiattach (multiconexión)
- └── SO: Debian 13.0 CLI con Apache HTTP Server y Guest Additions / SSH habilitado
+ └── SO: Debian 13.0 CLI con Apache HTTP Server y SSH habilitado
 
 Instancias Dinámicas (ej. paisajes, negocios)
  └── Disco diferencial anclado a ApacheServer.vdi

@@ -20,7 +20,7 @@ Una sola imagen base: `debian-13-generic-amd64.raw`. Se descarga solo si no exis
 ## 2. Flujo
 
 1. **Imagen:** descarga la `.raw` oficial (~3 GB) en `<app-dir>/raw/`. Si ya está, se reutiliza.
-2. **Red:** reutiliza la interfaz host-only de VirtualBox y configura DHCP en su subred. El DHCP no anuncia puerta de enlace ni DNS; las VM base llevan además una NIC NAT para descargar paquetes durante la preparación.
+2. **Red:** reutiliza la interfaz host-only de VirtualBox y configura DHCP en su subred, con reservas fijas `.10` (DNS) y `.11` (plantilla) dentro del rango `.10–.199`. El DHCP no anuncia puerta de enlace ni DNS; las VM base llevan además una NIC NAT para descargar paquetes durante la preparación.
 3. **VM `ns`:** duplica el VDI base (convertido una sola vez), redimensiona el disco, crea la ISO semilla NoCloud y arranca.
 4. **Primer arranque de `ns`:** cloud-init crea el usuario con la clave SSH e instala los paquetes. El orquestador espera SSH, consulta `cloud-init status` hasta que termine y publica el estado y el final de `/var/log/cloud-init-output.log`.
 5. **Configuración de Bind9:** el orquestador ejecuta `scripts/guest-bind9.sh` por SSH con la IP del DNS y el CIDR derivados.
@@ -124,6 +124,7 @@ Contenido:
 
 - `raw/` — imagen `.raw` descargada.
 - `seeds/` — user-data, meta-data e ISO de cada semilla.
+- `ssh/` — par de claves del laboratorio (`id_ed25519` y `id_ed25519.pub`).
 - `instances.json` — inventario.
 - `setup-estado.json` — avance de la preparación.
 

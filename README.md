@@ -62,7 +62,7 @@ La consola permanece **bloqueada** hasta que el laboratorio esté preparado: una
 | 2 | `/var/lib/httpaas` | si existe y es escribible |
 | 3 | `$XDG_DATA_HOME/httpaas` o `~/.local/share/httpaas` | ejecución sin privilegios |
 
-Contenido: `raw/` (imagen descargada), `seeds/` (user-data, meta-data e ISOs), `instances.json` y `setup-estado.json`. La aplicación no lee ni escribe fuera de este directorio.
+Contenido: `raw/` (imagen descargada), `seeds/` (user-data, meta-data e ISOs), `ssh/` (clave del laboratorio), `instances.json` y `setup-estado.json`. La aplicación no lee ni escribe fuera de este directorio.
 
 El progreso se muestra paso a paso con un registro en vivo y se puede reabrir desde **Configuración** en el pie. Contrato completo en [`docs/setup-inicial.md`](docs/setup-inicial.md).
 
