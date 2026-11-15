@@ -83,15 +83,18 @@ func (d *ApacheDeployer) DeployWebZip(ctx context.Context, hostname string, targ
 	}
 	d.log("INFO", "Paquete web recibido", map[string]any{"instancia": hostname, "bytes": written})
 
+	d.log("INFO", "Esperando a que la instancia acepte SSH", map[string]any{"instancia": hostname, "ip": targetIP.String()})
 	if err := d.waitSSH(ctx, user, targetIP.String(), 90*time.Second); err != nil {
 		return err
 	}
 
+	d.log("INFO", "Copiando el paquete web a la instancia", map[string]any{"instancia": hostname, "ip": targetIP.String()})
 	remoteZip := "/tmp/httpaas-" + hostname + ".zip"
 	if _, stderr, err := d.executor.Execute(ctx, "scp", d.scpArgs(tmpPath, user, targetIP.String(), remoteZip)...); err != nil {
 		return fmt.Errorf("fallo al copiar el paquete a %s: %w (%s)", targetIP, err, strings.TrimSpace(string(stderr)))
 	}
 
+	d.log("INFO", "Descomprimiendo el contenido y publicando el virtual host", map[string]any{"instancia": hostname})
 	script := d.deployScript(hostname, remoteZip)
 	encoded := base64.StdEncoding.EncodeToString([]byte(script))
 	remote := "echo '" + encoded + "' | base64 -d | sudo -n bash -s"

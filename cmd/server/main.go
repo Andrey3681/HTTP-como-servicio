@@ -8,7 +8,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -61,7 +60,9 @@ func main() {
 	}
 
 	logBroker := logging.NewBroker(1000)
-	log.SetOutput(io.MultiWriter(os.Stderr, logBroker))
+	// El registro del panel solo recibe eventos estructurados; las trazas
+	// técnicas y las peticiones HTTP quedan en la salida estándar.
+	log.SetOutput(os.Stderr)
 
 	log.Println("================================================================")
 	log.Println("  HTTPaaS - Servicio Administrado de Servidores HTTP (2026-2)   ")

@@ -139,6 +139,7 @@ func (h *HypervisorAdapter) CreateInstanceFromBase(ctx context.Context, name str
 		_ = h.destroyLocked(ctx, name)
 		return nil, err
 	}
+	h.log("INFO", "Disco diferencial y semilla conectados", map[string]any{"instancia": name})
 
 	return domain.NewInstance(name, h.domainZone)
 }
@@ -264,6 +265,7 @@ func (h *HypervisorAdapter) Start(ctx context.Context, vmName string) error {
 	defer h.mu.Unlock()
 
 	log.Printf("[VBox] Iniciando máquina virtual '%s' en modo headless", vmName)
+	h.log("INFO", "Arrancando la máquina virtual en modo headless", map[string]any{"instancia": vmName})
 	_, _, err := h.executor.Execute(ctx, h.vboxBinary, "startvm", vmName, "--type", "headless")
 	if err != nil {
 		return fmt.Errorf("fallo al arrancar VM '%s': %w", vmName, err)
