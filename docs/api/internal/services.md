@@ -17,7 +17,7 @@ Package services implementa los casos de uso y la lógica de orquestación trans
   - [func \(s \*InstanceService\) GetInstance\(ctx context.Context, id string\) \(\*domain.Instance, error\)](<#InstanceService.GetInstance>)
   - [func \(s \*InstanceService\) ListInstances\(ctx context.Context\) \(\[\]domain.Instance, error\)](<#InstanceService.ListInstances>)
 - [type Orchestrator](<#Orchestrator>)
-  - [func NewOrchestrator\(hypervisor ports.Hypervisor, dnsProvider ports.DnsProvider, deployer ports.Deployer, repo ports.Repository, domainZone string, baseDiskPath string, logger ports.EventLogger\) \*Orchestrator](<#NewOrchestrator>)
+  - [func NewOrchestrator\(hypervisor ports.Hypervisor, dnsProvider ports.DnsProvider, deployer ports.Deployer, repo ports.Repository, domainZone string, baseDiskPath func\(\) string, logger ports.EventLogger\) \*Orchestrator](<#NewOrchestrator>)
   - [func \(o \*Orchestrator\) Provision\(ctx context.Context, req ProvisionRequest\) \(\*domain.Instance, error\)](<#Orchestrator.Provision>)
 - [type ProvisionRequest](<#ProvisionRequest>)
 - [type SetupService](<#SetupService>)
@@ -26,6 +26,7 @@ Package services implementa los casos de uso y la lógica de orquestación trans
   - [func \(s \*SetupService\) BaseDiskPath\(\) string](<#SetupService.BaseDiskPath>)
   - [func \(s \*SetupService\) Configurar\(in domain.SetupInput\) error](<#SetupService.Configurar>)
   - [func \(s \*SetupService\) Estado\(\) domain.SetupState](<#SetupService.Estado>)
+  - [func \(s \*SetupService\) GuestUser\(\) string](<#SetupService.GuestUser>)
   - [func \(s \*SetupService\) Iniciar\(ctx context.Context\) error](<#SetupService.Iniciar>)
   - [func \(s \*SetupService\) Network\(\) domain.NetworkConfig](<#SetupService.Network>)
   - [func \(s \*SetupService\) Reiniciar\(ctx context.Context\) error](<#SetupService.Reiniciar>)
@@ -111,7 +112,7 @@ type Orchestrator struct {
 ### func [NewOrchestrator](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/orchestrator.go#L40-L48>)
 
 ```go
-func NewOrchestrator(hypervisor ports.Hypervisor, dnsProvider ports.DnsProvider, deployer ports.Deployer, repo ports.Repository, domainZone string, baseDiskPath string, logger ports.EventLogger) *Orchestrator
+func NewOrchestrator(hypervisor ports.Hypervisor, dnsProvider ports.DnsProvider, deployer ports.Deployer, repo ports.Repository, domainZone string, baseDiskPath func() string, logger ports.EventLogger) *Orchestrator
 ```
 
 NewOrchestrator instancia el orquestador inyectando sus puertos colaboradores.
@@ -160,7 +161,7 @@ func NewSetupService(cfg domain.SetupConfig, prov ports.SetupProvisioner, images
 NewSetupService crea el servicio de la preparación con el estado inicial pendiente.
 
 <a name="SetupService.ActualizarDeteccion"></a>
-### func \(\*SetupService\) [ActualizarDeteccion](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L218>)
+### func \(\*SetupService\) [ActualizarDeteccion](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L225>)
 
 ```go
 func (s *SetupService) ActualizarDeteccion(ctx context.Context) error
@@ -195,8 +196,17 @@ func (s *SetupService) Estado() domain.SetupState
 
 Estado retorna una copia de la instantánea actual.
 
+<a name="SetupService.GuestUser"></a>
+### func \(\*SetupService\) [GuestUser](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L151>)
+
+```go
+func (s *SetupService) GuestUser() string
+```
+
+GuestUser retorna el usuario configurado para los invitados.
+
 <a name="SetupService.Iniciar"></a>
-### func \(\*SetupService\) [Iniciar](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L301>)
+### func \(\*SetupService\) [Iniciar](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L308>)
 
 ```go
 func (s *SetupService) Iniciar(ctx context.Context) error
@@ -214,7 +224,7 @@ func (s *SetupService) Network() domain.NetworkConfig
 Network retorna la red host\-only detectada o derivada.
 
 <a name="SetupService.Reiniciar"></a>
-### func \(\*SetupService\) [Reiniciar](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L327>)
+### func \(\*SetupService\) [Reiniciar](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L334>)
 
 ```go
 func (s *SetupService) Reiniciar(ctx context.Context) error
@@ -223,7 +233,7 @@ func (s *SetupService) Reiniciar(ctx context.Context) error
 Reiniciar elimina las VMs base, limpia el progreso y vuelve a detectar el entorno.
 
 <a name="SetupService.Subscribe"></a>
-### func \(\*SetupService\) [Subscribe](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L151>)
+### func \(\*SetupService\) [Subscribe](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L158>)
 
 ```go
 func (s *SetupService) Subscribe() (<-chan domain.SetupState, func())

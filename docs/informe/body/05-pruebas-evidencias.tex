@@ -14,6 +14,9 @@ La ejecución de pruebas del proyecto se realiza con \texttt{go test ./...} (y t
 \subsection{Evidencia de la Preparación Automatizada}
 La preparación se ejecutó de extremo a extremo desde la interfaz web sin intervención manual y finalizó con \texttt{completado = true}. Con la configuración final, la instalación de Bind9 en \texttt{ns} tardó aproximadamente un minuto y la de la plantilla Apache entre dos y tres minutos, incluyendo la descarga de paquetes; la preparación completa quedó por debajo de cinco minutos. La verificación posterior confirmó que \texttt{dig @192.168.57.10 ns.cloud.local +short} devuelve \texttt{192.168.57.10}, que \texttt{showmediuminfo} reporta \texttt{Type: multiattach} en el disco base y que la plantilla queda apagada, lista para recibir discos diferenciales. El registro de la aplicación publicó el estado de cloud-init y sus últimas líneas, y ante un fallo de red publicó además el netplan y el registro de APT, lo que permitió diagnosticar sin acceso manual al invitado.
 
+\subsection{Evidencia del Ciclo de Instancias}
+El ciclo completo se verificó el 14 de noviembre de 2026: la instancia \texttt{paisajes} se aprovisionó en 18 segundos, \texttt{dig @192.168.57.10 paisajes.cloud.local +short} devolvió \texttt{192.168.57.105} y una petición HTTP con ese nombre entregó el contenido del paquete cargado. Tras \texttt{DELETE /api/instancias/paisajes} desaparecieron el registro DNS, la máquina virtual y su entrada en el inventario, sin residuos.
+
 \subsection{Verificación Funcional Planificada (Entorno de Laboratorio)}
 La verificación extremo a extremo requiere el laboratorio operativo (VirtualBox, plantilla con disco multiconexión, VM \texttt{ns} con Bind9 en \texttt{cloud.local.} y red \texttt{cloudnet}). El plan de evidencias incluye:
 \begin{itemize}

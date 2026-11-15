@@ -111,7 +111,7 @@ Organizado bajo **Arquitectura Hexagonal (Puertos y Adaptadores)**:
 - `internal/services/`: Casos de uso de la aplicación (`Orchestrator`, `InstanceService`).
 - `internal/handlers/`: Controladores HTTP REST (instancias, DNS, salud, logs) y middleware.
 - `web/`: Frontend modular (páginas, componentes compartidos, router y dock de logs).
-- `docs/`: Documentación técnica, diagramas PlantUML y reporte en LaTeX.
+- `docs/`: Documentación técnica (incluye [`instancias.md`](docs/instancias.md)), diagramas PlantUML y reporte en LaTeX.
 - `.agents/skills/`: Reglas y contexto técnico para agentes inteligentes.
 
 ## 📄 Licencia

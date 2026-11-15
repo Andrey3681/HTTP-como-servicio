@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 Andrey y Equipo de Trabajo
 
-package provisioner
+package seediso
 
 import (
 	"context"
@@ -14,9 +14,9 @@ import (
 	"github.com/Andrey3681/httpaas-orchestrator/internal/core/ports"
 )
 
-// buildSeedISO genera una ISO NoCloud (volumen "cidata") con los archivos
+// Build genera una ISO NoCloud (volumen "cidata") con los archivos
 // indicados, usando la primera herramienta disponible en la plataforma.
-func buildSeedISO(ctx context.Context, executor ports.Executor, workDir, output string, files []string) error {
+func Build(ctx context.Context, executor ports.Executor, workDir, output string, files []string) error {
 	if len(files) == 0 {
 		return fmt.Errorf("no hay archivos para la ISO semilla")
 	}

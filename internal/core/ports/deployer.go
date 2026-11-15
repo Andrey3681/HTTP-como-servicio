@@ -11,6 +11,7 @@ import (
 
 // Deployer define la transferencia y despliegue del paquete web en la instancia Apache.
 type Deployer interface {
-	// DeployWebZip transfiere y descomprime el contenido web en /var/www/html/ de la máquina virtual objetivo.
-	DeployWebZip(ctx context.Context, targetIP netip.Addr, zipContent io.Reader, size int64) error
+	// DeployWebZip transfiere y descomprime el contenido web en
+	// /var/www/vhosts/<hostname>/public y publica su virtual host.
+	DeployWebZip(ctx context.Context, hostname string, targetIP netip.Addr, zipContent io.Reader, size int64) error
 }

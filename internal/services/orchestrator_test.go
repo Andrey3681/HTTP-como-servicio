@@ -84,7 +84,7 @@ type fakeDeployer struct {
 	failDeploy  bool
 }
 
-func (f *fakeDeployer) DeployWebZip(ctx context.Context, targetIP netip.Addr, zipContent io.Reader, size int64) error {
+func (f *fakeDeployer) DeployWebZip(_ context.Context, hostname string, targetIP netip.Addr, _ io.Reader, _ int64) error {
 	if f.failDeploy {
 		return errors.New("simulated deployer error")
 	}
@@ -140,7 +140,7 @@ func TestOrchestrator_Provision_Success(t *testing.T) {
 	dep := &fakeDeployer{}
 	repo := &fakeRepository{instances: make(map[string]domain.Instance)}
 
-	orc := services.NewOrchestrator(hyp, dns, dep, repo, "cloud.local", "ApacheServer.vdi", nil)
+	orc := services.NewOrchestrator(hyp, dns, dep, repo, "cloud.local", func() string { return "ApacheServer.vdi" }, nil)
 
 	zipBytes, size := createTestZip(t, "index.html", "<h1>Bienvenido</h1>")
 	req := services.ProvisionRequest{
@@ -175,7 +175,7 @@ func TestOrchestrator_Provision_RollbackOnDeployFailure(t *testing.T) {
 	dep := &fakeDeployer{failDeploy: true} // Simular fallo de despliegue
 	repo := &fakeRepository{instances: make(map[string]domain.Instance)}
 
-	orc := services.NewOrchestrator(hyp, dns, dep, repo, "cloud.local", "ApacheServer.vdi", nil)
+	orc := services.NewOrchestrator(hyp, dns, dep, repo, "cloud.local", func() string { return "ApacheServer.vdi" }, nil)
 
 	zipBytes, size := createTestZip(t, "index.html", "<h1>Bienvenido</h1>")
 	req := services.ProvisionRequest{

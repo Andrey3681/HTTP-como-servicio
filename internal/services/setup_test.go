@@ -315,7 +315,7 @@ func TestSetupService_RunsFullPipeline(t *testing.T) {
 	}
 
 	wantCalls := []string{
-		"inspect", "convert", "network", "create:ns", "seed:ns", "reserve:ns:192.168.57.10", "boot:ns",
+		"inspect", "convert", "network", "create:ns", "seed:ns", "boot:ns",
 		"sshscript:guest-bind9.sh",
 		"create:ApacheServer", "seed:ApacheServer", "boot:ApacheServer",
 		"sshscript:guest-apache.sh", "multiattach:ApacheServer",

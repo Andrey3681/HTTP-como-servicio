@@ -32,7 +32,7 @@ type Orchestrator struct {
 	deployer     ports.Deployer
 	repo         ports.Repository
 	domainZone   string
-	baseDiskPath string
+	baseDiskPath func() string
 	logger       ports.EventLogger
 }
 
@@ -43,7 +43,7 @@ func NewOrchestrator(
 	deployer ports.Deployer,
 	repo ports.Repository,
 	domainZone string,
-	baseDiskPath string,
+	baseDiskPath func() string,
 	logger ports.EventLogger,
 ) *Orchestrator {
 	return &Orchestrator{
@@ -86,7 +86,14 @@ func (o *Orchestrator) Provision(ctx context.Context, req ProvisionRequest) (*do
 	o.log("INFO", "Iniciando aprovisionamiento de instancia", map[string]any{"instancia": trimmedName})
 
 	// 4. Crear máquina virtual a partir del disco multiconexión base
-	inst, err := o.hypervisor.CreateInstanceFromBase(ctx, trimmedName, o.baseDiskPath)
+	baseDisk := ""
+	if o.baseDiskPath != nil {
+		baseDisk = o.baseDiskPath()
+	}
+	if baseDisk == "" {
+		return nil, fmt.Errorf("no hay disco base disponible; completa la preparación inicial")
+	}
+	inst, err := o.hypervisor.CreateInstanceFromBase(ctx, trimmedName, baseDisk)
 	if err != nil {
 		return nil, fmt.Errorf("fallo al crear máquina virtual en VirtualBox: %w", err)
 	}
@@ -138,7 +145,7 @@ func (o *Orchestrator) Provision(ctx context.Context, req ProvisionRequest) (*do
 	o.log("INFO", "Registro DNS creado para la instancia", map[string]any{"instancia": trimmedName, "fqdn": inst.FQDN})
 
 	// 8. Desplegar paquete web .zip en Apache
-	if err = o.deployer.DeployWebZip(ctx, ip, req.ZipStream, req.ZipSize); err != nil {
+	if err = o.deployer.DeployWebZip(ctx, trimmedName, ip, req.ZipStream, req.ZipSize); err != nil {
 		return nil, fmt.Errorf("fallo al desplegar archivos web en Apache: %w", err)
 	}
 

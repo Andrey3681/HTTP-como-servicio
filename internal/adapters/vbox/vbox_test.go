@@ -5,6 +5,7 @@ package vbox_test
 
 import (
 	"context"
+	"os"
 	"strings"
 	"testing"
 
@@ -75,6 +76,116 @@ func (m *mockExecutor) Execute(ctx context.Context, command string, args ...stri
 		}
 	}
 	return []byte("OK"), nil, nil
+}
+
+func TestParseDhcpLeaseIP(t *testing.T) {
+	lease := "IP Address:  192.168.57.103\nMAC Address: 08:00:27:CC:8B:A4\nState:       acked\n"
+	ip, err := vbox.ParseDhcpLeaseIP(lease)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if ip.String() != "192.168.57.103" {
+		t.Errorf("unexpected IP: %s", ip)
+	}
+	if _, err := vbox.ParseDhcpLeaseIP("VBoxManage: error: Could not find a lease"); err == nil {
+		t.Error("expected an error without a lease")
+	}
+}
+
+func TestParseVMMac(t *testing.T) {
+	output := "name=\"paisajes\"\nmacaddress1=\"080027AABBCC\"\nmacaddress2=\"080027DDEEFF\"\n"
+	if got := vbox.ParseVMMac(output); got != "080027AABBCC" {
+		t.Errorf("unexpected MAC: %q", got)
+	}
+	if got := vbox.ParseVMMac("name=\"x\"\n"); got != "" {
+		t.Errorf("expected empty MAC, got %q", got)
+	}
+}
+
+func TestParseNeighborIP(t *testing.T) {
+	output := "192.168.57.10 lladdr 08:00:27:19:68:f6 STALE\n192.168.57.105 lladdr 08:00:27:ad:09:bd REACHABLE\n"
+	ip, err := vbox.ParseNeighborIP(output, "080027AD09BD")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if ip.String() != "192.168.57.105" {
+		t.Errorf("unexpected IP: %s", ip)
+	}
+	if _, err := vbox.ParseNeighborIP(output, "080027000000"); err == nil {
+		t.Error("expected an error for an unknown MAC")
+	}
+}
+
+func TestHypervisorAdapter_GetIPAddressUsesArpTable(t *testing.T) {
+	mockExec := &mockExecutor{responses: map[string]string{
+		"VBoxManage list hostonlyifs":                      hostOnlyOutput,
+		"VBoxManage showvminfo paisajes --machinereadable": "macaddress1=\"080027AABBCC\"\n",
+		"ip neigh show dev vboxnet1":                       "192.168.57.107 lladdr 08:00:27:aa:bb:cc REACHABLE\n",
+	}}
+	adapter := vbox.NewHypervisorAdapter(mockExec, "cloud.local", "192.168.10.1", nil)
+
+	ip, err := adapter.GetIPAddress(context.Background(), "paisajes")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if ip.String() != "192.168.57.107" {
+		t.Errorf("unexpected IP: %s", ip)
+	}
+}
+
+func TestHypervisorAdapter_GetIPAddressUsesDhcpLease(t *testing.T) {
+	mockExec := &mockExecutor{responses: map[string]string{
+		"VBoxManage list hostonlyifs":                                                     hostOnlyOutput,
+		"VBoxManage showvminfo paisajes --machinereadable":                                "macaddress1=\"080027AABBCC\"\n",
+		"VBoxManage dhcpserver findlease --interface=vboxnet1 --mac-address=080027AABBCC": "IP Address:  192.168.10.103\nMAC Address: 08:00:27:AA:BB:CC\nState:       acked\n",
+	}}
+	adapter := vbox.NewHypervisorAdapter(mockExec, "cloud.local", "192.168.10.1", nil)
+
+	ip, err := adapter.GetIPAddress(context.Background(), "paisajes")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if ip.String() != "192.168.10.103" {
+		t.Errorf("unexpected IP: %s", ip)
+	}
+}
+
+func TestHypervisorAdapter_CreateInstanceAttachesSeed(t *testing.T) {
+	dir := t.TempDir()
+	keyPath := dir + "/id_ed25519"
+	if err := os.WriteFile(keyPath+".pub", []byte("ssh-ed25519 AAAAC3Nza test\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	mockExec := &mockExecutor{responses: map[string]string{
+		"VBoxManage list hostonlyifs":                      hostOnlyOutput,
+		"VBoxManage showvminfo paisajes --machinereadable": "CfgFile=\"/home/user/VMs/paisajes/paisajes.vbox\"\n",
+	}}
+	adapter := vbox.NewHypervisorAdapter(mockExec, "cloud.local", "192.168.10.1", nil)
+	adapter.ConfigureInstanceSeed(func() string { return "jorge" }, keyPath, dir)
+
+	if _, err := adapter.CreateInstanceFromBase(context.Background(), "paisajes", "/media/ApacheServer.vdi"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	userData, err := os.ReadFile(dir + "/instances/paisajes/user-data")
+	if err != nil {
+		t.Fatalf("no se generó la semilla: %v", err)
+	}
+	for _, want := range []string{"hostname: paisajes", "dhcp4: true", "name: jorge", "ssh-ed25519"} {
+		if !strings.Contains(string(userData), want) {
+			t.Errorf("la semilla no contiene %q", want)
+		}
+	}
+	attached := false
+	for _, call := range mockExec.commandsRun {
+		line := strings.Join(call, " ")
+		if strings.Contains(line, "storageattach paisajes") && strings.Contains(line, "--port 1") && strings.Contains(line, "dvddrive") {
+			attached = true
+		}
+	}
+	if !attached {
+		t.Error("no se conectó la ISO semilla de la instancia")
+	}
 }
 
 func TestHypervisorAdapter_CreateInstanceFromBase(t *testing.T) {

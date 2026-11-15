@@ -147,6 +147,13 @@ func (s *SetupService) BaseDiskPath() string {
 	return s.baseDisk
 }
 
+// GuestUser retorna el usuario configurado para los invitados.
+func (s *SetupService) GuestUser() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.cfg.GuestUser
+}
+
 // Subscribe registra un observador del estado y retorna el canal y su cancelación.
 func (s *SetupService) Subscribe() (<-chan domain.SetupState, func()) {
 	s.mu.Lock()
@@ -582,9 +589,6 @@ func (s *SetupService) runStep(ctx context.Context, id domain.SetupStepID, baseV
 		return s.createSeed(ctx, cfg.DNSVMName)
 
 	case domain.SetupStepDNSInstall:
-		if err := s.prov.ReserveDHCPAddress(ctx, cfg, cfg.DNSVMName, network.DNSIP); err != nil {
-			return err
-		}
 		seed, err := s.ensureSeed(ctx, cfg.DNSVMName)
 		if err != nil {
 			return err
@@ -625,9 +629,6 @@ func (s *SetupService) runStep(ctx context.Context, id domain.SetupStepID, baseV
 		return s.createSeed(ctx, cfg.BaseVMName)
 
 	case domain.SetupStepBaseInstall:
-		if err := s.prov.ReserveDHCPAddress(ctx, cfg, cfg.BaseVMName, network.BaseIP); err != nil {
-			return err
-		}
 		seed, err := s.ensureSeed(ctx, cfg.BaseVMName)
 		if err != nil {
 			return err
@@ -708,9 +709,18 @@ func (s *SetupService) ensureSeed(ctx context.Context, vmName string) (string, e
 func (s *SetupService) renderSeed(vmName string) (string, string, error) {
 	templateName := "apache-user-data.yaml"
 	host := "apache-server"
+	s.mu.Lock()
+	ip, cidr := s.network.BaseIP, s.network.CIDR
+	s.mu.Unlock()
 	if vmName == s.cfg.DNSVMName {
 		templateName = "ns-user-data.yaml"
 		host = "ns-server"
+		s.mu.Lock()
+		ip = s.network.DNSIP
+		s.mu.Unlock()
+	}
+	if ip == "" {
+		return "", "", fmt.Errorf("no hay IP estática derivada para %s", vmName)
 	}
 
 	raw, err := os.ReadFile(filepath.Join(s.cfg.SeedTemplatesDir, templateName))
@@ -720,12 +730,21 @@ func (s *SetupService) renderSeed(vmName string) (string, string, error) {
 	userData := strings.ReplaceAll(string(raw), "@@USUARIO@@", s.cfg.GuestUser)
 	password := strings.ReplaceAll(s.cfg.GuestPassword, "'", "''")
 	userData = strings.ReplaceAll(userData, "@@CONTRASENA@@", password)
+	userData = strings.ReplaceAll(userData, "@@CIDR_ESTATICO@@", ip+"/"+prefixOf(cidr))
 	s.mu.Lock()
 	publicKey := s.sshPublicKey
 	s.mu.Unlock()
 	userData = strings.ReplaceAll(userData, "@@SSH_KEY@@", publicKey)
 	metaData := fmt.Sprintf("instance-id: iid-%s-01\nlocal-hostname: %s\n", host, host)
 	return userData, metaData, nil
+}
+
+// prefixOf extrae la longitud de prefijo de un CIDR ("192.168.57.0/24" -> "24").
+func prefixOf(cidr string) string {
+	if i := strings.LastIndex(cidr, "/"); i >= 0 {
+		return cidr[i+1:]
+	}
+	return "24"
 }
 
 // seedPath retorna la ruta de la ISO semilla de una VM.
@@ -846,7 +865,7 @@ func (s *SetupService) monitorCloudInitSSH(ctx context.Context, id domain.SetupS
 			s.log("INFO", statusOut, map[string]any{"instancia": vmName})
 			return true, fmt.Errorf("cloud-init terminó con error en %s; revisa el registro", vmName)
 		}
-		if strings.Contains(statusOut, "status: done") {
+		if strings.Contains(statusOut, "status: done") || strings.Contains(statusOut, "status: disabled") {
 			break
 		}
 		elapsed := time.Since(started)

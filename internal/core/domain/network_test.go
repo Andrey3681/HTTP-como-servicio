@@ -27,7 +27,7 @@ func TestDeriveNetwork(t *testing.T) {
 	if network.BaseIP != "192.168.57.11" {
 		t.Errorf("unexpected base IP: %q", network.BaseIP)
 	}
-	if network.DHCPLower != "192.168.57.10" || network.DHCPUpper != "192.168.57.199" {
+	if network.DHCPLower != "192.168.57.100" || network.DHCPUpper != "192.168.57.199" {
 		t.Errorf("unexpected DHCP range: %q-%q", network.DHCPLower, network.DHCPUpper)
 	}
 }

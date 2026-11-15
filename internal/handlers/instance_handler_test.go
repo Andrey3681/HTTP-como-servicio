@@ -47,7 +47,7 @@ func (d *dummyDnsProvider) ListRecords(ctx context.Context) ([]domain.DnsRecord,
 
 type dummyDeployer struct{}
 
-func (d *dummyDeployer) DeployWebZip(ctx context.Context, targetIP netip.Addr, zipContent io.Reader, size int64) error {
+func (d *dummyDeployer) DeployWebZip(ctx context.Context, hostname string, targetIP netip.Addr, zipContent io.Reader, size int64) error {
 	return nil
 }
 
@@ -104,7 +104,7 @@ func TestInstanceHandler_List(t *testing.T) {
 	dns := &dummyDnsProvider{}
 	dep := &dummyDeployer{}
 
-	orc := services.NewOrchestrator(hyp, dns, dep, repo, "cloud.local", "ApacheServer.vdi", nil)
+	orc := services.NewOrchestrator(hyp, dns, dep, repo, "cloud.local", func() string { return "ApacheServer.vdi" }, nil)
 	svc := services.NewInstanceService(repo, hyp, dns, nil)
 	handler := handlers.NewInstanceHandler(orc, svc, nil)
 
@@ -124,7 +124,7 @@ func TestInstanceHandler_GetNotFound(t *testing.T) {
 	dns := &dummyDnsProvider{}
 	dep := &dummyDeployer{}
 
-	orc := services.NewOrchestrator(hyp, dns, dep, repo, "cloud.local", "ApacheServer.vdi", nil)
+	orc := services.NewOrchestrator(hyp, dns, dep, repo, "cloud.local", func() string { return "ApacheServer.vdi" }, nil)
 	svc := services.NewInstanceService(repo, hyp, dns, nil)
 	handler := handlers.NewInstanceHandler(orc, svc, nil)
 
@@ -144,7 +144,7 @@ func TestInstanceHandler_ListInternalError(t *testing.T) {
 	dns := &dummyDnsProvider{}
 	dep := &dummyDeployer{}
 
-	orc := services.NewOrchestrator(hyp, dns, dep, repo, "cloud.local", "ApacheServer.vdi", nil)
+	orc := services.NewOrchestrator(hyp, dns, dep, repo, "cloud.local", func() string { return "ApacheServer.vdi" }, nil)
 	svc := services.NewInstanceService(repo, hyp, dns, nil)
 	handler := handlers.NewInstanceHandler(orc, svc, nil)
 

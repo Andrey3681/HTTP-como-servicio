@@ -19,7 +19,8 @@ type Hypervisor interface {
 	// Start inicia la máquina virtual en modo desatendido (headless).
 	Start(ctx context.Context, vmName string) error
 
-	// GetIPAddress sondea la dirección IP asignada a la VM mediante Guest Additions.
+	// GetIPAddress obtiene la IP de la VM: consulta la concesión DHCP por MAC y,
+	// si no está disponible, recurre a Guest Additions como último recurso.
 	GetIPAddress(ctx context.Context, vmName string) (netip.Addr, error)
 
 	// Stop apaga la máquina virtual.

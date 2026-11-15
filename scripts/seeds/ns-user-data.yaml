@@ -15,7 +15,8 @@ bootcmd:
       renderer: networkd
       ethernets:
         enp0s3:
-          dhcp4: true
+          dhcp4: false
+          addresses: ["@@CIDR_ESTATICO@@"]
           optional: true
         enp0s8:
           dhcp4: true
@@ -28,6 +29,22 @@ bootcmd:
 
 # 0.1 APT: solo IPv4 (el NAT no enruta IPv6) para evitar esperas largas.
 write_files:
+  - path: /etc/netplan/99-httpaas.yaml
+    permissions: "0600"
+    content: |
+      network:
+        version: 2
+        renderer: networkd
+        ethernets:
+          enp0s3:
+            dhcp4: false
+            addresses: ["@@CIDR_ESTATICO@@"]
+            optional: true
+          enp0s8:
+            dhcp4: true
+            dhcp6: false
+            accept-ra: false
+            optional: true
   - path: /etc/apt/apt.conf.d/99force-ipv4
     permissions: "0644"
     content: |

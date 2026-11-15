@@ -23,14 +23,15 @@ Package ports define los contratos de interfaz que comunican el núcleo de la ap
 
 
 <a name="Deployer"></a>
-## type [Deployer](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/ports/deployer.go#L13-L16>)
+## type [Deployer](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/ports/deployer.go#L13-L17>)
 
 Deployer define la transferencia y despliegue del paquete web en la instancia Apache.
 
 ```go
 type Deployer interface {
-    // DeployWebZip transfiere y descomprime el contenido web en /var/www/html/ de la máquina virtual objetivo.
-    DeployWebZip(ctx context.Context, targetIP netip.Addr, zipContent io.Reader, size int64) error
+    // DeployWebZip transfiere y descomprime el contenido web en
+    // /var/www/vhosts/<hostname>/public y publica su virtual host.
+    DeployWebZip(ctx context.Context, hostname string, targetIP netip.Addr, zipContent io.Reader, size int64) error
 }
 ```
 
@@ -80,7 +81,7 @@ type Executor interface {
 ```
 
 <a name="Hypervisor"></a>
-## type [Hypervisor](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/ports/hypervisor.go#L15-L30>)
+## type [Hypervisor](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/ports/hypervisor.go#L15-L31>)
 
 Hypervisor define las operaciones requeridas sobre el hipervisor VirtualBox.
 
@@ -92,7 +93,8 @@ type Hypervisor interface {
     // Start inicia la máquina virtual en modo desatendido (headless).
     Start(ctx context.Context, vmName string) error
 
-    // GetIPAddress sondea la dirección IP asignada a la VM mediante Guest Additions.
+    // GetIPAddress obtiene la IP de la VM: consulta la concesión DHCP por MAC y,
+    // si no está disponible, recurre a Guest Additions como último recurso.
     GetIPAddress(ctx context.Context, vmName string) (netip.Addr, error)
 
     // Stop apaga la máquina virtual.

@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Andrey3681/httpaas-orchestrator/internal/adapters/seediso"
 	"github.com/Andrey3681/httpaas-orchestrator/internal/core/domain"
 	"github.com/Andrey3681/httpaas-orchestrator/internal/core/ports"
 )
@@ -311,7 +312,7 @@ func (p *Provisioner) CreateSeedISO(ctx context.Context, cfg domain.SetupConfig,
 	}
 
 	isoPath := filepath.Join(cfg.SeedDir, vmName+"-seed.iso")
-	if err := buildSeedISO(ctx, p.executor, stagingDir, isoPath, []string{userDataPath, metaDataPath}); err != nil {
+	if err := seediso.Build(ctx, p.executor, stagingDir, isoPath, []string{userDataPath, metaDataPath}); err != nil {
 		return "", fmt.Errorf("fallo generando la ISO semilla: %w", err)
 	}
 	return isoPath, nil

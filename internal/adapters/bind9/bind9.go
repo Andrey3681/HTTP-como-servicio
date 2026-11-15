@@ -11,6 +11,7 @@ import (
 	"log"
 	"net"
 	"net/netip"
+	"os"
 	"strings"
 
 	"github.com/Andrey3681/httpaas-orchestrator/internal/core/domain"
@@ -80,15 +81,37 @@ func (a *DnsAdapter) AddRecord(ctx context.Context, record domain.DnsRecord) err
 	fmt.Fprintf(&script, "update add %s %d A %s\n", record.Name, record.TTL, record.IP)
 	fmt.Fprintf(&script, "send\n")
 
-	// Ejecutar nsupdate
-	_, stderr, err := a.executor.Execute(ctx, a.nsupdate, "-v")
+	if err := a.applyUpdate(ctx, script.String()); err != nil {
+		return err
+	}
+	a.log("INFO", "Registro DNS aplicado", map[string]any{"nombre": record.Name, "ip": record.IP})
+	return nil
+}
+
+// applyUpdate envía el guion RFC 2136 a nsupdate mediante un archivo temporal.
+func (a *DnsAdapter) applyUpdate(ctx context.Context, script string) error {
+	file, err := os.CreateTemp("", "httpaas-nsupdate-*.txt")
 	if err != nil {
-		log.Printf("[Bind9] Aviso: nsupdate no disponible o falló en host anfitrión: %s (%v)", string(stderr), err)
-		// Si nsupdate local no está instalado en Windows, se registra informativamente
-		// y se continuará con resolución IP directa.
-		return nil
+		return fmt.Errorf("no se pudo preparar la actualización DNS: %w", err)
+	}
+	path := file.Name()
+	defer func() { _ = os.Remove(path) }()
+	if _, err := file.WriteString(script); err != nil {
+		_ = file.Close()
+		return err
+	}
+	if err := file.Close(); err != nil {
+		return err
 	}
 
+	stdout, stderr, err := a.executor.Execute(ctx, a.nsupdate, "-v", path)
+	if err != nil {
+		detail := strings.TrimSpace(string(stderr))
+		if detail == "" {
+			detail = strings.TrimSpace(string(stdout))
+		}
+		return fmt.Errorf("nsupdate falló: %s (%w)", detail, err)
+	}
 	return nil
 }
 
@@ -110,7 +133,9 @@ func (a *DnsAdapter) RemoveRecord(ctx context.Context, hostname string) error {
 	fmt.Fprintf(&script, "update delete %s A\n", fqdn)
 	fmt.Fprintf(&script, "send\n")
 
-	_, _, _ = a.executor.Execute(ctx, a.nsupdate, "-v")
+	if err := a.applyUpdate(ctx, script.String()); err != nil {
+		return err
+	}
 	return nil
 }
 

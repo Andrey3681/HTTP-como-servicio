@@ -103,19 +103,21 @@ func main() {
 
 	// 4. Adaptadores de infraestructura (la red se deriva de la interfaz real)
 	hyp := vbox.NewHypervisorAdapter(executor, *domainZone, setupService.Network().HostIP, logBroker)
+	hyp.ConfigureInstanceSeed(setupService.GuestUser, filepath.Join(layout.SSHDir, "id_ed25519"), layout.SeedDir)
 	dns := bind9.NewDnsAdapterWithNetwork(executor, *domainZone, logBroker, setupService)
-	dep := deployer.NewApacheDeployer(executor, logBroker)
+	dep := deployer.NewApacheDeployer(executor, logBroker, setupService.GuestUser, filepath.Join(layout.SSHDir, "id_ed25519"))
 
-	resolvedBaseDisk := *baseDisk
-	if resolvedBaseDisk == "" {
-		resolvedBaseDisk = setupService.BaseDiskPath()
-	}
-	if resolvedBaseDisk == "" {
-		resolvedBaseDisk = "ApacheServer.vdi"
+	// El disco base se resuelve en cada solicitud: la preparación puede
+	// completarse después de arrancar el servidor.
+	baseDiskProvider := func() string {
+		if *baseDisk != "" {
+			return *baseDisk
+		}
+		return setupService.BaseDiskPath()
 	}
 
 	// 4. Inicializar servicios de aplicación
-	orchestrator := services.NewOrchestrator(hyp, dns, dep, repo, *domainZone, resolvedBaseDisk, logBroker)
+	orchestrator := services.NewOrchestrator(hyp, dns, dep, repo, *domainZone, baseDiskProvider, logBroker)
 	instanceService := services.NewInstanceService(repo, hyp, dns, logBroker)
 
 	// 5. Inicializar manejadores HTTP
@@ -163,7 +165,7 @@ func main() {
 
 	go func() {
 		log.Printf("Servidor orquestador escuchando en http://localhost:%d", *port)
-		log.Printf("Directorio web: %s | Zona DNS: %s | Base VDI: %s", *webDir, *domainZone, resolvedBaseDisk)
+		log.Printf("Directorio web: %s | Zona DNS: %s | Base VDI: %s", *webDir, *domainZone, baseDiskProvider())
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Error en servidor HTTP: %v", err)
 		}
