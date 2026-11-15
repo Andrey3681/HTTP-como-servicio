@@ -60,4 +60,23 @@ if ! command -v VBoxControl >/dev/null 2>&1; then
     echo "[httpAAS] ADVERTENCIA: Guest Additions no detectadas; el orquestador no podrá leer la IP." >&2
 fi
 
+# Deja la red en disco lista para las instancias diferenciales (DHCP por MAC
+# sobre enp0s3, sin aplicar durante la sesión SSH de preparación) y limpia
+# machine-id para que cada instancia genere su propio identificador en arranque.
+rm -f /etc/netplan/50-cloud-init.yaml
+cat > /etc/netplan/99-httpaas.yaml <<'EOF'
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    enp0s3:
+      dhcp4: true
+      dhcp-identifier: mac
+      optional: true
+EOF
+chmod 600 /etc/netplan/99-httpaas.yaml
+truncate -s 0 /etc/machine-id
+rm -f /var/lib/dbus/machine-id
+ln -s /etc/machine-id /var/lib/dbus/machine-id
+
 echo "HTTPAAS_GUEST_OK apache"

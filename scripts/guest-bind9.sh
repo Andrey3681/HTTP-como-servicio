@@ -33,8 +33,8 @@ cat > /etc/bind/named.conf.local <<EOF
 zone "cloud.local" {
     type master;
     file "/var/lib/bind/db.cloud.local";
-    allow-update { ${ZONE_NET}; };
-    allow-transfer { ${ZONE_NET}; };
+    allow-update { 127.0.0.1; ${ZONE_NET}; };
+    allow-transfer { 127.0.0.1; ${ZONE_NET}; };
 };
 EOF
 

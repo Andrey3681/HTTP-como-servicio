@@ -7,6 +7,7 @@ package bind9
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"net"
@@ -20,12 +21,22 @@ import (
 
 // DnsAdapter gestiona la actualización dinámica de nombres en Bind9.
 type DnsAdapter struct {
-	executor ports.Executor
-	serverIP string
-	zone     string
-	nsupdate string
-	network  ports.NetworkInfoProvider
-	logger   ports.EventLogger
+	executor  ports.Executor
+	serverIP  string
+	zone      string
+	nsupdate  string
+	network   ports.NetworkInfoProvider
+	logger    ports.EventLogger
+	guestUser func() string
+	keyPath   string
+}
+
+// ConfigureSSH configura el usuario y la clave privada SSH del laboratorio
+// para ejecutar nsupdate y dig dentro de la máquina DNS cuando el anfitrión
+// no dispone de las utilidades de Bind9 instaladas localmente.
+func (a *DnsAdapter) ConfigureSSH(guestUser func() string, keyPath string) {
+	a.guestUser = guestUser
+	a.keyPath = keyPath
 }
 
 // NewDnsAdapter crea una nueva instancia de DnsAdapter apuntando al servidor Bind9.
@@ -106,6 +117,17 @@ func (a *DnsAdapter) applyUpdate(ctx context.Context, script string) error {
 
 	stdout, stderr, err := a.executor.Execute(ctx, a.nsupdate, "-v", path)
 	if err != nil {
+		if a.keyPath != "" {
+			if server, addrErr := a.address(); addrErr == nil {
+				encoded := base64.StdEncoding.EncodeToString([]byte(script))
+				remote := "echo '" + encoded + "' | base64 -d | nsupdate -v"
+				sshOut, sshErrOut, sshErr := a.executor.Execute(ctx, "ssh", a.sshArgs(server, remote)...)
+				if sshErr == nil {
+					return nil
+				}
+				stdout, stderr, err = sshOut, sshErrOut, sshErr
+			}
+		}
 		detail := strings.TrimSpace(string(stderr))
 		if detail == "" {
 			detail = strings.TrimSpace(string(stdout))
@@ -113,6 +135,24 @@ func (a *DnsAdapter) applyUpdate(ctx context.Context, script string) error {
 		return fmt.Errorf("nsupdate falló: %s (%w)", detail, err)
 	}
 	return nil
+}
+
+func (a *DnsAdapter) sshArgs(server, command string) []string {
+	user := "debian"
+	if a.guestUser != nil {
+		if value := a.guestUser(); value != "" {
+			user = value
+		}
+	}
+	return []string{
+		"-i", a.keyPath,
+		"-o", "BatchMode=yes",
+		"-o", "StrictHostKeyChecking=no",
+		"-o", "UserKnownHostsFile=/dev/null",
+		"-o", "ConnectTimeout=10",
+		user + "@" + server,
+		command,
+	}
 }
 
 // RemoveRecord elimina el registro A del host en la zona DNS.
@@ -174,6 +214,10 @@ func (a *DnsAdapter) ListRecords(ctx context.Context) ([]domain.DnsRecord, error
 		return []domain.DnsRecord{}, nil
 	}
 	stdout, _, err := a.executor.Execute(ctx, "dig", "@"+server, a.zone, "AXFR", "+noall", "+answer")
+	if (err != nil || len(bytes.TrimSpace(stdout)) == 0) && a.keyPath != "" {
+		remote := fmt.Sprintf("dig @%s %s AXFR +noall +answer", server, a.zone)
+		stdout, _, err = a.executor.Execute(ctx, "ssh", a.sshArgs(server, remote)...)
+	}
 	if err != nil || len(bytes.TrimSpace(stdout)) == 0 {
 		return []domain.DnsRecord{}, nil
 	}

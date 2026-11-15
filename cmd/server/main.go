@@ -107,6 +107,7 @@ func main() {
 	hyp := vbox.NewHypervisorAdapter(executor, *domainZone, setupService.Network().HostIP, logBroker)
 	hyp.ConfigureInstanceSeed(setupService.GuestUser, filepath.Join(layout.SSHDir, "id_ed25519"), layout.SeedDir)
 	dns := bind9.NewDnsAdapterWithNetwork(executor, *domainZone, logBroker, setupService)
+	dns.ConfigureSSH(setupService.GuestUser, filepath.Join(layout.SSHDir, "id_ed25519"))
 	dep := deployer.NewApacheDeployer(executor, logBroker, setupService.GuestUser, filepath.Join(layout.SSHDir, "id_ed25519"))
 
 	// El disco base se resuelve en cada solicitud: la preparación puede

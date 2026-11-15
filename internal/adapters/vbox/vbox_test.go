@@ -6,7 +6,9 @@ package vbox_test
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/Andrey3681/httpaas-orchestrator/internal/adapters/vbox"
@@ -63,17 +65,23 @@ NetworkMask:     255.255.255.0
 `
 
 type mockExecutor struct {
+	mu          sync.Mutex
 	commandsRun [][]string
 	responses   map[string]string
 }
 
 func (m *mockExecutor) Execute(ctx context.Context, command string, args ...string) ([]byte, []byte, error) {
 	full := append([]string{command}, args...)
+	m.mu.Lock()
 	m.commandsRun = append(m.commandsRun, full)
+	var response string
+	var ok bool
 	if m.responses != nil {
-		if response, ok := m.responses[strings.Join(full, " ")]; ok {
-			return []byte(response), nil, nil
-		}
+		response, ok = m.responses[strings.Join(full, " ")]
+	}
+	m.mu.Unlock()
+	if ok {
+		return []byte(response), nil, nil
 	}
 	return []byte("OK"), nil, nil
 }
@@ -121,8 +129,9 @@ func TestHypervisorAdapter_GetIPAddressUsesArpTable(t *testing.T) {
 		"VBoxManage list hostonlyifs":                      hostOnlyOutput,
 		"VBoxManage showvminfo paisajes --machinereadable": "macaddress1=\"080027AABBCC\"\n",
 		"ip neigh show dev vboxnet1":                       "192.168.57.107 lladdr 08:00:27:aa:bb:cc REACHABLE\n",
+		"arp -a":                                           "Interfaz: 192.168.57.1 --- 0x9\n  192.168.57.107 08-00-27-aa-bb-cc dinámico\n",
 	}}
-	adapter := vbox.NewHypervisorAdapter(mockExec, "cloud.local", "192.168.10.1", nil)
+	adapter := vbox.NewHypervisorAdapter(mockExec, "cloud.local", "", nil)
 
 	ip, err := adapter.GetIPAddress(context.Background(), "paisajes")
 	if err != nil {
@@ -171,10 +180,21 @@ func TestHypervisorAdapter_CreateInstanceAttachesSeed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("no se generó la semilla: %v", err)
 	}
-	for _, want := range []string{"hostname: paisajes", "dhcp4: true", "name: jorge", "ssh-ed25519"} {
+	for _, want := range []string{
+		"hostname: paisajes",
+		"dhcp4: true",
+		"dhcp-identifier: mac",
+		"systemd-machine-id-setup",
+		"ip addr flush dev enp0s3",
+		"name: jorge",
+		"ssh-ed25519",
+	} {
 		if !strings.Contains(string(userData), want) {
 			t.Errorf("la semilla no contiene %q", want)
 		}
+	}
+	if strings.Contains(string(userData), "enp0s8:") {
+		t.Error("la semilla de instancia no debe configurar enp0s8")
 	}
 	attached := false
 	for _, call := range mockExec.commandsRun {
@@ -222,7 +242,7 @@ func TestHypervisorAdapter_CreateInstanceFromBase(t *testing.T) {
 	if !strings.Contains(all, "--diffparent /media/ApacheServer.vdi") {
 		t.Errorf("expected differencing disk creation, got:\n%s", all)
 	}
-	if !strings.Contains(all, "--medium /home/user/VirtualBox VMs/paisajes/paisajes.vdi") {
+	if !strings.Contains(filepath.ToSlash(all), "--medium /home/user/VirtualBox VMs/paisajes/paisajes.vdi") {
 		t.Errorf("expected the differencing disk to be attached, got:\n%s", all)
 	}
 }

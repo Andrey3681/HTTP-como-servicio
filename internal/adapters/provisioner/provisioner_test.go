@@ -83,6 +83,11 @@ func TestParseHelpers(t *testing.T) {
 		t.Errorf("unexpected quoted machine value: %q", got)
 	}
 
+	winQuoted := "name=\"ApacheServer\"\n\"SATA-0-0\"=\"C:\\\\Users\\\\andre\\\\VirtualBox VMs\\\\ApacheServer\\\\ApacheServer.vdi\"\n"
+	if got := provisioner.ParseMachineReadableValue(winQuoted, "SATA-0-0"); got != `C:\Users\andre\VirtualBox VMs\ApacheServer\ApacheServer.vdi` {
+		t.Errorf("unexpected Windows machine value: %q", got)
+	}
+
 	if got := provisioner.ParseParentUUID("Parent UUID:    base\n"); got != "" {
 		t.Errorf("expected no parent, got %q", got)
 	}

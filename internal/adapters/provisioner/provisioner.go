@@ -488,7 +488,7 @@ func (p *Provisioner) MarkBaseMultiattach(ctx context.Context, cfg domain.SetupC
 	if err != nil {
 		return "", err
 	}
-	if attachedBase != disk {
+	if filepath.Clean(attachedBase) != filepath.Clean(disk) {
 		return "", fmt.Errorf("la VM %s quedó con el disco %s en lugar de %s", vmName, attachedBase, disk)
 	}
 	out, err := p.vbox(ctx, "showmediuminfo", "disk", disk)
@@ -587,7 +587,7 @@ func (p *Provisioner) vmDiskPath(ctx context.Context, vmName string) (string, er
 	for _, key := range []string{"SATA-0-0", "SATA-ImageUUID-0-0", "IDE-0-0"} {
 		value := ParseMachineReadableValue(out, key)
 		if value != "" && value != "none" {
-			if strings.HasSuffix(value, ".vdi") || strings.Contains(value, "/") {
+			if strings.HasSuffix(value, ".vdi") || strings.Contains(value, "/") || strings.Contains(value, `\`) {
 				return value, nil
 			}
 		}
@@ -686,7 +686,8 @@ func ParseMachineReadableValue(output, key string) string {
 		default:
 			continue
 		}
-		return strings.Trim(value, `"`)
+		value = strings.Trim(value, `"`)
+		return strings.ReplaceAll(value, `\\`, `\`)
 	}
 	return ""
 }

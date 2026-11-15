@@ -84,7 +84,8 @@ La semilla escribe un netplan propio (`/etc/netplan/99-httpaas.yaml`) y desactiv
 Las semillas además:
 
 - crean el usuario con `sudo` sin contraseña y la clave SSH autorizada;
-- dejan la red en DHCP (la reserva de IP se hace por MAC desde el host).
+- configuran IP estática en `enp0s3` durante la preparación inicial (`192.168.x.10` para `ns` y `192.168.x.11` para `ApacheServer`);
+- al finalizar `scripts/guest-apache.sh` y en la semilla por instancia (`instanceUserData`), dejan `/etc/netplan/99-httpaas.yaml` con `dhcp4: true` y `dhcp-identifier: mac` sobre `enp0s3` y regeneran `/etc/machine-id`, evitando que las instancias diferenciales compartan el mismo DUID RFC 4361 (opción 61 de DHCPv4) o hereden la IP estática `.11` de la plantilla.
 
 ---
 
@@ -147,8 +148,10 @@ La aplicación no lee ni escribe fuera de este directorio.
 - El proyecto compila para `windows/amd64` y `darwin/arm64` (`GOOS=windows GOARCH=amd64 go build ./...`); no hay dependencias nuevas.
 - El descubrimiento de IP usa `arp -a` y `ping -n 1 -w` en Windows, y `ip neigh`/`ping -c` en Linux/macOS.
 - El espacio libre se consulta con `GetDiskFreeSpaceExW` en Windows y `statfs` en el resto.
-- La configuración automática del DNS del anfitrión solo existe para Linux con `systemd-resolved`; en otros sistemas la API responde con un mensaje claro y el DNS se ajusta a mano.
-- Las semillas se generan con `genisoimage`/`mkisofs`/`xorriso` o, en Windows, con `oscdimg`.
+- Las actualizaciones RFC 2136 (`nsupdate`) y transferencias de zona (`dig AXFR`) de Bind9 se ejecutan localmente si las herramientas están instaladas en el anfitrión o, en su defecto (como ocurre en Windows), por SSH directamente dentro de la máquina `ns` usando la clave del laboratorio.
+- La configuración automática del DNS del anfitrión usa `pkexec` + `systemd-resolved` en Linux y elevación UAC de PowerShell (`Add-DnsClientNrptRule` y `Set-DnsClientServerAddress` para `.cloud.local`) en Windows.
+- Las semillas se generan con `genisoimage`/`mkisofs`/`xorriso`, con `oscdimg` en Windows o mediante el generador ISO 9660 (Rock Ridge + Joliet) nativo en Go cuando las utilidades externas no están instaladas.
+- Los parsers de salida `--machinereadable` normalizan las barras invertidas escapadas (`\\` → `\`) que `VBoxManage` emite en rutas de Windows.
 - Las rutas internas del invitado (`/tmp`, `/var/www`, `systemctl`) son del Linux de las VM, no del anfitrión.
 
 ---

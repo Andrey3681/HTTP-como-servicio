@@ -145,8 +145,9 @@ func (h *HypervisorAdapter) CreateInstanceFromBase(ctx context.Context, name str
 	return domain.NewInstance(name, h.domainZone)
 }
 
-// instanceUserData es la semilla de una instancia: sobrescribe el netplan
-// estático heredado de la plantilla y solicita DHCP en el adaptador host-only.
+// instanceUserData es la semilla de una instancia: regenera machine-id,
+// sobrescribe el netplan estático heredado de la plantilla y solicita DHCP
+// usando la MAC de la interfaz como identificador de cliente DHCPv4.
 const instanceUserData = `#cloud-config
 hostname: %s
 
@@ -155,6 +156,9 @@ network:
 
 bootcmd:
   - |
+    rm -f /etc/machine-id /var/lib/dbus/machine-id
+    systemd-machine-id-setup
+    rm -f /etc/netplan/50-cloud-init.yaml
     cat > /etc/netplan/99-httpaas.yaml <<'NETPLAN'
     network:
       version: 2
@@ -162,15 +166,26 @@ bootcmd:
       ethernets:
         enp0s3:
           dhcp4: true
-          optional: true
-        enp0s8:
-          dhcp4: true
-          dhcp6: false
-          accept-ra: false
+          dhcp-identifier: mac
           optional: true
     NETPLAN
     chmod 600 /etc/netplan/99-httpaas.yaml
+    ip addr flush dev enp0s3 || true
     netplan apply
+    networkctl reconfigure enp0s3 || true
+
+write_files:
+  - path: /etc/netplan/99-httpaas.yaml
+    permissions: "0600"
+    content: |
+      network:
+        version: 2
+        renderer: networkd
+        ethernets:
+          enp0s3:
+            dhcp4: true
+            dhcp-identifier: mac
+            optional: true
 
 users:
   - name: %s
@@ -369,6 +384,11 @@ func (h *HypervisorAdapter) neighborIP(ctx context.Context, iface, mac string) (
 // arpScanIP sondea el rango dinámico para poblar la tabla de vecinos y busca la MAC.
 func (h *HypervisorAdapter) arpScanIP(ctx context.Context, iface, mac string) (netip.Addr, error) {
 	base := h.hostOnlyIP
+	if base == "" && iface != "" {
+		if out, _, err := h.runLocked(ctx, "list", "hostonlyifs"); err == nil {
+			base = ParseHostOnlyInterfaceIP(string(out), iface)
+		}
+	}
 	if i := strings.LastIndex(base, "."); i > 0 {
 		base = base[:i]
 	}

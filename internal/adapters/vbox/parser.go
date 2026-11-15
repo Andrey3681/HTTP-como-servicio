@@ -147,14 +147,40 @@ func ParseFirstProjectInterface(output string) string {
 	return ""
 }
 
+// ParseHostOnlyInterfaceIP retorna la dirección IPv4 asociada a la interfaz
+// host-only indicada en la salida de 'VBoxManage list hostonlyifs'.
+func ParseHostOnlyInterfaceIP(output, ifaceName string) string {
+	var name string
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(line)
+		switch {
+		case strings.HasPrefix(line, "Name:"):
+			name = strings.TrimSpace(strings.TrimPrefix(line, "Name:"))
+		case strings.HasPrefix(line, "IPAddress:"):
+			ip := strings.TrimSpace(strings.TrimPrefix(line, "IPAddress:"))
+			if name == ifaceName && ip != "" {
+				return ip
+			}
+		}
+	}
+	return ""
+}
+
 // ParseMachineValue extrae el valor de una clave en la salida --machinereadable.
 func ParseMachineValue(output, key string) string {
 	for _, line := range strings.Split(output, "\n") {
 		line = strings.TrimSpace(line)
-		if !strings.HasPrefix(line, key+"=") {
+		var value string
+		switch {
+		case strings.HasPrefix(line, key+"="):
+			value = strings.TrimPrefix(line, key+"=")
+		case strings.HasPrefix(line, `"`+key+`"="`):
+			value = strings.TrimPrefix(line, `"`+key+`"=`)
+		default:
 			continue
 		}
-		return strings.Trim(strings.TrimPrefix(line, key+"="), `"`)
+		value = strings.Trim(value, `"`)
+		return strings.ReplaceAll(value, `\\`, `\`)
 	}
 	return ""
 }

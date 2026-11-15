@@ -71,6 +71,8 @@ type Hypervisor interface {
 ```
 
 ### 3.2 Proveedor DNS (`DnsProvider`)
+
+`DnsProvider` es implementado por `internal/adapters/bind9`. Si el anfitrión no cuenta con los binarios `nsupdate` o `dig` en su `PATH` (por ejemplo en Windows), el adaptador ejecuta las operaciones RFC 2136 y consultas `AXFR` por SSH dentro de la máquina `ns` utilizando la clave privada del laboratorio (`ConfigureSSH`).
 ```go
 // DnsProvider define la gestión y consulta de nombres en el servidor Bind9.
 type DnsProvider interface {
@@ -190,6 +192,8 @@ El adaptador `vbox` resuelve la interfaz host-only real (`list hostonlyifs`, ign
 ### 6.2 Discos diferenciales explícitos
 
 `ApacheServer.vdi` se marca como `multiattach` (acción que exige desconectar el medio) y permanece como plantilla de solo lectura. Cada instancia crea su capa escribible con `VBoxManage createmedium disk --filename <carpeta-vm>/<instancia>.vdi --diffparent <ruta-ApacheServer.vdi> --format VDI` y conecta únicamente ese diferencial. No se clona el disco base: se comparte y cada VM escribe en su propio archivo, que desaparece al destruir la instancia (`unregistervm --delete`).
+
+Para evitar colisiones de concesión en `VBoxNetDHCP` cuando varias instancias comparten el disco base, la semilla NoCloud de cada instancia (`instanceUserData`) regenera `/etc/machine-id`, limpia cualquier dirección estática heredada en `enp0s3` y configura Netplan con `dhcp4: true` y `dhcp-identifier: mac` (identificador de cliente DHCPv4 basado en la MAC de la interfaz en lugar del DUID derivado de `machine-id`).
 
 ### 6.3 Preparación del laboratorio
 
