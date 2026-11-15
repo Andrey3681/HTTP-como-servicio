@@ -153,7 +153,7 @@
               '</div>' +
               '<div class="bg-surface-container-lowest border-standard rounded-xl p-6 space-y-3">' +
                 '<h2 class="text-[15px] font-semibold m-0">Máquinas virtuales registradas</h2>' +
-                '<div style="overflow-x:auto;"><table class="simple-table"><thead><tr><th>Nombre</th><th>FQDN</th><th>IP</th><th>Estado</th></tr></thead><tbody id="sys-vms"><tr><td colspan="4" class="empty-state">Cargando…</td></tr></tbody></table></div>' +
+                '<div style="overflow-x:auto;"><table class="simple-table"><thead><tr><th>Nombre</th><th>FQDN</th><th>IP</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="sys-vms"><tr><td colspan="5" class="empty-state">Cargando…</td></tr></tbody></table></div>' +
               '</div>' +
               '<div class="flex justify-start items-center gap-2">' +
                 '<button class="px-3 py-1.5 text-white text-[13px] font-semibold rounded-xl" style="background:#dc2626;border:1px solid #b91c1c;" id="sys-reset-open-btn" type="button">Restablecer sistema</button>' +
@@ -636,19 +636,61 @@
       var list = instRes.ok ? (Array.isArray(instData.datos) ? instData.datos : (Array.isArray(instData) ? instData : [])) : [];
       if (vms) {
         if (!instRes.ok) {
-          vms.innerHTML = '<tr><td colspan="4" class="empty-state">No disponible</td></tr>';
-        } else if (!list.length) {
-          vms.innerHTML = '<tr><td colspan="4" class="empty-state">No hay máquinas registradas</td></tr>';
+          vms.innerHTML = '<tr><td colspan="5" class="empty-state">No disponible</td></tr>';
         } else {
-          vms.innerHTML = list.map(function (i) {
+          var nsRunning = !(summary.salud && summary.salud.ns_activa === false);
+          var nsIP = (summary.estado_setup && summary.estado_setup.red && summary.estado_setup.red.ip_dns) || '—';
+          var nsEstado = nsRunning ? 'ACTIVA' : 'DETENIDA';
+          var nsAction = !nsRunning
+            ? '<button class="btn-flat primary" type="button" data-sys-ns-power="ns"><span class="material-symbols-outlined text-[15px]">power_settings_new</span> Encender</button>'
+            : '—';
+          var rows = ['<tr><td class="mono">ns</td><td class="mono">ns.cloud.local</td><td class="mono">' + esc(nsIP) + '</td><td>' + esc(nsEstado) + '</td><td>' + nsAction + '</td></tr>'];
+          rows = rows.concat(list.map(function (i) {
+            var id = i.id || i.nombre || '';
             var estado = (i.estado || '—').toUpperCase();
-            return '<tr><td class="mono">' + esc(i.nombre || i.id || '—') + '</td><td class="mono">' + esc(i.fqdn || '—') + '</td><td class="mono">' + esc(i.ip || '—') + '</td><td>' + esc(estado) + '</td></tr>';
-          }).join('');
+            var action = (estado === 'DETENIDA' || estado === 'ERROR')
+              ? '<button class="btn-flat primary" type="button" data-sys-power="' + esc(id) + '"><span class="material-symbols-outlined text-[15px]">power_settings_new</span> Encender</button>'
+              : '—';
+            return '<tr><td class="mono">' + esc(i.nombre || i.id || '—') + '</td><td class="mono">' + esc(i.fqdn || '—') + '</td><td class="mono">' + esc(i.ip || '—') + '</td><td>' + esc(estado) + '</td><td>' + action + '</td></tr>';
+          }));
+          vms.innerHTML = rows.join('');
+          vms.querySelectorAll('[data-sys-ns-power]').forEach(function (btn) {
+            btn.addEventListener('click', async function () {
+              btn.disabled = true;
+              btn.textContent = 'Encendiendo…';
+              try {
+                var res = await fetch('/api/dns/encender', { method: 'POST', headers: { 'Accept': 'application/json' } });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                await loadSystemInfo();
+                if (window.refreshInstancesPanel) window.refreshInstancesPanel();
+              } catch (e) {
+                btn.disabled = false;
+                btn.textContent = 'Reintentar';
+              }
+            });
+          });
+          vms.querySelectorAll('[data-sys-power]').forEach(function (btn) {
+            btn.addEventListener('click', async function () {
+              var id = btn.getAttribute('data-sys-power');
+              if (!id) return;
+              btn.disabled = true;
+              btn.textContent = 'Encendiendo…';
+              try {
+                var res = await fetch('/api/instancias/' + encodeURIComponent(id) + '/activar', { method: 'POST', headers: { 'Accept': 'application/json' } });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                await loadSystemInfo();
+                if (window.refreshInstancesPanel) window.refreshInstancesPanel();
+              } catch (e) {
+                btn.disabled = false;
+                btn.textContent = 'Reintentar';
+              }
+            });
+          });
         }
       }
       summary.instancias = { total: list.length };
     } catch (e) {
-      if (vms) vms.innerHTML = '<tr><td colspan="4" class="empty-state">No disponible</td></tr>';
+      if (vms) vms.innerHTML = '<tr><td colspan="5" class="empty-state">No disponible</td></tr>';
       summary.instancias = { error: e.message };
     }
     if (env) env.textContent = JSON.stringify(summary, null, 2);

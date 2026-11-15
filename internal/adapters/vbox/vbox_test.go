@@ -304,3 +304,28 @@ func TestParseWindowsARP(t *testing.T) {
 		t.Error("expected an error for an unknown MAC")
 	}
 }
+
+func TestParseRunningVMs(t *testing.T) {
+	output := "\"ns\" {11111111-2222-3333-4444-555555555555}\r\n\"paisajes\" {aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee}\r\n"
+	running := vbox.ParseRunningVMs(output)
+	if !running["ns"] || !running["paisajes"] {
+		t.Fatalf("expected ns and paisajes to be running, got: %+v", running)
+	}
+	if running["otra"] {
+		t.Errorf("did not expect 'otra' to be running")
+	}
+}
+
+func TestHypervisorAdapter_RunningVMs(t *testing.T) {
+	mockExec := &mockExecutor{responses: map[string]string{
+		"VBoxManage list runningvms": "\"ns\" {1111}\n\"paisajes\" {2222}\n",
+	}}
+	adapter := vbox.NewHypervisorAdapter(mockExec, "cloud.local", "192.168.10.1", nil)
+	running, err := adapter.RunningVMs(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !running["paisajes"] || !running["ns"] {
+		t.Errorf("unexpected running VMs map: %+v", running)
+	}
+}

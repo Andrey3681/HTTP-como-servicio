@@ -289,6 +289,15 @@ func (h *HypervisorAdapter) Start(ctx context.Context, vmName string) error {
 	return nil
 }
 
+// RunningVMs consulta a VirtualBox la lista de máquinas virtuales actualmente en ejecución.
+func (h *HypervisorAdapter) RunningVMs(ctx context.Context) (map[string]bool, error) {
+	stdout, _, err := h.runLocked(ctx, "list", "runningvms")
+	if err != nil {
+		return nil, fmt.Errorf("fallo list runningvms: %w", err)
+	}
+	return ParseRunningVMs(string(stdout)), nil
+}
+
 // GetIPAddress obtiene la dirección IP de la VM. La imagen cloud no incluye el
 // servicio de usuario de Guest Additions, así que la fuente principal es la
 // concesión DHCP consultada por MAC; guestproperty queda como último recurso.

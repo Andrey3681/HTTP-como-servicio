@@ -184,3 +184,24 @@ func ParseMachineValue(output, key string) string {
 	}
 	return ""
 }
+
+// ParseRunningVMs extrae el conjunto de nombres de VMs en ejecución a partir de
+// la salida de 'VBoxManage list runningvms'.
+func ParseRunningVMs(output string) map[string]bool {
+	running := make(map[string]bool)
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, `"`) {
+			continue
+		}
+		end := strings.Index(line[1:], `"`)
+		if end < 0 {
+			continue
+		}
+		name := line[1 : 1+end]
+		if name != "" {
+			running[name] = true
+		}
+	}
+	return running
+}

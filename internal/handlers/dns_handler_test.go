@@ -359,3 +359,71 @@ func TestDnsHandler_RenameRejectsSystemRecord(t *testing.T) {
 		t.Error("no se debe modificar un registro del sistema")
 	}
 }
+
+type fakeNSHypervisor struct {
+	running map[string]bool
+	started string
+	err     error
+}
+
+func (f *fakeNSHypervisor) CreateInstanceFromBase(context.Context, string, string) (*domain.Instance, error) {
+	return nil, nil
+}
+
+func (f *fakeNSHypervisor) Start(_ context.Context, vmName string) error {
+	f.started = vmName
+	if f.running != nil {
+		f.running[vmName] = true
+	}
+	return f.err
+}
+
+func (f *fakeNSHypervisor) GetIPAddress(context.Context, string) (netip.Addr, error) {
+	return netip.MustParseAddr("192.168.57.10"), nil
+}
+func (f *fakeNSHypervisor) Stop(context.Context, string) error    { return nil }
+func (f *fakeNSHypervisor) Destroy(context.Context, string) error { return nil }
+func (f *fakeNSHypervisor) RunningVMs(context.Context) (map[string]bool, error) {
+	return f.running, f.err
+}
+
+func TestDnsHandler_HealthDetectsStoppedNSVM(t *testing.T) {
+	handler := handlers.NewDnsHandler(&stubDnsProvider{}, "cloud.local", nil)
+	hyp := &fakeNSHypervisor{running: map[string]bool{}}
+	handler.SetHypervisor(hyp, "ns")
+
+	req := httptest.NewRequest(http.MethodGet, "/api/salud", nil)
+	rec := httptest.NewRecorder()
+	handler.HandleHealth(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+	var body struct {
+		Bind9    bool `json:"bind9"`
+		NSActiva bool `json:"ns_activa"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+	if body.Bind9 || body.NSActiva {
+		t.Errorf("expected bind9=false and ns_activa=false when ns is stopped, got: %+v", body)
+	}
+}
+
+func TestDnsHandler_StartDNS(t *testing.T) {
+	handler := handlers.NewDnsHandler(&stubDnsProvider{}, "cloud.local", nil)
+	hyp := &fakeNSHypervisor{running: map[string]bool{}}
+	handler.SetHypervisor(hyp, "ns")
+
+	req := httptest.NewRequest(http.MethodPost, "/api/dns/encender", nil)
+	rec := httptest.NewRecorder()
+	handler.HandleStartDNS(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if hyp.started != "ns" {
+		t.Errorf("expected 'ns' VM to be started, got %q", hyp.started)
+	}
+}

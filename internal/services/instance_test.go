@@ -21,7 +21,10 @@ type actionRepo struct {
 	err      error
 }
 
-func (r *actionRepo) Save(context.Context, domain.Instance) error { return nil }
+func (r *actionRepo) Save(_ context.Context, inst domain.Instance) error {
+	r.instance = inst
+	return nil
+}
 func (r *actionRepo) FindByID(_ context.Context, id string) (*domain.Instance, error) {
 	if r.err != nil {
 		return nil, r.err
@@ -32,14 +35,30 @@ func (r *actionRepo) FindByID(_ context.Context, id string) (*domain.Instance, e
 	copy := r.instance
 	return &copy, nil
 }
-func (r *actionRepo) FindAll(context.Context) ([]domain.Instance, error) { return nil, nil }
-func (r *actionRepo) Delete(context.Context, string) error               { return nil }
+func (r *actionRepo) FindAll(context.Context) ([]domain.Instance, error) {
+	if r.err != nil {
+		return nil, r.err
+	}
+	if r.instance.ID == "" {
+		return nil, nil
+	}
+	return []domain.Instance{r.instance}, nil
+}
+func (r *actionRepo) Delete(context.Context, string) error { return nil }
 
 type powerHypervisor struct {
-	ip      netip.Addr
-	started bool
-	stopped bool
-	err     error
+	ip         netip.Addr
+	started    bool
+	stopped    bool
+	err        error
+	runningVMs map[string]bool
+}
+
+func (f *powerHypervisor) RunningVMs(context.Context) (map[string]bool, error) {
+	if f.runningVMs == nil {
+		return nil, errors.New("inspection not configured")
+	}
+	return f.runningVMs, nil
 }
 
 func (f *powerHypervisor) CreateInstanceFromBase(context.Context, string, string) (*domain.Instance, error) {
@@ -157,6 +176,46 @@ func TestInstanceService_DeactivateRejectsCreating(t *testing.T) {
 	svc := services.NewInstanceService(repo, &powerHypervisor{}, nil, nil, services.InstanceOptions{})
 	if _, err := svc.Deactivate(context.Background(), "mario"); err == nil {
 		t.Fatal("expected error for CREANDO")
+	}
+}
+
+func TestInstanceService_ListInstancesDetectsPoweredOffVM(t *testing.T) {
+	repo := &actionRepo{instance: runningInstance()}
+	hyp := &powerHypervisor{
+		ip:         netip.MustParseAddr("192.168.57.105"),
+		runningVMs: map[string]bool{},
+	}
+	svc := services.NewInstanceService(repo, hyp, nil, nil, services.InstanceOptions{})
+
+	list, err := svc.ListInstances(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(list) != 1 || list[0].Status != domain.StatusStopped {
+		t.Fatalf("expected instance to be detected as DETENIDA, got: %+v", list)
+	}
+	if repo.instance.Status != domain.StatusStopped {
+		t.Errorf("expected repository status to be updated to DETENIDA, got %s", repo.instance.Status)
+	}
+}
+
+func TestInstanceService_ActivateWorksWhenVMWasExternallyPoweredOff(t *testing.T) {
+	repo := &actionRepo{instance: runningInstance()}
+	hyp := &powerHypervisor{
+		ip:         netip.MustParseAddr("192.168.57.108"),
+		runningVMs: map[string]bool{},
+	}
+	svc := services.NewInstanceService(repo, hyp, nil, nil, services.InstanceOptions{})
+
+	inst, err := svc.Activate(context.Background(), "mario")
+	if err != nil {
+		t.Fatalf("unexpected error activating externally powered-off VM: %v", err)
+	}
+	if !hyp.started {
+		t.Fatal("expected hypervisor.Start to be called when VM was externally powered off")
+	}
+	if inst.Status != domain.StatusRunning || inst.IP != "192.168.57.108/24" {
+		t.Fatalf("unexpected instance after activate: %+v", inst)
 	}
 }
 

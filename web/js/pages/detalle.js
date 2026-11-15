@@ -23,7 +23,19 @@
     updateActions(current);
   }
   function updateActions(inst) {
-    var active = !!(inst && String(inst.estado || '').toUpperCase() === 'ACTIVA' && inst.ip && inst.ip !== '—');
+    var estado = inst ? String(inst.estado || '').toUpperCase() : '';
+    var active = !!(inst && estado === 'ACTIVA' && inst.ip && inst.ip !== '—');
+    var toggleable = !!(inst && (estado === 'ACTIVA' || estado === 'DETENIDA' || estado === 'ERROR'));
+    var powerBtn = $('d-power-btn');
+    var powerLabel = $('d-power-label');
+    if (powerBtn) {
+      powerBtn.disabled = actionsBusy || !toggleable;
+      powerBtn.setAttribute('aria-disabled', String(actionsBusy || !toggleable));
+      powerBtn.classList.toggle('primary', estado !== 'ACTIVA');
+      if (powerLabel) {
+        powerLabel.textContent = estado === 'ACTIVA' ? 'Apagar instancia' : 'Encender instancia';
+      }
+    }
     ['d-restart-btn', 'd-ssh-btn', 'd-redeploy-btn', 'd-redeploy-apply'].forEach(function (id) {
       var el = $(id);
       if (!el) return;
@@ -118,6 +130,24 @@
       var data = await fetchJSON('/api/instancias/' + encodeURIComponent(current.id), { headers: { 'Accept': 'application/json' } });
       render(data.datos || data);
     } catch (e) { /* mantiene el detalle actual */ }
+  }
+
+  async function togglePowerCurrent() {
+    if (!current || actionsBusy) return;
+    var estado = String(current.estado || '').toUpperCase();
+    var activate = estado !== 'ACTIVA';
+    setActionBusy(true);
+    actionMsg(activate ? 'Encendiendo instancia…' : 'Apagando instancia…', 'info');
+    try {
+      var data = await fetchJSON('/api/instancias/' + encodeURIComponent(current.id) + (activate ? '/activar' : '/desactivar'), { method: 'POST', headers: { 'Accept': 'application/json' } });
+      render(data.datos || current);
+      actionMsg(activate ? 'Instancia encendida correctamente.' : 'Instancia apagada correctamente.', 'success');
+      if (window.refreshInstancesPanel) window.refreshInstancesPanel();
+    } catch (e) {
+      actionMsg('No se pudo ' + (activate ? 'encender' : 'apagar') + ' la instancia: ' + e.message, 'error');
+    } finally {
+      setActionBusy(false);
+    }
   }
 
   async function restartServices() {
@@ -299,6 +329,8 @@
         closeDrawer();
       }
     });
+    var power = $('d-power-btn');
+    if (power) power.addEventListener('click', togglePowerCurrent);
     var restart = $('d-restart-btn');
     if (restart) restart.addEventListener('click', restartServices);
     var ssh = $('d-ssh-btn');

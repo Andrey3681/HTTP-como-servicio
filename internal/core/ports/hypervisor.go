@@ -29,3 +29,10 @@ type Hypervisor interface {
 	// Destroy desmantela la VM, desasocia el disco diferencial y elimina los archivos físicos.
 	Destroy(ctx context.Context, vmName string) error
 }
+
+// PowerStateInspector permite consultar qué máquinas virtuales se encuentran
+// realmente en ejecución en el hipervisor para sincronizar el inventario.
+type PowerStateInspector interface {
+	// RunningVMs retorna el conjunto de nombres de máquinas virtuales en ejecución.
+	RunningVMs(ctx context.Context) (map[string]bool, error)
+}

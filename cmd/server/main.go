@@ -132,6 +132,7 @@ func main() {
 	instanceHandler := handlers.NewInstanceHandler(orchestrator, instanceService, logBroker)
 	dnsHandler := handlers.NewDnsHandler(dns, *domainZone, logBroker)
 	dnsHandler.SetHostDNS(setupService, hostdns.New(executor))
+	dnsHandler.SetHypervisor(hyp, setupCfg.DNSVMName)
 	logsHandler := handlers.NewLogsHandler(logBroker, shutdown)
 
 	// 6. Configurar enrutador y montar endpoints
@@ -150,6 +151,7 @@ func main() {
 	mux.HandleFunc("/api/dns/registros", dnsHandler.HandleRecords)
 	mux.HandleFunc("/api/dns/anfitrion", dnsHandler.HandleHostResolve)
 	mux.HandleFunc("/api/dns/anfitrion/configurar", dnsHandler.HandleConfigureHost)
+	mux.HandleFunc("/api/dns/encender", dnsHandler.HandleStartDNS)
 	mux.HandleFunc("/api/salud", dnsHandler.HandleHealth)
 
 	// Servir archivos estáticos del dashboard (web/)

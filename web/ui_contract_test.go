@@ -96,13 +96,15 @@ func TestIndexHelpIsTooltip(t *testing.T) {
 
 func TestInstanceActionsAndDnsRenameUI(t *testing.T) {
 	panel := readFile(t, filepath.Join("js", "instances-panel.js"))
-	for _, needle := range []string{`d-restart-btn`, `d-ssh-btn`, `d-redeploy-btn`, `d-delete-btn`, `d-redeploy-drop`, `zip-dropzone compact`, `data-detail`} {
+	for _, needle := range []string{`d-power-btn`, `data-power-on`, `/api/dns/encender`, `d-restart-btn`, `d-ssh-btn`, `d-redeploy-btn`, `d-delete-btn`, `d-redeploy-drop`, `zip-dropzone compact`, `data-detail`} {
 		assertContains(t, panel, needle, "js/instances-panel.js (acciones del drawer)")
 	}
 	detalle := readFile(t, filepath.Join("js", "pages", "detalle.js"))
-	for _, needle := range []string{`/servicios/reiniciar`, `/acceso`, `/despliegue`, `closeInstanceDrawer`, `acceptRedeployFile`} {
+	for _, needle := range []string{`d-power-btn`, `/activar`, `/desactivar`, `/servicios/reiniciar`, `/acceso`, `/despliegue`, `closeInstanceDrawer`, `acceptRedeployFile`} {
 		assertContains(t, detalle, needle, "js/pages/detalle.js (acciones de instancia)")
 	}
+	saludJS := readFile(t, filepath.Join("js", "pages", "salud.js"))
+	assertContains(t, saludJS, `/api/dns/encender`, "js/pages/salud.js (encender ns)")
 
 	vhosts := readFile(t, filepath.Join("js", "pages", "vhosts.js"))
 	for _, needle := range []string{`data-power`, `/activar`, `/desactivar`, `vhost-switch`} {

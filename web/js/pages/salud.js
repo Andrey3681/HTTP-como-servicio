@@ -64,7 +64,9 @@
         setPill('h-bind9', bindOk ? 'ok' : data.bind9 === false ? 'err' : 'warn', bindOk ? 'Disponible' : data.bind9 === false ? 'No disponible' : 'Sin datos');
         setDesc('h-overall-desc', overallOk ? 'Las dependencias principales responden correctamente.' : (health.ok ? 'Hay componentes que requieren atención.' : 'No se pudo consultar el estado del sistema.'));
         setDesc('h-vbox-desc', vboxOk ? 'VirtualBox responde y puede administrar VMs.' : data.vboxmanage === false ? 'VirtualBox no está disponible. Revisa la instalación y permisos en el anfitrión.' : 'No se pudo determinar el estado de VirtualBox.');
-        setDesc('h-bind9-desc', bindOk ? 'El servicio DNS está disponible.' : data.bind9 === false ? 'Bind9 no está disponible. Revisa la VM/servicio DNS (ns.cloud.local).' : 'No se pudo determinar el estado de DNS.');
+        setDesc('h-bind9-desc', bindOk ? 'El servicio DNS está disponible.' : data.bind9 === false ? 'La máquina virtual DNS (ns) está apagada. Pulsa “Encender ns” para iniciarla.' : 'No se pudo determinar el estado de DNS.');
+        var bindAction = document.getElementById('h-bind9-action');
+        if (bindAction) bindAction.classList.toggle('hidden', !(data.bind9 === false || data.ns_activa === false));
         summary.salud = health.ok ? data : { error: true, estado_http: health.status, data: data };
       } catch (e) {
         setPill('h-overall', 'err', 'No disponible');
@@ -146,6 +148,25 @@
       if (btn) { btn.disabled = false; btn.setAttribute('aria-busy', 'false'); }
     }
 
+    var startNsBtn = document.getElementById('startNsHealthBtn');
+    if (startNsBtn && !startNsBtn.dataset.bound) {
+      startNsBtn.dataset.bound = '1';
+      startNsBtn.addEventListener('click', async function () {
+        startNsBtn.disabled = true;
+        setDesc('h-bind9-desc', 'Encendiendo máquina virtual DNS (ns)…');
+        try {
+          var res = await fetch('/api/dns/encender', { method: 'POST', headers: { 'Accept': 'application/json' } });
+          var body = await res.json().catch(function () { return {}; });
+          if (!res.ok) throw new Error(body.error || ('HTTP ' + res.status));
+          await check();
+          if (window.refreshInstancesPanel) window.refreshInstancesPanel();
+        } catch (e) {
+          setDesc('h-bind9-desc', 'No se pudo encender ns: ' + e.message);
+        } finally {
+          startNsBtn.disabled = false;
+        }
+      });
+    }
     if (btn) btn.addEventListener('click', check);
     check();
   }

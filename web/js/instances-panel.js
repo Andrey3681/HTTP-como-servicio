@@ -11,6 +11,18 @@
     return '' +
       '<section class="bg-surface-container-lowest border-standard rounded-xl overflow-hidden flex flex-col justify-between h-full" id="instances-panel">' +
         '<div>' +
+          '<div id="nsStoppedWarning" class="hidden mx-4 mt-3 rounded-xl border border-orange-300 bg-orange-50 p-3" role="alert">' +
+            '<div class="flex items-start gap-2.5">' +
+              '<span class="material-symbols-outlined text-orange-600 text-[20px] shrink-0" aria-hidden="true">power_off</span>' +
+              '<div class="flex-1 min-w-0">' +
+                '<p class="m-0 text-[13px] font-semibold text-orange-950">Servidor DNS (ns) apagado</p>' +
+                '<p class="m-0 mt-1 text-[12.5px] leading-relaxed text-orange-900">La máquina virtual ns está detenida en VirtualBox.</p>' +
+              '</div>' +
+              '<div class="flex items-center gap-1.5 shrink-0">' +
+                '<button class="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[12.5px] font-semibold text-white transition-colors disabled:opacity-60" id="startNsBtn" type="button" style="background:#059669;border:1px solid #047857;"><span class="material-symbols-outlined text-[15px]">power_settings_new</span> Encender ns</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
           '<div id="hostDnsWarning" class="hidden mx-4 mt-3 rounded-xl border border-orange-300 bg-orange-50 p-3" role="alert">' +
             '<div class="flex items-start gap-2.5">' +
               '<span class="material-symbols-outlined text-orange-600 text-[20px] shrink-0" aria-hidden="true">warning</span>' +
@@ -87,6 +99,7 @@
                   '<span id="d-actions-msg" class="text-[12px] text-on-surface-variant" role="status" aria-live="polite"></span>' +
                 '</div>' +
                 '<div class="space-y-2">' +
+                  '<button id="d-power-btn" class="btn-flat w-full justify-start" type="button"><span class="material-symbols-outlined text-[16px]">power_settings_new</span> <span id="d-power-label">Encender instancia</span></button>' +
                   '<button id="d-restart-btn" class="btn-flat w-full justify-start" type="button"><span class="material-symbols-outlined text-[16px]">restart_alt</span> Reiniciar servicios</button>' +
                   '<div class="action-accordion">' +
                     '<button id="d-ssh-btn" class="btn-flat w-full justify-between action-toggle" type="button" aria-expanded="false" aria-controls="d-ssh-panel">' +
@@ -193,16 +206,40 @@
         var enlace = inst.enlace || ('http://' + fqdn), ip = inst.ip || '—', estado = (inst.estado || 'ACTIVA').toUpperCase();
         var ok = estado === 'ACTIVA', dotCls = ok ? 'bg-[#16a34a]' : (estado === 'ERROR' ? 'bg-[#dc2626]' : 'bg-[#f59e0b]');
         var stateColor = ok ? 'text-[#16a34a]' : (estado === 'ERROR' ? 'text-[#ba1a1a]' : 'text-[#b45309]');
+        var powerBtn = !ok && (estado === 'DETENIDA' || estado === 'ERROR')
+          ? '<button class="inline-flex items-center gap-1.5 px-3 py-1.5 text-white text-[12px] font-semibold rounded-xl" style="background:#059669;border:1px solid #047857;" type="button" data-power-on="' + escA(id) + '" title="Encender instancia"><span class="material-symbols-outlined text-[15px]">power_settings_new</span> Encender</button>'
+          : '';
         return '<div class="p-3 hover:bg-surface-bright transition-colors flex flex-col gap-2">' +
           '<div class="flex items-center justify-between"><div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full ' + dotCls + '"></span><span class="text-[13px] font-semibold text-on-surface mono">' + esc(nombre) + '</span></div>' +
           '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-xl border-standard bg-surface-container-lowest text-[11px] font-semibold mono ' + stateColor + '">● ' + esc(estado === 'ACTIVA' ? 'RUNNING' : estado) + '</span></div>' +
           '<div class="flex items-center justify-between text-on-surface-variant text-[11px]"><a class="inline-flex items-center gap-1 text-[12px] hover:underline url-service-link truncate mono" href="' + escA(enlace) + '" target="_blank" rel="noopener noreferrer"><span>' + esc(enlace.replace(/^https?:\/\//, '')) + '</span><span class="material-symbols-outlined text-[14px]">open_in_new</span></a><span class="mono text-outline shrink-0">' + esc(ip) + '</span></div>' +
-          '<div class="flex justify-end items-center pt-1">' +
+          '<div class="flex justify-end items-center gap-2 pt-1">' +
+          powerBtn +
           '<button class="inline-flex items-center gap-1.5 px-3 py-1.5 text-white text-[12px] font-semibold rounded-xl" style="background:rgb(15,118,110);border:1px solid rgb(13,95,88);" type="button" data-detail="' + escA(id) + '" title="Ver detalle de la instancia"><span class="material-symbols-outlined text-[15px]">visibility</span> Ver detalle</button>' +
           '</div></div>';
       }).join('');
       instancesList.querySelectorAll('[data-detail]').forEach(function (btn) {
         btn.addEventListener('click', function () { if (window.openInstanceDrawer) window.openInstanceDrawer(btn.getAttribute('data-detail')); });
+      });
+      instancesList.querySelectorAll('[data-power-on]').forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+          var id = btn.getAttribute('data-power-on');
+          if (!id) return;
+          setBusy(btn, true);
+          showLoad(true, 'Encendiendo instancia…');
+          try {
+            var res = await fetch('/api/instancias/' + encodeURIComponent(id) + '/activar', { method: 'POST', headers: { 'Accept': 'application/json' } });
+            var data = await res.json().catch(function () { return {}; });
+            if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+            showMsg('Instancia encendida.', 'success');
+            await fetchInstances();
+          } catch (err) {
+            showMsg('No se pudo encender la instancia: ' + err.message, 'error');
+            setBusy(btn, false);
+          } finally {
+            showLoad(false);
+          }
+        });
       });
     }
 
@@ -269,6 +306,8 @@
     window.refreshInstancesPanel = fetchInstances;
 
     async function checkHostDns() {
+      var nsBanner = document.getElementById('nsStoppedWarning');
+      var startNsBtn = document.getElementById('startNsBtn');
       var banner = document.getElementById('hostDnsWarning');
       var text = document.getElementById('hostDnsWarningText');
       var configureHostDnsBtn = document.getElementById('configureHostDnsBtn');
@@ -276,9 +315,30 @@
       try {
         var res = await fetch('/api/dns/anfitrion');
         var data = await res.json().catch(function () { return {}; });
+        if (nsBanner) {
+          if (data && data.ns_activa === false) nsBanner.classList.remove('hidden');
+          else nsBanner.classList.add('hidden');
+        }
         if (data && data.resuelve) { banner.classList.add('hidden'); if (text) text.textContent = ''; }
         else { if (text) text.textContent = (data && data.mensaje) || 'Configura el DNS del anfitrión.'; banner.classList.remove('hidden'); }
-      } catch (err) { banner.classList.add('hidden'); }
+      } catch (err) {
+        banner.classList.add('hidden');
+        if (nsBanner) nsBanner.classList.add('hidden');
+      }
+      if (startNsBtn && !startNsBtn.dataset.bound) {
+        startNsBtn.dataset.bound = '1';
+        startNsBtn.addEventListener('click', async function () {
+          setBusy(startNsBtn, true); showLoad(true, 'Encendiendo servidor DNS (ns)…');
+          try {
+            var res = await fetch('/api/dns/encender', { method: 'POST', headers: { 'Accept': 'application/json' } });
+            var data = await res.json().catch(function () { return {}; });
+            if (!res.ok) throw new Error(data.error || 'Error al encender ns');
+            showMsg('Servidor DNS (ns) encendido.', 'success');
+            await checkHostDns();
+          } catch (err) { showMsg('Error: ' + err.message, 'error'); }
+          finally { setBusy(startNsBtn, false); showLoad(false); }
+        });
+      }
       if (configureHostDnsBtn && !configureHostDnsBtn.dataset.bound) {
         configureHostDnsBtn.dataset.bound = '1';
         configureHostDnsBtn.addEventListener('click', async function () {

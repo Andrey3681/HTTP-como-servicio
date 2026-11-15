@@ -61,14 +61,64 @@ func (s *InstanceService) log(level, message string, fields map[string]any) {
 	}
 }
 
-// ListInstances retorna todas las instancias registradas en el inventario.
+// ListInstances retorna todas las instancias registradas en el inventario,
+// sincronizando su estado real de encendido con el hipervisor si está disponible.
 func (s *InstanceService) ListInstances(ctx context.Context) ([]domain.Instance, error) {
-	return s.repo.FindAll(ctx)
+	list, err := s.repo.FindAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if running, ok := s.inspectRunningVMs(ctx); ok {
+		for i := range list {
+			if s.reconcilePowerState(&list[i], running) {
+				_ = s.repo.Save(ctx, list[i])
+			}
+		}
+	}
+	return list, nil
 }
 
-// GetInstance busca una instancia por su identificador único.
+// GetInstance busca una instancia por su identificador único y sincroniza su
+// estado real de encendido con el hipervisor.
 func (s *InstanceService) GetInstance(ctx context.Context, id string) (*domain.Instance, error) {
-	return s.repo.FindByID(ctx, id)
+	inst, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if running, ok := s.inspectRunningVMs(ctx); ok {
+		if s.reconcilePowerState(inst, running) {
+			_ = s.repo.Save(ctx, *inst)
+		}
+	}
+	return inst, nil
+}
+
+func (s *InstanceService) inspectRunningVMs(ctx context.Context) (map[string]bool, bool) {
+	inspector, ok := s.hypervisor.(ports.PowerStateInspector)
+	if !ok || inspector == nil {
+		return nil, false
+	}
+	running, err := inspector.RunningVMs(ctx)
+	if err != nil {
+		return nil, false
+	}
+	return running, true
+}
+
+func (s *InstanceService) reconcilePowerState(inst *domain.Instance, running map[string]bool) bool {
+	if inst == nil {
+		return false
+	}
+	isRunning := running[inst.Name]
+	if inst.Status == domain.StatusRunning && !isRunning {
+		inst.Status = domain.StatusStopped
+		return true
+	}
+	if inst.Status == domain.StatusStopped && isRunning {
+		inst.Status = domain.StatusRunning
+		return true
+	}
+	return false
 }
 
 // Activate enciende una instancia detenida, actualiza su IP y refresca el
@@ -77,6 +127,11 @@ func (s *InstanceService) Activate(ctx context.Context, id string) (*domain.Inst
 	inst, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
+	}
+	if running, ok := s.inspectRunningVMs(ctx); ok {
+		if s.reconcilePowerState(inst, running) {
+			_ = s.repo.Save(ctx, *inst)
+		}
 	}
 	if inst.Status == domain.StatusRunning {
 		return inst, nil
@@ -123,6 +178,11 @@ func (s *InstanceService) Deactivate(ctx context.Context, id string) (*domain.In
 	inst, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
+	}
+	if running, ok := s.inspectRunningVMs(ctx); ok {
+		if s.reconcilePowerState(inst, running) {
+			_ = s.repo.Save(ctx, *inst)
+		}
 	}
 	if inst.Status == domain.StatusStopped {
 		return inst, nil

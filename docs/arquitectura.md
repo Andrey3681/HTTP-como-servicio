@@ -68,7 +68,15 @@ type Hypervisor interface {
     // Destroy desmantela la VM, desasocia el disco diferencial y elimina los archivos físicos.
     Destroy(ctx context.Context, vmName string) error
 }
+
+// PowerStateInspector permite consultar qué máquinas virtuales se encuentran
+// realmente en ejecución en el hipervisor para sincronizar el inventario.
+type PowerStateInspector interface {
+    // RunningVMs retorna el conjunto de nombres de máquinas virtuales en ejecución.
+    RunningVMs(ctx context.Context) (map[string]bool, error)
+}
 ```
+Cuando el adaptador de hipervisor implementa `PowerStateInspector` (`VBoxManage list runningvms`), `InstanceService` sincroniza automáticamente el estado de cada instancia (`ACTIVA` ↔ `DETENIDA`) al listar, consultar o activar instancias, detectando si una máquina virtual se apagó externamente o tras reiniciar el anfitrión. Del mismo modo, `DnsHandler` utiliza `PowerStateInspector` en `GET /api/salud` y `GET /api/dns/anfitrion` para detectar si la máquina base del servidor DNS (`ns`) se apagó y permite encenderla bajo demanda mediante `POST /api/dns/encender`.
 
 ### 3.2 Proveedor DNS (`DnsProvider`)
 

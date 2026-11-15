@@ -25,6 +25,8 @@ type DnsHandler struct {
 	lookup      func(context.Context, string) ([]string, error)
 	network     ports.NetworkInfoProvider
 	hostDNS     ports.HostDNS
+	hypervisor  ports.Hypervisor
+	dnsVMName   string
 }
 
 // SetHostDNS inyecta la red del laboratorio y el configurador del resolver del
@@ -32,6 +34,35 @@ type DnsHandler struct {
 func (h *DnsHandler) SetHostDNS(network ports.NetworkInfoProvider, hostDNS ports.HostDNS) {
 	h.network = network
 	h.hostDNS = hostDNS
+}
+
+// SetHypervisor inyecta el hipervisor y el nombre de la máquina virtual DNS
+// para detectar si ns está encendida y permitir arrancarla bajo demanda.
+func (h *DnsHandler) SetHypervisor(hypervisor ports.Hypervisor, dnsVMName string) {
+	h.hypervisor = hypervisor
+	if strings.TrimSpace(dnsVMName) == "" {
+		dnsVMName = "ns"
+	}
+	h.dnsVMName = dnsVMName
+}
+
+func (h *DnsHandler) nsName() string {
+	if h.dnsVMName != "" {
+		return h.dnsVMName
+	}
+	return "ns"
+}
+
+func (h *DnsHandler) inspectNSRunning(ctx context.Context) (bool, bool) {
+	inspector, ok := h.hypervisor.(ports.PowerStateInspector)
+	if !ok || inspector == nil {
+		return true, false
+	}
+	running, err := inspector.RunningVMs(ctx)
+	if err != nil {
+		return false, false
+	}
+	return running[h.nsName()], true
 }
 
 // NewDnsHandler crea un nuevo DnsHandler para la zona DNS indicada.
@@ -56,11 +87,52 @@ func (h *DnsHandler) HandleHealth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, vboxErr := exec.LookPath("VBoxManage")
+	vboxOk := vboxErr == nil
+	bindOk := true
+	nsActiva := true
+	if running, inspected := h.inspectNSRunning(r.Context()); inspected {
+		nsActiva = running
+		bindOk = running
+	}
+	estado := "ok"
+	if !vboxOk || !bindOk {
+		estado = "degradado"
+	}
 
 	JSON(w, http.StatusOK, map[string]any{
-		"estado":     "ok",
-		"vboxmanage": vboxErr == nil,
-		"bind9":      true,
+		"estado":     estado,
+		"vboxmanage": vboxOk,
+		"bind9":      bindOk,
+		"ns_activa":  nsActiva,
+		"ns_vm":      h.nsName(),
+	})
+}
+
+// HandleStartDNS enciende la máquina virtual del servidor DNS (/api/dns/encender).
+func (h *DnsHandler) HandleStartDNS(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		Error(w, http.StatusMethodNotAllowed, "Método HTTP no permitido")
+		return
+	}
+	if h.hypervisor == nil {
+		Error(w, http.StatusConflict, "El hipervisor no está disponible")
+		return
+	}
+	vmName := h.nsName()
+	if running, inspected := h.inspectNSRunning(r.Context()); !inspected || !running {
+		if err := h.hypervisor.Start(r.Context(), vmName); err != nil {
+			logHandlerError(h.logger, "dns", "Fallo al encender máquina virtual DNS", map[string]any{"vm": vmName, "error": err.Error()})
+			Error(w, http.StatusInternalServerError, "No se pudo encender la máquina DNS ("+vmName+"): "+err.Error())
+			return
+		}
+	}
+	if h.logger != nil {
+		h.logger.Append("INFO", "dns", "Máquina virtual DNS encendida", map[string]any{"vm": vmName})
+	}
+	JSON(w, http.StatusOK, map[string]any{
+		"mensaje":   "Servidor DNS (" + vmName + ") encendido correctamente",
+		"ns_activa": true,
+		"ns_vm":     vmName,
 	})
 }
 
@@ -102,14 +174,21 @@ func (h *DnsHandler) HandleHostResolve(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
+	nsActiva := true
+	if running, inspected := h.inspectNSRunning(r.Context()); inspected {
+		nsActiva = running
+	}
+
 	addrs, err := h.lookup(ctx, name)
 	response := map[string]any{
-		"resuelve": false,
-		"ip":       "",
-		"zona":     strings.TrimSuffix(h.zone, "."),
-		"dns":      "",
-		"interfaz": "",
-		"mensaje":  "Pulsa «Configurar DNS».",
+		"resuelve":  false,
+		"ip":        "",
+		"zona":      strings.TrimSuffix(h.zone, "."),
+		"dns":       "",
+		"interfaz":  "",
+		"ns_activa": nsActiva,
+		"ns_vm":     h.nsName(),
+		"mensaje":   "Pulsa «Configurar DNS».",
 	}
 	if h.network != nil {
 		cfg := h.network.Network()
