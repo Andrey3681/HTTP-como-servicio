@@ -53,6 +53,17 @@ El progreso se muestra paso a paso con un registro en vivo y se puede reabrir de
 
 Flags relevantes: `-app-dir`, `-raw-url`, `-guest-user`, `-guest-pass`, `-install-timeout`, `-setup-state`.
 
+## 🧪 Proyectos web de ejemplo
+
+Dos sitios listos para probar el flujo completo desde la consola (selecciona el `.zip` al crear la instancia):
+
+| Proyecto | Archivo | Qué incluye |
+|---|---|---|
+| **Paisajes** | [`example/paisajes.zip`](example/paisajes.zip) | Landing de turismo: portada ilustrada, destinos, cifras y experiencias. |
+| **Financiero** | [`example/financiero.zip`](example/financiero.zip) | Landing fintech: panel con balance y gráfico, ventajas y seguridad. |
+
+Ambos son autocontenidos (`index.html` + `styles.css`, sin recursos externos) y pesan menos de 5 KB. También están sin comprimir en `example/paisajes/` y `example/financiero/` por si quieres editarlos y volver a empaquetarlos; sirven igual para probar la actualización de despliegue con un nuevo `.zip`.
+
 ## 🛠️ Comandos de Desarrollo (Taskfile)
 
 ```bash

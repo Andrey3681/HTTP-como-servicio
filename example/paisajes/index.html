@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paisajes · Turismo de autor</title>
+  <meta name="description" content="Rutas, miradores y escapadas de autor por los paisajes más bellos.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#inicio" aria-label="Paisajes, inicio">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M3 26 12 10l6 9 4-6 7 13H3Z" fill="currentColor"/><circle cx="23" cy="8" r="3" fill="currentColor" opacity=".55"/></svg>
+      Paisajes
+    </a>
+    <nav aria-label="Navegación principal">
+      <a href="#destinos">Destinos</a>
+      <a href="#experiencias">Experiencias</a>
+      <a href="#contacto">Contacto</a>
+    </nav>
+  </header>
+
+  <main id="inicio">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Turismo de autor</p>
+        <h1>Paisajes que se recorren despacio.</h1>
+        <p class="lead">Rutas pequeñas, miradores escondidos y escapadas pensadas para mirar distinto. Sin prisa, sin multitudes.</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="#destinos">Ver destinos</a>
+          <a class="btn btn-ghost" href="#experiencias">Cómo viajamos</a>
+        </div>
+      </div>
+      <div class="hero-art" aria-hidden="true">
+        <svg viewBox="0 0 640 420" role="presentation">
+          <defs>
+            <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#0f766e"/>
+              <stop offset="1" stop-color="#134e4a"/>
+            </linearGradient>
+            <linearGradient id="far" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#5eead4" stop-opacity=".55"/>
+              <stop offset="1" stop-color="#0f766e" stop-opacity=".1"/>
+            </linearGradient>
+          </defs>
+          <rect width="640" height="420" rx="28" fill="url(#sky)"/>
+          <circle cx="500" cy="96" r="46" fill="#fde68a" opacity=".9"/>
+          <path d="M0 300 120 190l90 74 110-132 150 168 90-70 80 70v120H0Z" fill="url(#far)"/>
+          <path d="M0 340 150 240l120 86 120-76 140 90 110-54v134H0Z" fill="#042f2e" opacity=".8"/>
+          <path d="M0 372c90-26 150-8 230-30 90-24 150 18 240 2 60-10 110 4 170 18v58H0Z" fill="#022c22"/>
+        </svg>
+      </div>
+    </section>
+
+    <section class="stats" aria-label="Cifras">
+      <div><strong>24</strong><span>rutas de autor</span></div>
+      <div><strong>9</strong><span>regiones</span></div>
+      <div><strong>4.9/5</strong><span>valoración media</span></div>
+      <div><strong>100%</strong><span>grupos pequeños</span></div>
+    </section>
+
+    <section id="destinos" class="section">
+      <div class="section-head">
+        <p class="eyebrow">Destinos</p>
+        <h2>Tres formas de perderse</h2>
+      </div>
+      <div class="cards">
+        <article class="card card-a">
+          <div class="card-body">
+            <span class="tag">Montaña</span>
+            <h3>Alto Sil</h3>
+            <p>Bosques de niebla, miradores de pizarra y pueblos que aún encienden la lumbre al caer la tarde.</p>
+            <a href="#contacto">Planear ruta</a>
+          </div>
+        </article>
+        <article class="card card-b">
+          <div class="card-body">
+            <span class="tag">Costa</span>
+            <h3>Costa da Morte</h3>
+            <p>Faros, dunas y mareas lentas. Un litoral áspero para caminar con el viento de frente.</p>
+            <a href="#contacto">Planear ruta</a>
+          </div>
+        </article>
+        <article class="card card-c">
+          <div class="card-body">
+            <span class="tag">Interior</span>
+            <h3>Las Hoces</h3>
+            <p>Cañones de roca, ríos transparentes y noches sin luz artificial para mirar el cielo entero.</p>
+            <a href="#contacto">Planear ruta</a>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="experiencias" class="split">
+      <div>
+        <p class="eyebrow">Experiencias</p>
+        <h2>Viajar en grupos de seis.</h2>
+        <p>Diseñamos cada salida con guías locales y grupos reducidos. Dormimos en casas de pueblo, comemos lo que hay en la huerta y caminamos sin reloj.</p>
+      </div>
+      <ul class="checklist">
+        <li>Itinerarios de 3 a 5 días</li>
+        <li>Guías locales y transporte incluido</li>
+        <li>Alojamiento en casas rurales</li>
+        <li>Cancelación flexible</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer id="contacto" class="site-footer">
+    <div>
+      <span class="brand">Paisajes</span>
+      <p>Escapadas pequeñas para mirar mejor.</p>
+    </div>
+    <div class="footer-links">
+      <a href="#inicio">Inicio</a>
+      <a href="#destinos">Destinos</a>
+      <a href="#experiencias">Experiencias</a>
+    </div>
+    <p class="copy">© 2026 Paisajes · Proyecto de ejemplo</p>
+  </footer>
+</body>
+</html>

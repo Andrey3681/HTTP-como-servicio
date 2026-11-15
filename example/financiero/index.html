@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Financiero · Control claro de tu dinero</title>
+  <meta name="description" content="Cuentas, presupuestos y objetivos en un solo panel.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="logo" href="#inicio" aria-label="Financiero, inicio">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="4" y="17" width="5" height="11" rx="2" fill="currentColor"/><rect x="13" y="10" width="5" height="18" rx="2" fill="currentColor" opacity=".7"/><rect x="22" y="4" width="5" height="24" rx="2" fill="currentColor" opacity=".45"/></svg>
+      Financiero
+    </a>
+    <nav aria-label="Navegación principal">
+      <a href="#producto">Producto</a>
+      <a href="#seguridad">Seguridad</a>
+      <a href="#precios">Precios</a>
+    </nav>
+    <a class="btn btn-compact" href="#precios">Abrir cuenta</a>
+  </header>
+
+  <main id="inicio">
+    <section class="hero">
+      <div class="hero-copy">
+        <span class="pill">Nuevo · Presupuestos automáticos</span>
+        <h1>Todo tu dinero, en una vista clara.</h1>
+        <p>Conecta tus cuentas, entiende tus gastos y llega a fin de mes con un plan. Sin hojas de cálculo, sin sorpresas.</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="#precios">Empezar gratis</a>
+          <a class="btn btn-link" href="#producto">Ver cómo funciona →</a>
+        </div>
+        <p class="fine">Sin tarjeta. Cancela cuando quieras.</p>
+      </div>
+
+      <div class="panel" aria-label="Vista previa del panel">
+        <div class="panel-head">
+          <div>
+            <span class="muted">Balance total</span>
+            <strong class="balance">24.580,40 €</strong>
+          </div>
+          <span class="delta">+12,4%</span>
+        </div>
+        <div class="chart" aria-hidden="true">
+          <span style="--h: 34%"></span><span style="--h: 52%"></span><span style="--h: 41%"></span>
+          <span style="--h: 66%"></span><span style="--h: 58%"></span><span style="--h: 78%"></span>
+          <span style="--h: 71%"></span><span style="--h: 92%"></span><span style="--h: 84%"></span>
+          <span style="--h: 100%"></span>
+        </div>
+        <div class="panel-rows">
+          <div class="row"><span class="dot dot-a"></span><span>Nómina</span><strong class="pos">+2.450,00 €</strong></div>
+          <div class="row"><span class="dot dot-b"></span><span>Alquiler</span><strong>-980,00 €</strong></div>
+          <div class="row"><span class="dot dot-c"></span><span>Ahorro automático</span><strong class="pos">+400,00 €</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="logo-strip" aria-label="Confianza">
+      <span>Más de 18.000 personas organizan sus cuentas con Financiero</span>
+      <div><b>4,8</b> en App Store</div>
+      <div><b>+18k</b> usuarios</div>
+      <div><b>99,9%</b> disponibilidad</div>
+    </section>
+
+    <section id="producto" class="features">
+      <div class="section-head">
+        <span class="kicker">Producto</span>
+        <h2>Menos ruido, más decisiones.</h2>
+        <p>Las tres cosas que de verdad importan para ordenar tu mes.</p>
+      </div>
+      <div class="grid">
+        <article>
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 19V9m5 10V5m5 14v-7m5 7V3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <h3>Presupuesto que se adapta</h3>
+          <p>Clasificamos cada movimiento y ajustamos el plan según tus hábitos, no al revés.</p>
+        </article>
+        <article>
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 3v18m6-14H9a3 3 0 0 0 0 6h6a3 3 0 0 1 0 6H5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <h3>Objetivos con fecha</h3>
+          <p>Define una meta y te decimos cuánto apartar cada semana para llegar sin esfuerzo.</p>
+        </article>
+        <article>
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.4 7.8 8 9 4.6-1.2 8-4 8-9V6l-8-3Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="m9 12 2 2 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <h3>Datos cifrados</h3>
+          <p>Cifrado de extremo a extremo y acceso con doble factor. Tus cuentas, solo tuyas.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="seguridad" class="band">
+      <div>
+        <span class="kicker">Seguridad</span>
+        <h2>Conectas una vez. Tú mantienes el control.</h2>
+        <p>Acceso de solo lectura, revocable en un clic. Nunca movemos dinero ni almacenamos credenciales bancarias.</p>
+      </div>
+      <ul>
+        <li>Cifrado AES-256 en reposo</li>
+        <li>Autenticación en dos pasos</li>
+        <li>Conexiones Open Banking</li>
+        <li>Exporta o borra tus datos cuando quieras</li>
+      </ul>
+    </section>
+
+    <section id="precios" class="cta">
+      <h2>Empieza a ver claro este mes.</h2>
+      <p>Gratis para siempre en el plan básico. El premium cuesta 4,99 €/mes y puedes cancelar cuando quieras.</p>
+      <div class="actions center">
+        <a class="btn btn-primary" href="#inicio">Crear cuenta gratis</a>
+        <a class="btn btn-outline" href="#producto">Comparar planes</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <a class="logo" href="#inicio">Financiero</a>
+    <p>Proyecto de ejemplo · No es una entidad financiera real.</p>
+    <span>© 2026 Financiero</span>
+  </footer>
+</body>
+</html>
