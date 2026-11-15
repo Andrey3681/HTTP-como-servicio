@@ -14,13 +14,14 @@ Package bind9 implementa ports.DnsProvider para registrar y remover registros A 
   - [func NewDnsAdapter\(executor ports.Executor, serverIP string, zone string, logger ports.EventLogger\) \*DnsAdapter](<#NewDnsAdapter>)
   - [func NewDnsAdapterWithNetwork\(executor ports.Executor, zone string, logger ports.EventLogger, network ports.NetworkInfoProvider\) \*DnsAdapter](<#NewDnsAdapterWithNetwork>)
   - [func \(a \*DnsAdapter\) AddRecord\(ctx context.Context, record domain.DnsRecord\) error](<#DnsAdapter.AddRecord>)
+  - [func \(a \*DnsAdapter\) ConfigureSSH\(guestUser func\(\) string, keyPath string\)](<#DnsAdapter.ConfigureSSH>)
   - [func \(a \*DnsAdapter\) ListRecords\(ctx context.Context\) \(\[\]domain.DnsRecord, error\)](<#DnsAdapter.ListRecords>)
   - [func \(a \*DnsAdapter\) RemoveRecord\(ctx context.Context, hostname string\) error](<#DnsAdapter.RemoveRecord>)
   - [func \(a \*DnsAdapter\) Resolve\(ctx context.Context, hostname string\) \(netip.Addr, error\)](<#DnsAdapter.Resolve>)
 
 
 <a name="DnsAdapter"></a>
-## type [DnsAdapter](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/bind9/bind9.go#L22-L29>)
+## type [DnsAdapter](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/bind9/bind9.go#L23-L32>)
 
 DnsAdapter gestiona la actualización dinámica de nombres en Bind9.
 
@@ -31,7 +32,7 @@ type DnsAdapter struct {
 ```
 
 <a name="NewDnsAdapter"></a>
-### func [NewDnsAdapter](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/bind9/bind9.go#L32>)
+### func [NewDnsAdapter](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/bind9/bind9.go#L43>)
 
 ```go
 func NewDnsAdapter(executor ports.Executor, serverIP string, zone string, logger ports.EventLogger) *DnsAdapter
@@ -40,7 +41,7 @@ func NewDnsAdapter(executor ports.Executor, serverIP string, zone string, logger
 NewDnsAdapter crea una nueva instancia de DnsAdapter apuntando al servidor Bind9.
 
 <a name="NewDnsAdapterWithNetwork"></a>
-### func [NewDnsAdapterWithNetwork](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/bind9/bind9.go#L43>)
+### func [NewDnsAdapterWithNetwork](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/bind9/bind9.go#L54>)
 
 ```go
 func NewDnsAdapterWithNetwork(executor ports.Executor, zone string, logger ports.EventLogger, network ports.NetworkInfoProvider) *DnsAdapter
@@ -49,7 +50,7 @@ func NewDnsAdapterWithNetwork(executor ports.Executor, zone string, logger ports
 NewDnsAdapterWithNetwork deriva la IP del servidor DNS de la red host\-only real.
 
 <a name="DnsAdapter.AddRecord"></a>
-### func \(\*DnsAdapter\) [AddRecord](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/bind9/bind9.go#L69>)
+### func \(\*DnsAdapter\) [AddRecord](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/bind9/bind9.go#L80>)
 
 ```go
 func (a *DnsAdapter) AddRecord(ctx context.Context, record domain.DnsRecord) error
@@ -57,8 +58,17 @@ func (a *DnsAdapter) AddRecord(ctx context.Context, record domain.DnsRecord) err
 
 AddRecord registra dinámicamente un registro tipo A mediante el protocolo RFC 2136 con nsupdate.
 
+<a name="DnsAdapter.ConfigureSSH"></a>
+### func \(\*DnsAdapter\) [ConfigureSSH](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/bind9/bind9.go#L37>)
+
+```go
+func (a *DnsAdapter) ConfigureSSH(guestUser func() string, keyPath string)
+```
+
+ConfigureSSH configura el usuario y la clave privada SSH del laboratorio para ejecutar nsupdate y dig dentro de la máquina DNS cuando el anfitrión no dispone de las utilidades de Bind9 instaladas localmente.
+
 <a name="DnsAdapter.ListRecords"></a>
-### func \(\*DnsAdapter\) [ListRecords](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/bind9/bind9.go#L171>)
+### func \(\*DnsAdapter\) [ListRecords](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/bind9/bind9.go#L211>)
 
 ```go
 func (a *DnsAdapter) ListRecords(ctx context.Context) ([]domain.DnsRecord, error)
@@ -67,7 +77,7 @@ func (a *DnsAdapter) ListRecords(ctx context.Context) ([]domain.DnsRecord, error
 ListRecords consulta los registros A de la zona administrada mediante transferencia AXFR \(dig\). Si la consulta no está disponible, retorna una lista vacía sin error para preservar el contrato de la API.
 
 <a name="DnsAdapter.RemoveRecord"></a>
-### func \(\*DnsAdapter\) [RemoveRecord](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/bind9/bind9.go#L119>)
+### func \(\*DnsAdapter\) [RemoveRecord](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/bind9/bind9.go#L159>)
 
 ```go
 func (a *DnsAdapter) RemoveRecord(ctx context.Context, hostname string) error
@@ -76,7 +86,7 @@ func (a *DnsAdapter) RemoveRecord(ctx context.Context, hostname string) error
 RemoveRecord elimina el registro A del host en la zona DNS.
 
 <a name="DnsAdapter.Resolve"></a>
-### func \(\*DnsAdapter\) [Resolve](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/bind9/bind9.go#L143>)
+### func \(\*DnsAdapter\) [Resolve](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/bind9/bind9.go#L183>)
 
 ```go
 func (a *DnsAdapter) Resolve(ctx context.Context, hostname string) (netip.Addr, error)

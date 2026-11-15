@@ -148,15 +148,11 @@ func (p *Provisioner) ensureDHCP(ctx context.Context, network domain.NetworkConf
 	}
 	networkName := "HostInterfaceNetworking-" + network.Interface
 	exists := strings.Contains(out, networkName)
-	if exists {
-		// Se recrea para descartar reservas de máquinas que ya no existen.
-		if _, _, err := p.executor.Execute(ctx, vboxBinary, "dhcpserver", "remove", "--interface="+network.Interface); err != nil {
-			return fmt.Errorf("no se pudo limpiar el DHCP de %s: %w", network.Interface, err)
-		}
-	}
 
+	// Se modifica en sitio: recrear el servidor borra la tabla de concesiones y
+	// hace que una VM en ejecución y una nueva reciban la misma IP.
 	args := []string{
-		"dhcpserver", "add", "--interface=" + network.Interface,
+		"dhcpserver", "modify", "--interface=" + network.Interface,
 		"--server-ip=" + network.HostIP,
 		"--netmask=" + network.Netmask,
 		"--lower-ip=" + network.DHCPLower,
@@ -164,6 +160,9 @@ func (p *Provisioner) ensureDHCP(ctx context.Context, network domain.NetworkConf
 		"--suppress-opt=3", // sin puerta de enlace en la red host-only
 		"--suppress-opt=6", // sin DNS: los invitados usan la NIC NAT durante la preparación
 		"--enable",
+	}
+	if !exists {
+		args[1] = "add"
 	}
 	_, err = p.vbox(ctx, args...)
 	return err
@@ -518,6 +517,11 @@ func (p *Provisioner) ResetEnvironment(ctx context.Context, cfg domain.SetupConf
 			_ = os.Remove(filepath.Join(cfg.SeedDir, vmName+suffix))
 		}
 		_ = os.RemoveAll(filepath.Join(cfg.SeedDir, vmName))
+	}
+	// Un reinicio completo sí limpia el DHCP: las VM se han eliminado y sus
+	// concesiones ya no son válidas.
+	if network, err := p.Network(ctx); err == nil && network.Interface != "" {
+		_, _, _ = p.executor.Execute(ctx, vboxBinary, "dhcpserver", "remove", "--interface="+network.Interface)
 	}
 	return nil
 }

@@ -25,6 +25,7 @@ func (r *actionRepo) Save(_ context.Context, inst domain.Instance) error {
 	r.instance = inst
 	return nil
 }
+
 func (r *actionRepo) FindByID(_ context.Context, id string) (*domain.Instance, error) {
 	if r.err != nil {
 		return nil, r.err
@@ -35,6 +36,7 @@ func (r *actionRepo) FindByID(_ context.Context, id string) (*domain.Instance, e
 	copy := r.instance
 	return &copy, nil
 }
+
 func (r *actionRepo) FindAll(context.Context) ([]domain.Instance, error) {
 	if r.err != nil {
 		return nil, r.err

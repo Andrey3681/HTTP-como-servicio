@@ -133,10 +133,10 @@ func TestEnsureNetworkDerivesFromExistingInterface(t *testing.T) {
 	if exec.contains("hostonlyif ipconfig") {
 		t.Error("must not reconfigure host interfaces (requires root)")
 	}
-	if !exec.contains("dhcpserver remove --interface=vboxnet1") {
-		t.Errorf("expected stale DHCP reservations to be cleared, got %v", exec.calls)
+	if exec.contains("dhcpserver remove --interface=vboxnet1") {
+		t.Error("no se debe recrear el DHCP: se pierden las concesiones activas")
 	}
-	if !exec.contains("dhcpserver add --interface=vboxnet1 --server-ip=192.168.57.1") {
+	if !exec.contains("dhcpserver modify --interface=vboxnet1 --server-ip=192.168.57.1") {
 		t.Errorf("expected DHCP configuration with the derived network, got %v", exec.calls)
 	}
 	if !exec.contains("--lower-ip=192.168.57.100 --upper-ip=192.168.57.199") {

@@ -19,6 +19,7 @@ Package ports define los contratos de interfaz que comunican el núcleo de la ap
 - [type ImageStore](<#ImageStore>)
 - [type InstanceOperator](<#InstanceOperator>)
 - [type NetworkInfoProvider](<#NetworkInfoProvider>)
+- [type PowerStateInspector](<#PowerStateInspector>)
 - [type ProgressFunc](<#ProgressFunc>)
 - [type Repository](<#Repository>)
 - [type SetupProvisioner](<#SetupProvisioner>)
@@ -155,6 +156,18 @@ NetworkInfoProvider expone la red host\-only ya detectada.
 ```go
 type NetworkInfoProvider interface {
     Network() domain.NetworkConfig
+}
+```
+
+<a name="PowerStateInspector"></a>
+## type [PowerStateInspector](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/ports/hypervisor.go#L35-L38>)
+
+PowerStateInspector permite consultar qué máquinas virtuales se encuentran realmente en ejecución en el hipervisor para sincronizar el inventario.
+
+```go
+type PowerStateInspector interface {
+    // RunningVMs retorna el conjunto de nombres de máquinas virtuales en ejecución.
+    RunningVMs(ctx context.Context) (map[string]bool, error)
 }
 ```
 

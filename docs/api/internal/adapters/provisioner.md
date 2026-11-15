@@ -43,7 +43,7 @@ Package provisioner implementa la preparación real del laboratorio sobre VBoxMa
 
 
 <a name="IsMultiattach"></a>
-## func [IsMultiattach](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L727>)
+## func [IsMultiattach](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L732>)
 
 ```go
 func IsMultiattach(output string) bool
@@ -52,7 +52,7 @@ func IsMultiattach(output string) bool
 IsMultiattach indica si showmediuminfo reporta un disco multiconexión.
 
 <a name="ParseCreatedInterface"></a>
-## func [ParseCreatedInterface](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L662>)
+## func [ParseCreatedInterface](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L666>)
 
 ```go
 func ParseCreatedInterface(output string) string
@@ -61,7 +61,7 @@ func ParseCreatedInterface(output string) string
 ParseCreatedInterface extrae el nombre de la interfaz recién creada.
 
 <a name="ParseMachineReadableValue"></a>
-## func [ParseMachineReadableValue](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L677>)
+## func [ParseMachineReadableValue](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L681>)
 
 ```go
 func ParseMachineReadableValue(output, key string) string
@@ -70,7 +70,7 @@ func ParseMachineReadableValue(output, key string) string
 ParseMachineReadableValue retorna el valor de una clave en salida machinereadable.
 
 <a name="ParseMediumPath"></a>
-## func [ParseMediumPath](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L711>)
+## func [ParseMediumPath](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L716>)
 
 ```go
 func ParseMediumPath(output, uuid string) string
@@ -79,7 +79,7 @@ func ParseMediumPath(output, uuid string) string
 ParseMediumPath busca en "list hdds" la ruta del medio con el UUID indicado.
 
 <a name="ParseParentUUID"></a>
-## func [ParseParentUUID](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L695>)
+## func [ParseParentUUID](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L700>)
 
 ```go
 func ParseParentUUID(output string) string
@@ -88,7 +88,7 @@ func ParseParentUUID(output string) string
 ParseParentUUID devuelve el UUID del medio padre, o "" si es un medio base.
 
 <a name="ParseVMNames"></a>
-## func [ParseVMNames](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L612>)
+## func [ParseVMNames](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L616>)
 
 ```go
 func ParseVMNames(output string) []string
@@ -97,7 +97,7 @@ func ParseVMNames(output string) []string
 ParseVMNames extrae los nombres de la salida de VBoxManage list vms.
 
 <a name="HostOnlyInterface"></a>
-## type [HostOnlyInterface](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L629-L633>)
+## type [HostOnlyInterface](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L633-L637>)
 
 HostOnlyInterface describe una interfaz host\-only reportada por VirtualBox.
 
@@ -110,7 +110,7 @@ type HostOnlyInterface struct {
 ```
 
 <a name="ParseHostOnlyInterfaces"></a>
-### func [ParseHostOnlyInterfaces](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L636>)
+### func [ParseHostOnlyInterfaces](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L640>)
 
 ```go
 func ParseHostOnlyInterfaces(output string) []HostOnlyInterface
@@ -177,7 +177,7 @@ func NewProvisioner(executor ports.Executor) *Provisioner
 NewProvisioner crea el aprovisionador con el ejecutor de procesos indicado.
 
 <a name="Provisioner.ConvertToBaseVDI"></a>
-### func \(\*Provisioner\) [ConvertToBaseVDI](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L174>)
+### func \(\*Provisioner\) [ConvertToBaseVDI](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L173>)
 
 ```go
 func (p *Provisioner) ConvertToBaseVDI(ctx context.Context, _ domain.SetupConfig, rawPath, baseVDI string, progress ports.ProgressFunc) error
@@ -186,7 +186,7 @@ func (p *Provisioner) ConvertToBaseVDI(ctx context.Context, _ domain.SetupConfig
 ConvertToBaseVDI convierte la imagen raw en un VDI base reutilizable una sola vez. Si el VDI ya existe, no hace nada.
 
 <a name="Provisioner.CreateSeedISO"></a>
-### func \(\*Provisioner\) [CreateSeedISO](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L299>)
+### func \(\*Provisioner\) [CreateSeedISO](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L298>)
 
 ```go
 func (p *Provisioner) CreateSeedISO(ctx context.Context, cfg domain.SetupConfig, vmName, userData, metaData string) (string, error)
@@ -195,7 +195,7 @@ func (p *Provisioner) CreateSeedISO(ctx context.Context, cfg domain.SetupConfig,
 CreateSeedISO genera la ISO NoCloud con user\-data y meta\-data. dentro de la ISO los archivos deben llamarse exactamente así; la ISO puede tener otro nombre.
 
 <a name="Provisioner.CreateVM"></a>
-### func \(\*Provisioner\) [CreateVM](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L189>)
+### func \(\*Provisioner\) [CreateVM](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L188>)
 
 ```go
 func (p *Provisioner) CreateVM(ctx context.Context, cfg domain.SetupConfig, vmName, netInterface, baseVDI string) (string, error)
@@ -231,7 +231,7 @@ func (p *Provisioner) Inspect(ctx context.Context, cfg domain.SetupConfig) (doma
 Inspect detecta el estado actual del host sin modificarlo.
 
 <a name="Provisioner.MarkBaseMultiattach"></a>
-### func \(\*Provisioner\) [MarkBaseMultiattach](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L449>)
+### func \(\*Provisioner\) [MarkBaseMultiattach](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L448>)
 
 ```go
 func (p *Provisioner) MarkBaseMultiattach(ctx context.Context, cfg domain.SetupConfig, vmName string) (string, error)
@@ -249,7 +249,7 @@ func (p *Provisioner) Network(ctx context.Context) (domain.NetworkConfig, error)
 Network describe la interfaz host\-only del proyecto sin modificarla.
 
 <a name="Provisioner.ReserveDHCPAddress"></a>
-### func \(\*Provisioner\) [ReserveDHCPAddress](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L434>)
+### func \(\*Provisioner\) [ReserveDHCPAddress](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L433>)
 
 ```go
 func (p *Provisioner) ReserveDHCPAddress(ctx context.Context, _ domain.SetupConfig, vmName, ip string) error
@@ -258,7 +258,7 @@ func (p *Provisioner) ReserveDHCPAddress(ctx context.Context, _ domain.SetupConf
 ReserveDHCPAddress fija la IP indicada a la MAC de la VM.
 
 <a name="Provisioner.ResetEnvironment"></a>
-### func \(\*Provisioner\) [ResetEnvironment](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L506>)
+### func \(\*Provisioner\) [ResetEnvironment](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L505>)
 
 ```go
 func (p *Provisioner) ResetEnvironment(ctx context.Context, cfg domain.SetupConfig) error
@@ -267,7 +267,7 @@ func (p *Provisioner) ResetEnvironment(ctx context.Context, cfg domain.SetupConf
 ResetEnvironment elimina las VMs base y sus semillas para reiniciar la preparación. Conserva la imagen descargada y la red.
 
 <a name="Provisioner.RunGuestScript"></a>
-### func \(\*Provisioner\) [RunGuestScript](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L400>)
+### func \(\*Provisioner\) [RunGuestScript](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L399>)
 
 ```go
 func (p *Provisioner) RunGuestScript(ctx context.Context, cfg domain.SetupConfig, vmName, localScript string, args ...string) (string, error)
@@ -294,7 +294,7 @@ func (p *Provisioner) RunScriptSSH(ctx context.Context, cfg domain.SetupConfig, 
 RunScriptSSH copia un script al invitado por SSH y lo ejecuta como root con los argumentos indicados, retornando la salida combinada del comando.
 
 <a name="Provisioner.StartSeedBoot"></a>
-### func \(\*Provisioner\) [StartSeedBoot](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L321>)
+### func \(\*Provisioner\) [StartSeedBoot](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L320>)
 
 ```go
 func (p *Provisioner) StartSeedBoot(ctx context.Context, _ domain.SetupConfig, vmName, seedISO string) error
@@ -303,7 +303,7 @@ func (p *Provisioner) StartSeedBoot(ctx context.Context, _ domain.SetupConfig, v
 StartSeedBoot conecta la ISO semilla y arranca la máquina en headless.
 
 <a name="Provisioner.WaitGuestReady"></a>
-### func \(\*Provisioner\) [WaitGuestReady](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L342>)
+### func \(\*Provisioner\) [WaitGuestReady](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/provisioner/provisioner.go#L341>)
 
 ```go
 func (p *Provisioner) WaitGuestReady(ctx context.Context, vmName string, timeout time.Duration, progress ...ports.ProgressFunc) error

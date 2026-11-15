@@ -67,9 +67,18 @@ func (h *HypervisorAdapter) CreateInstanceFromBase(ctx context.Context, name str
 	log.Printf("[VBox] Registrando máquina virtual '%s'", name)
 	h.log("INFO", "Creando máquina virtual", map[string]any{"instancia": name, "base_disk": baseDiskPath})
 	// 1. VBoxManage createvm --name <name> --ostype Debian_64 --register
-	_, _, err := h.executor.Execute(ctx, h.vboxBinary, "createvm", "--name", name, "--ostype", "Debian_64", "--register")
+	// Si quedó una carpeta de un intento anterior (createvm falló después de
+	// escribir el .vbox), se descarta y se reintenta una vez.
+	_, stderr, err := h.executor.Execute(ctx, h.vboxBinary, "createvm", "--name", name, "--ostype", "Debian_64", "--register")
+	if err != nil && strings.Contains(string(stderr), "already exists") {
+		_, _, _ = h.executor.Execute(ctx, h.vboxBinary, "unregistervm", name, "--delete")
+		if folder, ferr := h.defaultMachineFolder(ctx); ferr == nil {
+			_ = os.RemoveAll(filepath.Join(folder, name))
+		}
+		_, stderr, err = h.executor.Execute(ctx, h.vboxBinary, "createvm", "--name", name, "--ostype", "Debian_64", "--register")
+	}
 	if err != nil {
-		return nil, fmt.Errorf("fallo createvm: %w", err)
+		return nil, fmt.Errorf("fallo createvm: %w (%s)", err, strings.TrimSpace(string(stderr)))
 	}
 
 	// 2. VBoxManage modifyvm <name> --memory 1024 --cpus 1 --nic1 hostonly --hostonlyadapter1 <if>
@@ -245,6 +254,21 @@ func (h *HypervisorAdapter) attachInstanceSeed(ctx context.Context, name string)
 		return fmt.Errorf("fallo conectando la semilla de %s: %w", name, err)
 	}
 	return nil
+}
+
+// defaultMachineFolder retorna la carpeta por defecto de VirtualBox. Se invoca
+// con el mutex del adaptador ya tomado, por eso no usa runLocked.
+func (h *HypervisorAdapter) defaultMachineFolder(ctx context.Context) (string, error) {
+	out, _, err := h.executor.Execute(ctx, h.vboxBinary, "list", "systemproperties")
+	if err != nil {
+		return "", err
+	}
+	for _, line := range strings.Split(string(out), "\n") {
+		if strings.HasPrefix(line, "Default machine folder:") {
+			return strings.TrimSpace(strings.TrimPrefix(line, "Default machine folder:")), nil
+		}
+	}
+	return "", fmt.Errorf("VirtualBox no reporta la carpeta de máquinas")
 }
 
 // resolveHostOnlyInterface ubica la interfaz host-only del proyecto por su IP.
@@ -424,7 +448,14 @@ func (h *HypervisorAdapter) arpScanIP(ctx context.Context, iface, mac string) (n
 		}(target)
 	}
 	wg.Wait()
-	return h.neighborIP(ctx, iface, mac)
+	// La resolución ARP puede tardar unos milisegundos tras el sondeo.
+	for i := 0; i < 3; i++ {
+		time.Sleep(200 * time.Millisecond)
+		if ip, err := h.neighborIP(ctx, iface, mac); err == nil {
+			return ip, nil
+		}
+	}
+	return netip.Addr{}, fmt.Errorf("la MAC %s no apareció en la tabla de vecinos tras el barrido", mac)
 }
 
 // vmMacAddress lee la MAC del primer adaptador de la VM.

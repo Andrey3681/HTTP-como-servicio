@@ -14,8 +14,10 @@ Package vbox implementa el adaptador de VirtualBox controlando VBoxManage con se
 - [func ParseFirstProjectInterface\(output string\) string](<#ParseFirstProjectInterface>)
 - [func ParseGuestIP\(output string\) \(netip.Addr, error\)](<#ParseGuestIP>)
 - [func ParseHostOnlyInterfaceByIP\(output, ip string\) string](<#ParseHostOnlyInterfaceByIP>)
+- [func ParseHostOnlyInterfaceIP\(output, ifaceName string\) string](<#ParseHostOnlyInterfaceIP>)
 - [func ParseMachineValue\(output, key string\) string](<#ParseMachineValue>)
 - [func ParseNeighborIP\(output, mac string\) \(netip.Addr, error\)](<#ParseNeighborIP>)
+- [func ParseRunningVMs\(output string\) map\[string\]bool](<#ParseRunningVMs>)
 - [func ParseVMMac\(output string\) string](<#ParseVMMac>)
 - [func ParseWindowsARP\(output, mac string\) \(netip.Addr, error\)](<#ParseWindowsARP>)
 - [type HypervisorAdapter](<#HypervisorAdapter>)
@@ -24,6 +26,7 @@ Package vbox implementa el adaptador de VirtualBox controlando VBoxManage con se
   - [func \(h \*HypervisorAdapter\) CreateInstanceFromBase\(ctx context.Context, name string, baseDiskPath string\) \(\*domain.Instance, error\)](<#HypervisorAdapter.CreateInstanceFromBase>)
   - [func \(h \*HypervisorAdapter\) Destroy\(ctx context.Context, vmName string\) error](<#HypervisorAdapter.Destroy>)
   - [func \(h \*HypervisorAdapter\) GetIPAddress\(ctx context.Context, vmName string\) \(netip.Addr, error\)](<#HypervisorAdapter.GetIPAddress>)
+  - [func \(h \*HypervisorAdapter\) RunningVMs\(ctx context.Context\) \(map\[string\]bool, error\)](<#HypervisorAdapter.RunningVMs>)
   - [func \(h \*HypervisorAdapter\) Start\(ctx context.Context, vmName string\) error](<#HypervisorAdapter.Start>)
   - [func \(h \*HypervisorAdapter\) Stop\(ctx context.Context, vmName string\) error](<#HypervisorAdapter.Stop>)
 
@@ -64,8 +67,17 @@ func ParseHostOnlyInterfaceByIP(output, ip string) string
 
 ParseHostOnlyInterfaceByIP localiza el nombre de la interfaz host\-only con la IP indicada.
 
+<a name="ParseHostOnlyInterfaceIP"></a>
+## func [ParseHostOnlyInterfaceIP](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/vbox/parser.go#L152>)
+
+```go
+func ParseHostOnlyInterfaceIP(output, ifaceName string) string
+```
+
+ParseHostOnlyInterfaceIP retorna la dirección IPv4 asociada a la interfaz host\-only indicada en la salida de 'VBoxManage list hostonlyifs'.
+
 <a name="ParseMachineValue"></a>
-## func [ParseMachineValue](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/vbox/parser.go#L151>)
+## func [ParseMachineValue](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/vbox/parser.go#L170>)
 
 ```go
 func ParseMachineValue(output, key string) string
@@ -81,6 +93,15 @@ func ParseNeighborIP(output, mac string) (netip.Addr, error)
 ```
 
 ParseNeighborIP busca en la tabla de vecinos la IP asociada a una MAC.
+
+<a name="ParseRunningVMs"></a>
+## func [ParseRunningVMs](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/vbox/parser.go#L190>)
+
+```go
+func ParseRunningVMs(output string) map[string]bool
+```
+
+ParseRunningVMs extrae el conjunto de nombres de VMs en ejecución a partir de la salida de 'VBoxManage list runningvms'.
 
 <a name="ParseVMMac"></a>
 ## func [ParseVMMac](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/vbox/parser.go#L37>)
@@ -139,7 +160,7 @@ func (h *HypervisorAdapter) CreateInstanceFromBase(ctx context.Context, name str
 CreateInstanceFromBase crea una máquina virtual enlazando el disco multiconexión base.
 
 <a name="HypervisorAdapter.Destroy"></a>
-### func \(\*HypervisorAdapter\) [Destroy](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/vbox/vbox.go#L443>)
+### func \(\*HypervisorAdapter\) [Destroy](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/vbox/vbox.go#L503>)
 
 ```go
 func (h *HypervisorAdapter) Destroy(ctx context.Context, vmName string) error
@@ -148,7 +169,7 @@ func (h *HypervisorAdapter) Destroy(ctx context.Context, vmName string) error
 Destroy destruye la VM y elimina todos sus archivos.
 
 <a name="HypervisorAdapter.GetIPAddress"></a>
-### func \(\*HypervisorAdapter\) [GetIPAddress](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/vbox/vbox.go#L280>)
+### func \(\*HypervisorAdapter\) [GetIPAddress](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/vbox/vbox.go#L328>)
 
 ```go
 func (h *HypervisorAdapter) GetIPAddress(ctx context.Context, vmName string) (netip.Addr, error)
@@ -156,8 +177,17 @@ func (h *HypervisorAdapter) GetIPAddress(ctx context.Context, vmName string) (ne
 
 GetIPAddress obtiene la dirección IP de la VM. La imagen cloud no incluye el servicio de usuario de Guest Additions, así que la fuente principal es la concesión DHCP consultada por MAC; guestproperty queda como último recurso.
 
+<a name="HypervisorAdapter.RunningVMs"></a>
+### func \(\*HypervisorAdapter\) [RunningVMs](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/vbox/vbox.go#L317>)
+
+```go
+func (h *HypervisorAdapter) RunningVMs(ctx context.Context) (map[string]bool, error)
+```
+
+RunningVMs consulta a VirtualBox la lista de máquinas virtuales actualmente en ejecución.
+
 <a name="HypervisorAdapter.Start"></a>
-### func \(\*HypervisorAdapter\) [Start](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/vbox/vbox.go#L264>)
+### func \(\*HypervisorAdapter\) [Start](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/vbox/vbox.go#L303>)
 
 ```go
 func (h *HypervisorAdapter) Start(ctx context.Context, vmName string) error
@@ -166,7 +196,7 @@ func (h *HypervisorAdapter) Start(ctx context.Context, vmName string) error
 Start inicia la máquina virtual en modo headless.
 
 <a name="HypervisorAdapter.Stop"></a>
-### func \(\*HypervisorAdapter\) [Stop](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/vbox/vbox.go#L433>)
+### func \(\*HypervisorAdapter\) [Stop](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/adapters/vbox/vbox.go#L493>)
 
 ```go
 func (h *HypervisorAdapter) Stop(ctx context.Context, vmName string) error

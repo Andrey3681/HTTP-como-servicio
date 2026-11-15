@@ -95,7 +95,7 @@ func NewInstanceService(repo ports.Repository, hypervisor ports.Hypervisor, dnsP
 NewInstanceService crea una nueva instancia del servicio de gestión.
 
 <a name="InstanceService.Activate"></a>
-### func \(\*InstanceService\) [Activate](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L76>)
+### func \(\*InstanceService\) [Activate](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L126>)
 
 ```go
 func (s *InstanceService) Activate(ctx context.Context, id string) (*domain.Instance, error)
@@ -104,7 +104,7 @@ func (s *InstanceService) Activate(ctx context.Context, id string) (*domain.Inst
 Activate enciende una instancia detenida, actualiza su IP y refresca el registro DNS si la dirección cambió.
 
 <a name="InstanceService.Deactivate"></a>
-### func \(\*InstanceService\) [Deactivate](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L122>)
+### func \(\*InstanceService\) [Deactivate](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L177>)
 
 ```go
 func (s *InstanceService) Deactivate(ctx context.Context, id string) (*domain.Instance, error)
@@ -113,7 +113,7 @@ func (s *InstanceService) Deactivate(ctx context.Context, id string) (*domain.In
 Deactivate apaga una instancia activa sin destruirla ni eliminar su DNS.
 
 <a name="InstanceService.DeleteInstance"></a>
-### func \(\*InstanceService\) [DeleteInstance](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L233>)
+### func \(\*InstanceService\) [DeleteInstance](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L293>)
 
 ```go
 func (s *InstanceService) DeleteInstance(ctx context.Context, id string) error
@@ -122,7 +122,7 @@ func (s *InstanceService) DeleteInstance(ctx context.Context, id string) error
 DeleteInstance apaga y destruye la máquina virtual, remueve el registro DNS y elimina el registro del inventario.
 
 <a name="InstanceService.GetAccess"></a>
-### func \(\*InstanceService\) [GetAccess](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L199>)
+### func \(\*InstanceService\) [GetAccess](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L259>)
 
 ```go
 func (s *InstanceService) GetAccess(ctx context.Context, id string) (domain.InstanceAccess, error)
@@ -131,25 +131,25 @@ func (s *InstanceService) GetAccess(ctx context.Context, id string) (domain.Inst
 GetAccess compone los datos y el comando SSH para acceder a la instancia.
 
 <a name="InstanceService.GetInstance"></a>
-### func \(\*InstanceService\) [GetInstance](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L70>)
+### func \(\*InstanceService\) [GetInstance](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L83>)
 
 ```go
 func (s *InstanceService) GetInstance(ctx context.Context, id string) (*domain.Instance, error)
 ```
 
-GetInstance busca una instancia por su identificador único.
+GetInstance busca una instancia por su identificador único y sincroniza su estado real de encendido con el hipervisor.
 
 <a name="InstanceService.ListInstances"></a>
-### func \(\*InstanceService\) [ListInstances](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L65>)
+### func \(\*InstanceService\) [ListInstances](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L66>)
 
 ```go
 func (s *InstanceService) ListInstances(ctx context.Context) ([]domain.Instance, error)
 ```
 
-ListInstances retorna todas las instancias registradas en el inventario.
+ListInstances retorna todas las instancias registradas en el inventario, sincronizando su estado real de encendido con el hipervisor si está disponible.
 
 <a name="InstanceService.Redeploy"></a>
-### func \(\*InstanceService\) [Redeploy](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L173>)
+### func \(\*InstanceService\) [Redeploy](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L233>)
 
 ```go
 func (s *InstanceService) Redeploy(ctx context.Context, id string, content io.ReaderAt, size int64) (*domain.Instance, error)
@@ -158,7 +158,7 @@ func (s *InstanceService) Redeploy(ctx context.Context, id string, content io.Re
 Redeploy reemplaza el contenido web de una instancia activa sin recrear la VM ni el registro DNS.
 
 <a name="InstanceService.RestartServices"></a>
-### func \(\*InstanceService\) [RestartServices](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L150>)
+### func \(\*InstanceService\) [RestartServices](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L210>)
 
 ```go
 func (s *InstanceService) RestartServices(ctx context.Context, id string) (*domain.Instance, error)
