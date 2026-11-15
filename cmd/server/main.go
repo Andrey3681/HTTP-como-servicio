@@ -20,6 +20,7 @@ import (
 	"github.com/Andrey3681/httpaas-orchestrator/internal/adapters/bind9"
 	"github.com/Andrey3681/httpaas-orchestrator/internal/adapters/deployer"
 	"github.com/Andrey3681/httpaas-orchestrator/internal/adapters/filestore"
+	"github.com/Andrey3681/httpaas-orchestrator/internal/adapters/hostdns"
 	"github.com/Andrey3681/httpaas-orchestrator/internal/adapters/localproc"
 	"github.com/Andrey3681/httpaas-orchestrator/internal/adapters/provisioner"
 	"github.com/Andrey3681/httpaas-orchestrator/internal/adapters/vbox"
@@ -123,6 +124,7 @@ func main() {
 	// 5. Inicializar manejadores HTTP
 	instanceHandler := handlers.NewInstanceHandler(orchestrator, instanceService, logBroker)
 	dnsHandler := handlers.NewDnsHandler(dns, *domainZone, logBroker)
+	dnsHandler.SetHostDNS(setupService, hostdns.New(executor))
 	logsHandler := handlers.NewLogsHandler(logBroker, shutdown)
 
 	// 6. Configurar enrutador y montar endpoints
@@ -140,6 +142,7 @@ func main() {
 	mux.HandleFunc("/api/instancias", instanceHandler.HandleInstances)
 	mux.HandleFunc("/api/dns/registros", dnsHandler.HandleRecords)
 	mux.HandleFunc("/api/dns/anfitrion", dnsHandler.HandleHostResolve)
+	mux.HandleFunc("/api/dns/anfitrion/configurar", dnsHandler.HandleConfigureHost)
 	mux.HandleFunc("/api/salud", dnsHandler.HandleHealth)
 
 	// Servir archivos estáticos del dashboard (web/)

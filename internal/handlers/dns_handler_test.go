@@ -6,6 +6,7 @@ package handlers_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
@@ -171,4 +172,67 @@ func TestDnsHandler_HostResolve(t *testing.T) {
 			t.Errorf("el mensaje debe explicar la configuración: %q", body.Mensaje)
 		}
 	})
+}
+
+type fakeNetwork struct{ cfg domain.NetworkConfig }
+
+func (f fakeNetwork) Network() domain.NetworkConfig { return f.cfg }
+
+type fakeHostDNS struct {
+	iface, ip string
+	err       error
+}
+
+func (f *fakeHostDNS) Configure(_ context.Context, iface, dnsIP string) error {
+	f.iface, f.ip = iface, dnsIP
+	return f.err
+}
+
+func TestDnsHandler_ConfigureHost(t *testing.T) {
+	handler := handlers.NewDnsHandler(nil, "cloud.local", nil)
+	dns := &fakeHostDNS{}
+	handler.SetHostDNS(fakeNetwork{cfg: domain.NetworkConfig{Interface: "vboxnet1", DNSIP: "192.168.57.10"}}, dns)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/dns/anfitrion/configurar", nil)
+	rec := httptest.NewRecorder()
+	handler.HandleConfigureHost(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (%s)", rec.Code, rec.Body.String())
+	}
+	if dns.iface != "vboxnet1" || dns.ip != "192.168.57.10" {
+		t.Errorf("unexpected configuration: %s %s", dns.iface, dns.ip)
+	}
+}
+
+func TestDnsHandler_ConfigureHostRequiresSetup(t *testing.T) {
+	handler := handlers.NewDnsHandler(nil, "cloud.local", nil)
+	handler.SetHostDNS(fakeNetwork{}, &fakeHostDNS{})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/dns/anfitrion/configurar", nil)
+	rec := httptest.NewRecorder()
+	handler.HandleConfigureHost(rec, req)
+
+	if rec.Code != http.StatusConflict {
+		t.Errorf("expected 409 without a network, got %d", rec.Code)
+	}
+}
+
+func TestDnsHandler_ConfigureHostReportsAuthorizationError(t *testing.T) {
+	handler := handlers.NewDnsHandler(nil, "cloud.local", nil)
+	handler.SetHostDNS(
+		fakeNetwork{cfg: domain.NetworkConfig{Interface: "vboxnet1", DNSIP: "192.168.57.10"}},
+		&fakeHostDNS{err: errors.New("autorización cancelada o no disponible")},
+	)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/dns/anfitrion/configurar", nil)
+	rec := httptest.NewRecorder()
+	handler.HandleConfigureHost(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "autorización cancelada") {
+		t.Errorf("expected the authorization message, got %s", rec.Body.String())
+	}
 }

@@ -20,6 +20,7 @@ Este documento identifica de forma exhaustiva los endpoints HTTP expuestos por e
 | 5 | `DELETE` | `/api/instancias/{id}` | Eliminar instancia (VM, DNS, inventario). | path `id` | `200` `{mensaje}` | `200`, `400`, `404`, `405`, `500` | Existe |
 | 6 | `GET` | `/api/dns/registros` | Consultar registros A activos en la zona DNS administrada. | — | `200` `{zona, registros:[{nombre,tipo,ip,ttl}]}` | `200`, `405` | Existe |
 | 6b | `GET` | `/api/dns/anfitrion` | Comprobar si el resolver del anfitrión resuelve un nombre de la zona. | query `nombre` (def. `ns.<zona>`) | `200` `{resuelve, ip, mensaje}` | `200`, `405` | Existe |
+| 6c | `POST` | `/api/dns/anfitrion/configurar` | Configurar el resolver del anfitrión para `cloud.local` mediante `pkexec` (pide autorización). | — | `200` `{mensaje}` | `200`, `405`, `409`, `500` | Existe |
 | 7 | `GET` | `/api/logs` | Obtener eventos de log recientes (anillo en memoria, filtrable). | query `limit` (1–1000, def. 200), `nivel`, `componente`, `since` (id, exclusivo) | `200` `{datos:[LogEntry], total}` | `200`, `400`, `405` | Existe |
 | 8 | `GET` | `/api/logs/stream` | Stream de eventos de log en tiempo real (SSE), con reanudación. | query `since` o header `Last-Event-ID` | `200` `text/event-stream` (`id:` + `data: <LogEntry JSON>`) | `200`, `405`, `500` | Existe |
 | 9 | `DELETE` | `/api/logs` | Limpiar el anillo de logs del servidor. | — | `200` `{mensaje}` | `200`, `405` | Existe |
@@ -40,6 +41,7 @@ Este documento identifica de forma exhaustiva los endpoints HTTP expuestos por e
 
 ## Notas de rigor
 
+- `POST /api/dns/anfitrion/configurar` ejecuta el configurador del anfitrión con `pkexec`: instala un drop-in persistente de `systemd-resolved` (`Domains=~cloud.local`) y aplica el DNS del laboratorio. Si el usuario cancela la autorización responde `500` con el motivo.
 - `GET /api/dns/anfitrion` consulta con el resolver del propio sistema (`net.LookupHost`) un nombre de la zona; si el anfitrión no usa el DNS del laboratorio, `resuelve` es `false` y `mensaje` explica cómo configurarlo.
 - `GET /api/dns/registros` consulta la zona mediante transferencia AXFR (`dig`) a través de `DnsProvider.ListRecords`; si la consulta no está disponible responde `200` con `registros` vacío para preservar el contrato (degradación explícita, no error).
 - Los handlers validan método HTTP y responden `405` cuando no aplica; los middlewares globales aplican CORS, logging, recuperación de pánicos y **bloqueo de escrituras** (`409`) mientras la configuración inicial no esté completa.

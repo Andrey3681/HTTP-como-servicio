@@ -14,6 +14,7 @@ Package ports define los contratos de interfaz que comunican el núcleo de la ap
 - [type DnsProvider](<#DnsProvider>)
 - [type EventLogger](<#EventLogger>)
 - [type Executor](<#Executor>)
+- [type HostDNS](<#HostDNS>)
 - [type Hypervisor](<#Hypervisor>)
 - [type ImageStore](<#ImageStore>)
 - [type NetworkInfoProvider](<#NetworkInfoProvider>)
@@ -77,6 +78,19 @@ Executor abstrae la invocación de comandos y procesos en el sistema operativo a
 type Executor interface {
     // Execute ejecuta un comando del sistema con sus argumentos y retorna la salida combinada o error.
     Execute(ctx context.Context, command string, args ...string) (stdout []byte, stderr []byte, err error)
+}
+```
+
+<a name="HostDNS"></a>
+## type [HostDNS](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/core/ports/hostdns.go#L10-L14>)
+
+HostDNS configura el resolver del anfitrión para la zona del laboratorio. Requiere privilegios de administrador \(pkexec o ejecución como root\).
+
+```go
+type HostDNS interface {
+    // Configure aplica la configuración persistente para la interfaz e IP del
+    // DNS del laboratorio y la activa de inmediato.
+    Configure(ctx context.Context, iface, dnsIP string) error
 }
 ```
 

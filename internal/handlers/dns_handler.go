@@ -20,6 +20,15 @@ type DnsHandler struct {
 	zone        string
 	logger      ports.EventLogger
 	lookup      func(context.Context, string) ([]string, error)
+	network     ports.NetworkInfoProvider
+	hostDNS     ports.HostDNS
+}
+
+// SetHostDNS inyecta la red del laboratorio y el configurador del resolver del
+// anfitrión (se usa desde /api/dns/anfitrion/configurar).
+func (h *DnsHandler) SetHostDNS(network ports.NetworkInfoProvider, hostDNS ports.HostDNS) {
+	h.network = network
+	h.hostDNS = hostDNS
 }
 
 // NewDnsHandler crea un nuevo DnsHandler para la zona DNS indicada.
@@ -50,6 +59,29 @@ func (h *DnsHandler) HandleHealth(w http.ResponseWriter, r *http.Request) {
 		"vboxmanage": vboxErr == nil,
 		"bind9":      true,
 	})
+}
+
+// HandleConfigureHost configura el resolver del anfitrión para cloud.local
+// (/api/dns/anfitrion/configurar). Usa pkexec, que pide autorización.
+func (h *DnsHandler) HandleConfigureHost(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		Error(w, http.StatusMethodNotAllowed, "Método HTTP no permitido")
+		return
+	}
+	if h.network == nil || h.hostDNS == nil {
+		Error(w, http.StatusConflict, "El entorno aún no está preparado")
+		return
+	}
+	cfg := h.network.Network()
+	if cfg.Interface == "" || cfg.DNSIP == "" {
+		Error(w, http.StatusConflict, "Completa la preparación inicial antes de configurar el DNS")
+		return
+	}
+	if err := h.hostDNS.Configure(r.Context(), cfg.Interface, cfg.DNSIP); err != nil {
+		Error(w, http.StatusInternalServerError, "No se pudo configurar el DNS del anfitrión: "+err.Error())
+		return
+	}
+	JSON(w, http.StatusOK, map[string]any{"mensaje": "DNS del anfitrión configurado para la zona cloud.local"})
 }
 
 // HandleHostResolve comprueba si el resolver del anfitrión resuelve un nombre

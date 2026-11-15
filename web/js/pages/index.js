@@ -153,21 +153,41 @@
     if (instancesFilter) instancesFilter.addEventListener('input', applyFilter);
     async function checkHostDns() {
       var banner = document.getElementById('hostDnsWarning');
+      var text = document.getElementById('hostDnsWarningText');
       if (!banner) return;
       try {
         var res = await fetch('/api/dns/anfitrion');
         var data = await res.json().catch(function () { return {}; });
         if (data && data.resuelve) {
           banner.classList.add('hidden');
-          banner.textContent = '';
+          if (text) text.textContent = '';
         } else {
-          banner.textContent = (data && data.mensaje) || 'El resolver del anfitrión no resuelve la zona cloud.local.';
+          if (text) text.textContent = (data && data.mensaje) || 'El resolver del anfitrión no resuelve la zona cloud.local.';
           banner.classList.remove('hidden');
         }
       } catch (err) {
         banner.classList.add('hidden');
       }
     }
+
+    var configureHostDnsBtn = document.getElementById('configureHostDnsBtn');
+    if (configureHostDnsBtn) configureHostDnsBtn.addEventListener('click', async function () {
+      setBusy(configureHostDnsBtn, true);
+      hideMsg();
+      showLoad(true, 'Configurando el DNS del anfitrión…');
+      try {
+        var res = await fetch('/api/dns/anfitrion/configurar', { method: 'POST' });
+        var data = await res.json().catch(function () { return {}; });
+        if (!res.ok) throw new Error(data.error || 'No se pudo configurar el DNS del anfitrión.');
+        showMsg('DNS del anfitrión configurado. Ya puedes abrir http://<host>.cloud.local.', 'success');
+        await checkHostDns();
+      } catch (err) {
+        showMsg('No se pudo configurar el DNS: ' + err.message, 'error');
+      } finally {
+        setBusy(configureHostDnsBtn, false);
+        showLoad(false);
+      }
+    });
 
     async function fetchInstances() {
       if (!instancesList) return;

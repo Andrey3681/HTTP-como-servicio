@@ -229,6 +229,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorRespuesta'
 
+  /api/dns/anfitrion/configurar:
+    post:
+      operationId: configureHostDns
+      summary: Configurar el resolver DNS del anfitrión
+      description: Instala una configuración persistente de systemd-resolved para la zona cloud.local y aplica el DNS del laboratorio. Usa pkexec, que solicita autorización de administrador.
+      responses:
+        '200':
+          description: Configuración aplicada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+        '409':
+          description: La preparación inicial aún no está completa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+        '500':
+          description: Autorización cancelada o fallo al aplicar la configuración
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+
   /api/dns/registros:
     get:
       operationId: listDnsRecords

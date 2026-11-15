@@ -62,11 +62,13 @@ ssh -i ~/.local/share/httpaas/ssh/id_ed25519 <usuario>@<ip> \
 
 El servidor DNS del laboratorio vive en `192.168.57.10`. Para abrir `http://<host>.cloud.local` en el navegador del anfitrión, el resolver del sistema debe consultarlo; sin privilegios no se puede cambiar, así que se configura una vez:
 
+La consola muestra un aviso naranja con el botón **Configurar DNS** (y un tooltip que explica para qué sirve). El botón ejecuta el configurador con `pkexec`, que pide la contraseña de administrador una sola vez.
+
 ```bash
 sudo ./scripts/configurar-dns-anfitrion.sh
 ```
 
-El script lee la red derivada desde `/api/setup/estado` y ejecuta `resolvectl dns <interfaz> <ip_dns>` y `resolvectl domain <interfaz> '~cloud.local'`. Alternativa puntual: añadir `192.168.57.105 <host>.cloud.local` a `/etc/hosts`.
+El script instala `/etc/systemd/resolved.conf.d/httpaas.conf` con `DNS=<ip_dns>` y `Domains=~cloud.local`, reinicia `systemd-resolved` y aplica también la configuración por interfaz. Alternativa puntual: añadir `192.168.57.105 <host>.cloud.local` a `/etc/hosts`.
 
 La consola consulta `GET /api/dns/anfitrion` y muestra un aviso cuando el anfitrión todavía no resuelve la zona; el registro en Bind9 sí existe y se puede comprobar con `dig @192.168.57.10 <host>.cloud.local`.
 
