@@ -82,6 +82,57 @@ func TestNoTailwindRuntimeAndLocalUtilities(t *testing.T) {
 	}
 }
 
+func TestIndexHelpIsTooltip(t *testing.T) {
+	content := readFile(t, "index.html")
+	for _, needle := range []string{`data-tooltip=`, `aria-describedby="provision-help"`, `id="provision-help"`, `info-tooltip-btn`} {
+		assertContains(t, content, needle, "index.html (ayuda contextual)")
+	}
+	for _, oldBlock := range []string{`role="note"`, `Cómo funciona:</strong>`} {
+		if strings.Contains(content, oldBlock) {
+			t.Fatalf("index.html: la ayuda ya no debe ser un bloque permanente (%q)", oldBlock)
+		}
+	}
+}
+
+func TestHeaderUsesWordmark(t *testing.T) {
+	components := readFile(t, filepath.Join("js", "components.js"))
+	for _, needle := range []string{`brand-wordmark`, `brand-dot`, `HTTPaaS`} {
+		assertContains(t, components, needle, "js/components.js (logotipo)")
+	}
+	if strings.Contains(components, "header-brand-outfit") {
+		t.Fatalf("js/components.js: no debe usar el estilo de marca anterior")
+	}
+	for _, p := range []string{"index.html", "dns.html", "salud.html", "vhosts.html"} {
+		assertContains(t, readFile(t, p), `brand-wordmark`, p+" (logotipo del header)")
+	}
+}
+
+func TestPageTitlesAreDescriptive(t *testing.T) {
+	cases := map[string]string{
+		"index.html":  "<title>Agregar nueva instancia · HTTPaaS</title>",
+		"dns.html":    "<title>DNS de la zona local · HTTPaaS</title>",
+		"salud.html":  "<title>Salud del entorno · HTTPaaS</title>",
+		"vhosts.html": "<title>VHosts de Apache · HTTPaaS</title>",
+	}
+	for p, want := range cases {
+		assertContains(t, readFile(t, p), want, p+" (title descriptivo)")
+	}
+}
+
+func TestPagesHaveFaviconAndThemeColor(t *testing.T) {
+	pages := []string{"index.html", "dns.html", "salud.html", "vhosts.html"}
+	for _, p := range pages {
+		content := readFile(t, p)
+		assertContains(t, content, `rel="icon"`, p+" (favicon)")
+		assertContains(t, content, `theme-color`, p+" (theme-color)")
+	}
+	for _, asset := range []string{"favicon.svg", "favicon.ico", "apple-touch-icon.png"} {
+		if _, err := os.Stat(asset); err != nil {
+			t.Fatalf("debe existir el recurso de icono %s: %v", asset, err)
+		}
+	}
+}
+
 func TestPagesDeclareDataPage(t *testing.T) {
 	cases := map[string]string{
 		"index.html":  `data-page="index"`,

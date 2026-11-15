@@ -21,7 +21,27 @@ body { background: #f8f9ff !important; }
 body, html, input, button, select, textarea, h1, h2, h3, h4, h5, h6, p, span, a, label, div {
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
-.header-brand-outfit { font-family: 'Outfit', sans-serif !important; font-weight: 900 !important; letter-spacing: -0.03em; }
+.brand-wordmark {
+  display: inline-flex;
+  align-items: center;
+  color: #fff;
+  font-family: 'Outfit', sans-serif !important;
+  font-weight: 900;
+  font-size: 17px;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+}
+.brand-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 3px;
+  margin-top: 1px;
+  border-radius: 9999px;
+  background: #2dd4bf;
+  align-self: flex-start;
+}
 code, pre, .font-mono, .font-code, [class*='mono'], [class*='label'],
 td:nth-child(1), td:nth-child(2), td:nth-child(3), .cell-mono {
   font-family: 'JetBrains Mono', monospace, sans-serif !important;
@@ -51,7 +71,7 @@ a.url-service-link .material-symbols-outlined { color: inherit !important; }
   background: linear-gradient(rgb(19, 78, 74) 0%, rgb(15, 61, 58) 100%);
   border-bottom: 1px solid rgba(20, 83, 45, 0.35);
 }
-.site-header .brand { position: fixed; left: 24px; top: 18px; display: flex; align-items: center; gap: 0.5rem; color: #fff; z-index: 21; }
+.site-header .brand { position: fixed; left: 24px; top: 28px; transform: translateY(-50%); display: flex; align-items: center; gap: 0.5rem; color: #fff; z-index: 21; }
 .site-header .brand .material-symbols-outlined { color: #fff; }
 .site-header { position: relative; }
 .site-nav { display: flex; align-items: center; gap: 1rem; height: 100%; }
@@ -367,3 +387,45 @@ html.setup-checking { background: #f8f9ff; }
   border-color: rgba(255,255,255,0.4);
 }
 .header-config-btn .material-symbols-outlined { font-size: 18px; color: #ffffff !important; }
+
+/* Transiciones rápidas y feedback táctil */
+button, .btn-flat, .side-dock a, .url-service-link, input, select, textarea {
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease, transform .08s ease, opacity .15s ease;
+}
+button:not(:disabled):active, .btn-flat:not(:disabled):active, .side-dock a:active {
+  transform: scale(.97);
+}
+@keyframes httpaas-page-enter {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+body > main.page-enter { animation: httpaas-page-enter .18s ease-out; }
+@keyframes httpaas-status-enter {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+#statusMessage.status-success, #statusMessage.status-error, #statusMessage.status-info {
+  animation: httpaas-status-enter .18s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  button:active, .btn-flat:active, .side-dock a:active { transform: none !important; }
+}
+.simple-table tbody tr { transition: background-color .12s ease; }
+.pill-state { transition: background-color .15s ease, border-color .15s ease, color .15s ease; }
+
+/* Ayuda contextual (tooltip) */
+.info-tooltip-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  background: #fff;
+  color: #0f766e;
+  cursor: pointer;
+}
+.info-tooltip-btn:hover { background: #f1f4fb; }
+.info-tooltip-btn:focus-visible { outline: 2px solid #2dd4bf; outline-offset: 2px; }
+.info-tooltip-btn .material-symbols-outlined { font-size: 18px; color: inherit; }

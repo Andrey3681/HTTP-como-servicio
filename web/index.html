@@ -3,7 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
-  <title>HTTPaaS Console - Aprovisionamiento Apache &amp; Bind9</title>
+  <meta name="description" content="Consola HTTPaaS para aprovisionar sitios web sobre Apache y Bind9.">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <meta name="theme-color" content="#134e4a">
+  <title>Agregar nueva instancia · HTTPaaS</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@900&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
@@ -18,7 +23,7 @@
   <a class="skip-link" href="#contenido-principal">Saltar al contenido</a>
   <div id="site-header-mount">
     <header class="site-header">
-      <div class="brand"><span class="material-symbols-outlined" data-icon="dns">dns</span><span class="header-brand-outfit">HTTPaaS</span></div>
+      <div class="brand"><span class="brand-wordmark">HTTPaaS<span class="brand-dot" aria-hidden="true"></span></span></div>
     </header>
   </div>
 
@@ -30,15 +35,14 @@
       </div>
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         <!-- Crear nueva instancia -->
-        <section class="lg:col-span-2 space-y-4">
-          <div class="bg-surface-container-low border-standard rounded-xl p-4 flex gap-3 items-start" role="note">
-            <span class="material-symbols-outlined text-primary-container text-[20px]" aria-hidden="true">info</span>
-            <div class="text-[13px] text-on-surface-variant">
-              <p class="m-0"><strong class="text-on-surface">Cómo funciona:</strong> elige un nombre, sube un archivo <span class="mono">.zip</span> con tu sitio y pulsa <strong>“Aprovisionar”</strong>. Podrás abrirlo en <span class="mono">http://&lt;nombre&gt;.cloud.local</span> cuando el proceso termine.</p>
-              <p class="m-0 mt-1">Si es la primera vez o algo no responde, revisa <strong>Configurar sistemas</strong> y el estado en <strong>Salud</strong>.</p>
-            </div>
-          </div>
+        <section class="lg:col-span-2">
           <div class="bg-surface-container-lowest border-standard rounded-xl p-6">
+            <div class="flex justify-end mb-3">
+              <button class="info-tooltip-btn" type="button" data-tooltip="Elige un nombre, sube un .zip y pulsa “Aprovisionar”. Podrás abrirlo en http://&lt;nombre&gt;.cloud.local. Si es la primera vez o algo no responde, revisa “Configurar sistemas” y “Salud”." aria-label="Cómo funciona" aria-describedby="provision-help">
+                <span class="material-symbols-outlined" aria-hidden="true">info</span>
+              </button>
+            </div>
+            <span id="provision-help" class="visually-hidden">Elige un nombre, sube un archivo .zip con tu sitio y pulsa Aprovisionar. Podrás abrirlo en http://&lt;nombre&gt;.cloud.local cuando el proceso termine. Si es la primera vez o algo no responde, revisa Configurar sistemas y el estado en Salud.</span>
             <form class="space-y-6" id="provisionForm" enctype="multipart/form-data">
               <div class="flex flex-col gap-6">
                 <div>

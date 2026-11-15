@@ -37,6 +37,7 @@
       var curMain = document.querySelector('main');
       if (!newMain || !curMain) { location.href = href; return; }
       curMain.replaceWith(newMain);
+      newMain.classList.add('page-enter');
       if (doc.title) document.title = doc.title;
       if (push !== false) history.pushState({ href: url.pathname + url.search }, '', url.pathname + url.search);
       // re-asegurar padding para dock

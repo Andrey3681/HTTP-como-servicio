@@ -19,7 +19,7 @@
     mount.innerHTML =
       '<header class="site-header">' +
         '<div class="flex items-center gap-3">' +
-          '<div class="brand"><span class="material-symbols-outlined" data-icon="dns">dns</span><span class="header-brand-outfit">HTTPaaS</span></div>' +
+          '<div class="brand"><span class="brand-wordmark">HTTPaaS<span class="brand-dot" aria-hidden="true"></span></span></div>' +
         '</div>' +
         '<div class="flex items-center gap-2">' +
           '<button id="setup-open-btn" class="header-config-btn" type="button" title="Configurar sistemas" aria-label="Configurar sistemas">' +
