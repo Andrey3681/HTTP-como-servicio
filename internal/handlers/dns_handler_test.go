@@ -19,11 +19,19 @@ import (
 
 type stubDnsProvider struct {
 	records []domain.DnsRecord
+	added   []domain.DnsRecord
+	removed []string
 }
 
-func (s *stubDnsProvider) AddRecord(_ context.Context, _ domain.DnsRecord) error { return nil }
+func (s *stubDnsProvider) AddRecord(_ context.Context, record domain.DnsRecord) error {
+	s.added = append(s.added, record)
+	return nil
+}
 
-func (s *stubDnsProvider) RemoveRecord(_ context.Context, _ string) error { return nil }
+func (s *stubDnsProvider) RemoveRecord(_ context.Context, name string) error {
+	s.removed = append(s.removed, name)
+	return nil
+}
 
 func (s *stubDnsProvider) Resolve(_ context.Context, _ string) (netip.Addr, error) {
 	return netip.MustParseAddr("192.168.10.30"), nil
@@ -95,6 +103,79 @@ func TestDnsHandler_RecordsMethodNotAllowed(t *testing.T) {
 
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("expected status 405, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestDnsHandler_RenameRecord(t *testing.T) {
+	t.Parallel()
+
+	provider := &stubDnsProvider{records: []domain.DnsRecord{{
+		Name: "mario.cloud.local.", Zone: "cloud.local.", Type: "A", IP: "192.168.10.30", TTL: 300,
+	}}}
+	handler := handlers.NewDnsHandler(provider, "cloud.local", nil)
+	body := `{"nombre":"mario","nuevo_nombre":"mario2"}`
+	req := httptest.NewRequest(http.MethodPatch, "/api/dns/registros", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+
+	handler.HandleRecords(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if len(provider.added) != 1 || provider.added[0].Name != "mario2.cloud.local." {
+		t.Fatalf("unexpected added records: %+v", provider.added)
+	}
+	if len(provider.removed) != 1 || provider.removed[0] != "mario" {
+		t.Fatalf("unexpected removed records: %+v", provider.removed)
+	}
+}
+
+func TestDnsHandler_RenameRecordNotFound(t *testing.T) {
+	t.Parallel()
+
+	handler := handlers.NewDnsHandler(&stubDnsProvider{}, "cloud.local", nil)
+	body := `{"nombre":"noexiste","nuevo_nombre":"otro"}`
+	req := httptest.NewRequest(http.MethodPatch, "/api/dns/registros", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+
+	handler.HandleRecords(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestDnsHandler_RenameRecordInvalidName(t *testing.T) {
+	t.Parallel()
+
+	handler := handlers.NewDnsHandler(&stubDnsProvider{}, "cloud.local", nil)
+	body := `{"nombre":"mario","nuevo_nombre":"Nombre Inválido"}`
+	req := httptest.NewRequest(http.MethodPatch, "/api/dns/registros", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+
+	handler.HandleRecords(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestDnsHandler_RenameRecordConflict(t *testing.T) {
+	t.Parallel()
+
+	provider := &stubDnsProvider{records: []domain.DnsRecord{
+		{Name: "mario.cloud.local.", Zone: "cloud.local.", Type: "A", IP: "192.168.10.30", TTL: 300},
+		{Name: "mario2.cloud.local.", Zone: "cloud.local.", Type: "A", IP: "192.168.10.31", TTL: 300},
+	}}
+	handler := handlers.NewDnsHandler(provider, "cloud.local", nil)
+	body := `{"nombre":"mario","nuevo_nombre":"mario2"}`
+	req := httptest.NewRequest(http.MethodPatch, "/api/dns/registros", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+
+	handler.HandleRecords(rec, req)
+
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("expected 409, got %d: %s", rec.Code, rec.Body.String())
 	}
 }
 

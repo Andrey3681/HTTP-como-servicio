@@ -5,12 +5,15 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"net"
 	"net/http"
+	"net/netip"
 	"os/exec"
 	"strings"
 	"time"
 
+	"github.com/Andrey3681/httpaas-orchestrator/internal/core/domain"
 	"github.com/Andrey3681/httpaas-orchestrator/internal/core/ports"
 )
 
@@ -123,7 +126,12 @@ func (h *DnsHandler) HandleHostResolve(w http.ResponseWriter, r *http.Request) {
 
 // HandleRecords responde con los registros A de la zona DNS administrada (/api/dns/registros).
 // Si la consulta al proveedor falla o no está disponible, retorna una lista vacía manteniendo el contrato.
+// También admite PATCH para renombrar un registro A de la zona.
 func (h *DnsHandler) HandleRecords(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPatch {
+		h.renameRecord(w, r)
+		return
+	}
 	if r.Method != http.MethodGet {
 		Error(w, http.StatusMethodNotAllowed, "Método HTTP no permitido")
 		return
@@ -148,4 +156,110 @@ func (h *DnsHandler) HandleRecords(w http.ResponseWriter, r *http.Request) {
 		"zona":      zone,
 		"registros": registros,
 	})
+}
+
+// renameRecordRequest describe el cuerpo de PATCH /api/dns/registros.
+type renameRecordRequest struct {
+	Nombre      string `json:"nombre"`
+	NuevoNombre string `json:"nuevo_nombre"`
+}
+
+// renameRecord cambia el nombre de un registro A manteniendo su IP y TTL.
+// No renombra la instancia ni el VHost de Apache.
+func (h *DnsHandler) renameRecord(w http.ResponseWriter, r *http.Request) {
+	if h.dnsProvider == nil {
+		Error(w, http.StatusConflict, "El servicio DNS no está disponible")
+		return
+	}
+
+	var req renameRecordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		Error(w, http.StatusBadRequest, "Solicitud de renombrado inválida")
+		return
+	}
+	oldName := strings.ToLower(strings.TrimSpace(req.Nombre))
+	newName := strings.ToLower(strings.TrimSpace(req.NuevoNombre))
+	if oldName == "" || newName == "" {
+		Error(w, http.StatusBadRequest, "Debes indicar el nombre actual y el nuevo nombre")
+		return
+	}
+	if err := domain.ValidateHostname(newName); err != nil {
+		Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	records, err := h.dnsProvider.ListRecords(r.Context())
+	if err != nil {
+		Error(w, http.StatusInternalServerError, "No se pudieron consultar los registros DNS")
+		return
+	}
+
+	oldShort := shortDNSName(oldName, h.zone)
+	var old *domain.DnsRecord
+	for i := range records {
+		if shortDNSName(records[i].Name, h.zone) == oldShort {
+			old = &records[i]
+			break
+		}
+	}
+	if old == nil {
+		Error(w, http.StatusNotFound, "El registro DNS indicado no existe")
+		return
+	}
+	if oldShort == newName {
+		JSON(w, http.StatusOK, map[string]any{
+			"mensaje": "El registro ya tiene ese nombre",
+			"datos":   old,
+		})
+		return
+	}
+	for i := range records {
+		if shortDNSName(records[i].Name, h.zone) == newName {
+			Error(w, http.StatusConflict, "Ya existe un registro DNS con el nuevo nombre")
+			return
+		}
+	}
+
+	ip, err := netip.ParseAddr(strings.TrimSpace(strings.Split(old.IP, "/")[0]))
+	if err != nil {
+		Error(w, http.StatusInternalServerError, "El registro DNS no tiene una IP válida")
+		return
+	}
+	newRecord, err := domain.NewARecord(newName, h.zone, ip, old.TTL)
+	if err != nil {
+		Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := h.dnsProvider.AddRecord(r.Context(), *newRecord); err != nil {
+		Error(w, http.StatusInternalServerError, "No se pudo crear el nuevo registro DNS")
+		return
+	}
+	if err := h.dnsProvider.RemoveRecord(r.Context(), oldShort); err != nil {
+		_ = h.dnsProvider.RemoveRecord(r.Context(), newName)
+		Error(w, http.StatusInternalServerError, "No se pudo eliminar el registro DNS anterior")
+		return
+	}
+
+	if h.logger != nil {
+		h.logger.Append("INFO", "dns", "Registro DNS renombrado", map[string]any{
+			"anterior": oldShort,
+			"nuevo":    newName,
+			"ip":       newRecord.IP,
+		})
+	}
+	JSON(w, http.StatusOK, map[string]any{
+		"mensaje": "Registro DNS renombrado correctamente",
+		"datos":   newRecord,
+	})
+}
+
+// shortDNSName normaliza un nombre de registro a su forma corta dentro de la zona.
+func shortDNSName(name, zone string) string {
+	clean := strings.TrimSuffix(strings.ToLower(strings.TrimSpace(name)), ".")
+	cleanZone := strings.TrimSuffix(strings.ToLower(strings.TrimSpace(zone)), ".")
+	if cleanZone != "" && strings.HasSuffix(clean, "."+cleanZone) {
+		clean = strings.TrimSuffix(clean, "."+cleanZone)
+	}
+	return clean
 }

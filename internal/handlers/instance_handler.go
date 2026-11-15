@@ -76,6 +76,18 @@ func (h *InstanceHandler) HandleInstance(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		h.access(w, r, id)
+	case "activar":
+		if r.Method != http.MethodPost {
+			Error(w, http.StatusMethodNotAllowed, "Método HTTP no permitido")
+			return
+		}
+		h.activate(w, r, id)
+	case "desactivar":
+		if r.Method != http.MethodPost {
+			Error(w, http.StatusMethodNotAllowed, "Método HTTP no permitido")
+			return
+		}
+		h.deactivate(w, r, id)
 	case "servicios/reiniciar":
 		if r.Method != http.MethodPost {
 			Error(w, http.StatusMethodNotAllowed, "Método HTTP no permitido")
@@ -101,6 +113,26 @@ func (h *InstanceHandler) access(w http.ResponseWriter, r *http.Request, id stri
 		return
 	}
 	JSON(w, http.StatusOK, Response{Datos: data})
+}
+
+// activate enciende una instancia detenida.
+func (h *InstanceHandler) activate(w http.ResponseWriter, r *http.Request, id string) {
+	inst, err := h.instanceService.Activate(r.Context(), id)
+	if err != nil {
+		h.operationError(w, id, "activar la instancia", err)
+		return
+	}
+	JSON(w, http.StatusOK, Response{Mensaje: "Instancia activada", Datos: inst})
+}
+
+// deactivate apaga una instancia activa sin destruirla.
+func (h *InstanceHandler) deactivate(w http.ResponseWriter, r *http.Request, id string) {
+	inst, err := h.instanceService.Deactivate(r.Context(), id)
+	if err != nil {
+		h.operationError(w, id, "desactivar la instancia", err)
+		return
+	}
+	JSON(w, http.StatusOK, Response{Mensaje: "Instancia desactivada", Datos: inst})
 }
 
 // restartServices reinicia Apache en la instancia.

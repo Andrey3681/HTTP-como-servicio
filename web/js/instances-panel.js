@@ -81,17 +81,50 @@
             '<div id="instance-detail-loading" class="empty-state" style="display:none;">Cargando detalle…</div>' +
             '<div id="instance-detail-error" class="empty-state" style="display:none;">No se pudo cargar el detalle.</div>' +
             '<div id="instance-detail-content" style="display:none;">' +
-              '<div class="kv-grid mb-4">' +
+              '<div class="pb-4 border-b-standard">' +
+                '<div class="flex items-center justify-between gap-2 mb-2">' +
+                  '<h3 class="text-[14px] font-semibold m-0">Acciones</h3>' +
+                  '<span id="d-actions-msg" class="text-[12px] text-on-surface-variant" role="status" aria-live="polite"></span>' +
+                '</div>' +
+                '<div class="space-y-2">' +
+                  '<button id="d-restart-btn" class="btn-flat w-full justify-start" type="button"><span class="material-symbols-outlined text-[16px]">restart_alt</span> Reiniciar servicios</button>' +
+                  '<div class="action-accordion">' +
+                    '<button id="d-ssh-btn" class="btn-flat w-full justify-between action-toggle" type="button" aria-expanded="false" aria-controls="d-ssh-panel">' +
+                      '<span class="inline-flex items-center gap-2"><span class="material-symbols-outlined text-[16px]">terminal</span> Acceso SSH</span>' +
+                      '<span class="material-symbols-outlined text-[16px] action-chevron" aria-hidden="true">expand_more</span>' +
+                    '</button>' +
+                    '<div id="d-ssh-panel" class="hidden mt-2 rounded-xl border-standard p-3">' +
+                      '<div class="kv-label mb-1">Comando SSH</div>' +
+                      '<pre class="code-block" id="d-ssh-command" style="white-space:pre-wrap;word-break:break-all;"></pre>' +
+                      '<p id="d-ssh-note" class="text-[12px] text-on-surface-variant mt-2"></p>' +
+                      '<div class="flex justify-end mt-2"><button id="d-ssh-copy" class="btn-flat" type="button"><span class="material-symbols-outlined text-[16px]">content_copy</span> Copiar comando</button></div>' +
+                    '</div>' +
+                  '</div>' +
+                  '<div class="action-accordion">' +
+                    '<button id="d-redeploy-btn" class="btn-flat w-full justify-between action-toggle" type="button" aria-expanded="false" aria-controls="d-redeploy-panel">' +
+                      '<span class="inline-flex items-center gap-2"><span class="material-symbols-outlined text-[16px]">upload_file</span> Actualizar despliegue</span>' +
+                      '<span class="material-symbols-outlined text-[16px] action-chevron" aria-hidden="true">expand_more</span>' +
+                    '</button>' +
+                    '<div id="d-redeploy-panel" class="hidden mt-2 rounded-xl border-standard p-3">' +
+                      '<div id="d-redeploy-drop" class="zip-dropzone compact" tabindex="0" role="button" aria-label="Seleccionar archivo .zip" aria-describedby="d-redeploy-file-name">' +
+                        '<input class="zip-dropzone-input" id="d-redeploy-file" type="file" accept=".zip,application/zip">' +
+                        '<span class="material-symbols-outlined zip-dropzone-icon" aria-hidden="true">upload_file</span>' +
+                        '<p class="zip-dropzone-title">Arrastra o selecciona un .zip</p>' +
+                        '<p id="d-redeploy-file-name" class="zip-dropzone-file">Ningún archivo seleccionado</p>' +
+                      '</div>' +
+                      '<div class="flex justify-end mt-2"><button id="d-redeploy-apply" class="btn-flat primary" type="button">Actualizar despliegue</button></div>' +
+                    '</div>' +
+                  '</div>' +
+                  '<button id="d-delete-btn" class="btn-flat danger w-full justify-start" type="button"><span class="material-symbols-outlined text-[16px]">delete</span> Eliminar</button>' +
+                '</div>' +
+              '</div>' +
+              '<div class="kv-grid mt-4">' +
                 '<div class="kv"><div class="kv-label">ID / Nombre</div><div class="kv-value mono" id="d-id">—</div></div>' +
                 '<div class="kv"><div class="kv-label">FQDN</div><div class="kv-value mono" id="d-fqdn">—</div></div>' +
                 '<div class="kv"><div class="kv-label">IP</div><div class="kv-value mono" id="d-ip">—</div></div>' +
                 '<div class="kv"><div class="kv-label">Estado</div><div class="kv-value" id="d-estado">—</div></div>' +
                 '<div class="kv"><div class="kv-label">Enlace</div><div class="kv-value" id="d-enlace">—</div></div>' +
                 '<div class="kv"><div class="kv-label">Creado en</div><div class="kv-value mono" id="d-creado">—</div></div>' +
-              '</div>' +
-              '<div class="grid grid-cols-1 gap-4">' +
-                '<div><div class="kv-label mb-2">Apache VHost (referencia)</div><div class="code-block"><span class="cmt"># /etc/apache2/sites-available/&lt;host&gt;.conf</span>\n<span class="kw">&lt;VirtualHost</span> *:80<span class="kw">&gt;</span>\n    ServerName <span id="d-vhost-name">host.cloud.local</span>\n    DocumentRoot /var/www/vhosts/<span id="d-vhost-dir">host</span>\n    ErrorLog ${APACHE_LOG_DIR}/<span id="d-vhost-log">host</span>-error.log\n<span class="kw">&lt;/VirtualHost&gt;</span></div></div>' +
-                '<div><div class="kv-label mb-2">Registro DNS Bind9 (referencia)</div><div class="code-block"><span class="cmt">; Zona cloud.local.</span>\n<span id="d-dns-name">host</span>    300    IN    A    <span id="d-dns-ip">192.168.10.x</span></div></div>' +
               '</div>' +
             '</div>' +
           '</div>' +
@@ -164,12 +197,10 @@
           '<div class="flex items-center justify-between"><div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full ' + dotCls + '"></span><span class="text-[13px] font-semibold text-on-surface mono">' + esc(nombre) + '</span></div>' +
           '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-xl border-standard bg-surface-container-lowest text-[11px] font-semibold mono ' + stateColor + '">● ' + esc(estado === 'ACTIVA' ? 'RUNNING' : estado) + '</span></div>' +
           '<div class="flex items-center justify-between text-on-surface-variant text-[11px]"><a class="inline-flex items-center gap-1 text-[12px] hover:underline url-service-link truncate mono" href="' + escA(enlace) + '" target="_blank" rel="noopener noreferrer"><span>' + esc(enlace.replace(/^https?:\/\//, '')) + '</span><span class="material-symbols-outlined text-[14px]">open_in_new</span></a><span class="mono text-outline shrink-0">' + esc(ip) + '</span></div>' +
-          '<div class="flex justify-between items-center pt-1"><button class="text-[11px] text-primary-container hover:underline mono bg-transparent border-0 p-0 cursor-pointer" type="button" data-detail="' + escA(id) + '">Ver detalle</button>' +
-          '<button class="inline-flex items-center gap-1 px-2.5 py-1 bg-secondary-container hover:bg-[#b91c1c] text-white text-xs rounded-xl font-medium" type="button" data-del="' + escA(id) + '" data-fqdn="' + escA(fqdn) + '" data-host="' + escA(nombre) + '"><span class="material-symbols-outlined text-[14px]">delete</span> Eliminar</button></div></div>';
+          '<div class="flex justify-end items-center pt-1">' +
+          '<button class="inline-flex items-center gap-1.5 px-3 py-1.5 text-white text-[12px] font-semibold rounded-xl" style="background:rgb(15,118,110);border:1px solid rgb(13,95,88);" type="button" data-detail="' + escA(id) + '" title="Ver detalle de la instancia"><span class="material-symbols-outlined text-[15px]">visibility</span> Ver detalle</button>' +
+          '</div></div>';
       }).join('');
-      instancesList.querySelectorAll('[data-del]').forEach(function (btn) {
-        btn.addEventListener('click', function () { openDeleteModal(btn.getAttribute('data-fqdn'), btn.getAttribute('data-host'), btn.getAttribute('data-del')); });
-      });
       instancesList.querySelectorAll('[data-detail]').forEach(function (btn) {
         btn.addEventListener('click', function () { if (window.openInstanceDrawer) window.openInstanceDrawer(btn.getAttribute('data-detail')); });
       });
@@ -273,7 +304,9 @@
       try {
         var res = await fetch('/api/instancias/' + encodeURIComponent(target.id), { method: 'DELETE' });
         if (!res.ok) { var err = await res.json().catch(function () { return {}; }); throw new Error(err.error || 'Error al eliminar.'); }
-        showMsg('Instancia eliminada.', 'success'); fetchInstances(); checkHostDns();
+        showMsg('Instancia eliminada.', 'success');
+        if (window.closeInstanceDrawer) window.closeInstanceDrawer();
+        fetchInstances(); checkHostDns();
       } catch (err) { showMsg('Error: ' + err.message, 'error'); }
       finally { showLoad(false); }
     });

@@ -429,3 +429,57 @@ body > main.page-enter { animation: httpaas-page-enter .18s ease-out; }
 .info-tooltip-btn:hover { background: #f1f4fb; }
 .info-tooltip-btn:focus-visible { outline: 2px solid #2dd4bf; outline-offset: 2px; }
 .info-tooltip-btn .material-symbols-outlined { font-size: 18px; color: inherit; }
+
+/* Switch de activación de instancias (VHosts) */
+.vhost-switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.vhost-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.vhost-switch-slider {
+  position: absolute;
+  inset: 0;
+  background: #d0d7de;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: background-color .15s ease;
+}
+.vhost-switch-slider::before {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  left: 2px;
+  top: 2px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform .15s ease;
+}
+.vhost-switch input:checked + .vhost-switch-slider { background: #0f766e; }
+.vhost-switch input:checked + .vhost-switch-slider::before { transform: translateX(16px); }
+.vhost-switch input:focus-visible + .vhost-switch-slider { outline: 2px solid #2dd4bf; outline-offset: 2px; }
+.vhost-switch input:disabled + .vhost-switch-slider { opacity: .5; cursor: not-allowed; }
+
+/* Acordeones de acciones del drawer */
+.action-chevron { transition: transform .15s ease; }
+.action-toggle[aria-expanded="true"] .action-chevron { transform: rotate(180deg); }
+
+/* Selector de archivo compacto (drawer) */
+.zip-dropzone.compact {
+  min-height: 84px;
+  padding: 0.75rem;
+  gap: 0.1rem;
+  border-width: 1.5px;
+  border-radius: 0.5rem;
+}
+.zip-dropzone.compact .zip-dropzone-icon { font-size: 20px; }
+.zip-dropzone.compact .zip-dropzone-title { font-size: 12px; }
+.zip-dropzone.compact .zip-dropzone-file { margin-top: 0.3rem; font-size: 11px; padding: 0.15rem 0.5rem; }

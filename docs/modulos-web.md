@@ -94,9 +94,9 @@ Componentes transversales (presentes en todos los módulos, RNF-02/07/10): **hea
   - `Verificar` (disponibilidad, RF-04) — secundario; deshabilitar si vacío/inválido.
   - `Aprovisionar` (submit RF-02) — primario; **deshabilitar + indicador de carga** durante la operación (RNF-03).
   - `Sync/Actualizar` (refresca listado, RF-11).
-  - Por instancia: `Ver detalle` (abre drawer M2, RF-05), `Eliminar` (abre confirmación, RF-06), enlace externo `open_in_new` (RF-09).
+  - Por instancia: `Ver detalle` (abre drawer M2, RF-05, acción primaria destacada), enlace externo `open_in_new` (RF-09). La eliminación y las acciones operativas se gestionan desde el drawer M2.
   - Modal eliminación: `Cancelar`, `Eliminar` (destructivo, con texto/ruta/comandos de referencia).
-- **Elementos UI:** cabecera de sección, panel formulario, panel resumen operativo (zona/red/DocumentRoot/recarga), panel/listado de instancias activas (contador, búsqueda/filtro, tarjetas/tabla con estado `ACTIVA/CREANDO/ERROR/ELIMINADA`, IP, FQDN/enlace), área de feedback `statusMessage` (`aria-live`), overlay/loading, modal de confirmación.
+- **Elementos UI:** cabecera de sección, panel formulario, panel resumen operativo (zona/red/DocumentRoot/recarga), panel/listado de instancias activas (contador, búsqueda/filtro, tarjetas/tabla con estado `ACTIVA/CREANDO/DETENIDA/ERROR/ELIMINADA`, IP, FQDN/enlace), área de feedback `statusMessage` (`aria-live`), overlay/loading, modal de confirmación.
 - **Estados:** vacío (“no hay instancias”), cargando, éxito, error de validación (`400`), nombre duplicado, error de infraestructura (`500`/rollback comunicado), backend inaccesible.
 
 ### M2. Detalle de instancia (drawer lateral en `/index.html`)
@@ -106,17 +106,18 @@ Componentes transversales (presentes en todos los módulos, RNF-02/07/10): **hea
 - **Formulario/controles:** no hay selector independiente; el contexto lo define la instancia elegida desde M1. Se admite deep-link `#detalle=<id>` y una zona de carga `.zip` para actualizar el despliegue.
 - **Botones/acciones:** `Ver detalle` (abre drawer, RF-05), `Cerrar`/overlay/Escape (cierra drawer), enlace al sitio publicado (RF-09), `Actualizar`, `Eliminar` con confirmación (reusa patrón RF-06), `Copiar FQDN/IP`, `Reiniciar servicios` (`POST /api/instancias/{id}/servicios/reiniciar`), `Acceso SSH` con comando copiable (`GET /api/instancias/{id}/acceso`) y `Actualizar despliegue` (`POST /api/instancias/{id}/despliegue`, multipart `archivo`).
 - **Estados de las acciones:** las tres acciones se deshabilitan si la instancia no está `ACTIVA` o no tiene IP; muestran `aria-busy` mientras corren y un mensaje de éxito o error (404, 409, 400/500). El reinicio no modifica DNS; la actualización de despliegue conserva la VM y el registro DNS.
-- **Elementos UI:** panel lateral deslizable (drawer) con encabezado, botón de cierre, bloque de metadatos (ID/nombre, FQDN, IP, estado con badge, enlace, `creado_en`), bloque **Apache VHost (referencia/real)** (ServerName, DocumentRoot, log), bloque **Registro DNS Bind9 (referencia/real)** (registro A, TTL/IP), zona de carga `.zip` para el despliegue, estados de carga/error y feedback de acciones.
+- **Elementos UI:** panel lateral deslizable (drawer) con encabezado, botón de cierre, bloque de **acciones** (reiniciar servicios, acceso SSH, actualizar despliegue y eliminar) organizado en acordeones verticales, bloque de metadatos (ID/nombre, FQDN, IP, estado con badge, enlace, `creado_en`), estados de carga/error y feedback de acciones. Las referencias de Apache VHost y del registro DNS se consultan en los módulos M5 y M3 respectivamente.
 - **Estados:** cerrado, cargando, encontrado, `404` no encontrado, error/inaccesible; estados de acción en curso/éxito/error. *Evolutivo (RF-13):* reemplazar “referencia” por datos reales cuando exista endpoint de VHost/DNS por instancia.
 
 ### M3. DNS (`/dns.html`)
 - **Objetivo:** visibilidad operativa de los registros DNS (RF-07).
 - **Trazabilidad:** RF-07,10,11,12; RNF-01,02,05,06,11,12.
-- **Funciones:** consultar y listar registros A; refrescar; mostrar la zona reportada por la API.
-- **Formulario:** no requiere formulario de alta (el alta DNS la dispara el aprovisionamiento, RF-02). *Evolutivo:* filtro/búsqueda por nombre/IP.
-- **Botones/acciones:** `Actualizar` (RF-11).
-- **Elementos UI:** encabezado con zona (`dnsZone`) y tabla de registros (Nombre, Tipo, IP, TTL), estado vacío/error.
-- **Estados:** cargando, con datos, sin registros, backend inaccesible.
+- **Funciones:** consultar y listar registros A; refrescar; mostrar la zona reportada por la API; **renombrar un registro A** (cambia solo el nombre DNS, sin renombrar la instancia ni el VHost de Apache).
+- **Formulario:** no requiere formulario de alta (el alta DNS la dispara el aprovisionamiento, RF-02). El renombrado usa un diálogo con validación de hostname.
+- **Botones/acciones:** `Actualizar` (RF-11), `Renombrar` por registro (abre diálogo) y `Cancelar`/`Renombrar` en el diálogo.
+- **Elementos UI:** encabezado con zona (`dnsZone`) y tabla de registros (Nombre, Tipo, IP, TTL, Acciones), diálogo de renombrado, aviso de que no cambia el nombre de la instancia/VHost, estado vacío/error.
+- **Estados:** cargando, con datos, sin registros, backend inaccesible, renombrado en curso/éxito/error.
+- **API:** `PATCH /api/dns/registros` con `{ "nombre": "...", "nuevo_nombre": "..." }`.
 
 ### M4. Salud (`/salud.html`)
 - **Objetivo:** verificar dependencias críticas y ofrecer un resumen operativo del entorno, priorizando la respuesta a “¿el sistema está listo?” (RF-08).
@@ -130,12 +131,12 @@ Componentes transversales (presentes en todos los módulos, RNF-02/07/10): **hea
 ### M5. VHosts (`/vhosts.html`)
 - **Objetivo:** visibilidad por VHost (RF-13), complementando M1/M2.
 - **Trazabilidad:** RF-13,12,10,11; RNF-01,02,05,06,11,12.
-- **Funciones:** listar VHosts asociados a instancias; refrescar; filtrar; abrir sitio; abrir detalle de instancia desde Instancias.
+- **Funciones:** listar VHosts asociados a instancias; refrescar; filtrar; abrir sitio; **activar/desactivar la instancia** mediante un switch en la columna Acciones.
 - **Formulario:** ninguno de mutación. Filtro por ServerName.
-- **Botones/acciones:** `Actualizar`, `Ver detalle`, `Abrir sitio` (RF-09), filtro.
-- **Elementos UI:** tabla (ServerName, DocumentRoot, FQDN/enlace, estado, acciones).
+- **Botones/acciones:** `Actualizar`, switch **Activar/Desactivar** (`POST /api/instancias/{id}/activar` o `/desactivar`), enlace al sitio publicado (RF-09), filtro.
+- **Elementos UI:** tabla (ServerName, DocumentRoot, FQDN/enlace, estado, acciones), switch accesible con etiqueta, mensajes de éxito/error.
 - **Elementos/IDs requeridos (contrato):** `vhostsTableBody`, `refreshVhostsBtn`, `vhostsFilter` (opcional), `data-page="vhosts"`.
-- **Estados:** cargando, vacío, error. *Contrato futuro:* `GET /api/vhosts` o enriquecimiento de `/api/instancias`; mientras tanto, vista derivada del listado de instancias.
+- **Estados:** cargando, vacío, error, activando/desactivando; switch refleja `ACTIVA`/`DETENIDA` y se deshabilita en estados no operables o mientras hay una petición. *Contrato futuro:* `GET /api/vhosts` o enriquecimiento de `/api/instancias`; mientras tanto, vista derivada del listado de instancias.
 
 ### M6. Operaciones / Eventos — logs (componente global, extensible)
 - **Objetivo:** observabilidad de operaciones (RF-14) ante un flujo con rollback (arquitectura §5).

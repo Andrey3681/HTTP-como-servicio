@@ -71,6 +71,81 @@ func (s *InstanceService) GetInstance(ctx context.Context, id string) (*domain.I
 	return s.repo.FindByID(ctx, id)
 }
 
+// Activate enciende una instancia detenida, actualiza su IP y refresca el
+// registro DNS si la dirección cambió.
+func (s *InstanceService) Activate(ctx context.Context, id string) (*domain.Instance, error) {
+	inst, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if inst.Status == domain.StatusRunning {
+		return inst, nil
+	}
+	if inst.Status != domain.StatusStopped && inst.Status != domain.StatusError {
+		return nil, fmt.Errorf("%w: la instancia '%s' está en estado %s", domain.ErrOperationNotAllowed, inst.Name, inst.Status)
+	}
+	if s.hypervisor == nil {
+		return nil, fmt.Errorf("el hipervisor no está disponible")
+	}
+
+	s.log("INFO", "Activando instancia", map[string]any{"instancia": inst.Name})
+	if err := s.hypervisor.Start(ctx, inst.Name); err != nil {
+		return nil, err
+	}
+	ip, err := s.hypervisor.GetIPAddress(ctx, inst.Name)
+	if err != nil {
+		return nil, fmt.Errorf("fallo al obtener la IP de '%s': %w", inst.Name, err)
+	}
+
+	inst.IP = fmt.Sprintf("%s/24", ip.String())
+	inst.Status = domain.StatusRunning
+	if err := s.repo.Save(ctx, *inst); err != nil {
+		return nil, err
+	}
+
+	if s.dnsProvider != nil {
+		if zone := strings.TrimPrefix(inst.FQDN, inst.Name+"."); zone != "" {
+			record, recordErr := domain.NewARecord(inst.Name, zone, ip, 300)
+			if recordErr != nil {
+				s.log("WARN", "No se pudo preparar el registro DNS al activar", map[string]any{"instancia": inst.Name, "error": recordErr.Error()})
+			} else if err := s.dnsProvider.AddRecord(ctx, *record); err != nil {
+				s.log("WARN", "No se pudo actualizar el DNS al activar", map[string]any{"instancia": inst.Name, "error": err.Error()})
+			}
+		}
+	}
+
+	s.log("INFO", "Instancia activada", map[string]any{"instancia": inst.Name, "ip": inst.IP})
+	return inst, nil
+}
+
+// Deactivate apaga una instancia activa sin destruirla ni eliminar su DNS.
+func (s *InstanceService) Deactivate(ctx context.Context, id string) (*domain.Instance, error) {
+	inst, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if inst.Status == domain.StatusStopped {
+		return inst, nil
+	}
+	if inst.Status != domain.StatusRunning {
+		return nil, fmt.Errorf("%w: la instancia '%s' está en estado %s", domain.ErrOperationNotAllowed, inst.Name, inst.Status)
+	}
+	if s.hypervisor == nil {
+		return nil, fmt.Errorf("el hipervisor no está disponible")
+	}
+
+	s.log("INFO", "Desactivando instancia", map[string]any{"instancia": inst.Name})
+	if err := s.hypervisor.Stop(ctx, inst.Name); err != nil {
+		return nil, err
+	}
+	inst.Status = domain.StatusStopped
+	if err := s.repo.Save(ctx, *inst); err != nil {
+		return nil, err
+	}
+	s.log("INFO", "Instancia desactivada", map[string]any{"instancia": inst.Name})
+	return inst, nil
+}
+
 // RestartServices reinicia Apache en una instancia activa.
 func (s *InstanceService) RestartServices(ctx context.Context, id string) (*domain.Instance, error) {
 	inst, err := s.repo.FindByID(ctx, id)

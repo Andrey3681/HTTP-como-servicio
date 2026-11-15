@@ -256,6 +256,88 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorRespuesta'
 
+  /api/instancias/{id}/activar:
+    post:
+      operationId: activateInstance
+      summary: Activar (encender) una instancia
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Instancia activada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                  datos:
+                    $ref: '#/components/schemas/Instancia'
+        '404':
+          description: Instancia no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+        '409':
+          description: La instancia no puede activarse en su estado actual
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+        '500':
+          description: Fallo al activar la instancia
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+
+  /api/instancias/{id}/desactivar:
+    post:
+      operationId: deactivateInstance
+      summary: Desactivar (apagar) una instancia
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Instancia desactivada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                  datos:
+                    $ref: '#/components/schemas/Instancia'
+        '404':
+          description: Instancia no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+        '409':
+          description: La instancia no puede desactivarse en su estado actual
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+        '500':
+          description: Fallo al desactivar la instancia
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+
   /api/instancias/{id}/servicios/reiniciar:
     post:
       operationId: restartInstanceServices
@@ -460,6 +542,73 @@ paths:
                           example: 300
         '405':
           description: Método HTTP no permitido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+    patch:
+      operationId: renameDnsRecord
+      summary: Renombrar un registro DNS
+      description: Cambia el nombre de un registro A de la zona. No modifica el nombre de la instancia ni el VHost de Apache.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nombre, nuevo_nombre]
+              properties:
+                nombre:
+                  type: string
+                  description: Nombre actual del registro (corto o FQDN)
+                nuevo_nombre:
+                  type: string
+                  description: Nuevo nombre corto dentro de la zona
+      responses:
+        '200':
+          description: Registro renombrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                  datos:
+                    type: object
+                    properties:
+                      nombre:
+                        type: string
+                      ip:
+                        type: string
+                      ttl:
+                        type: integer
+        '400':
+          description: Datos inválidos o nombre no permitido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+        '404':
+          description: Registro no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+        '405':
+          description: Método HTTP no permitido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+        '409':
+          description: Ya existe un registro con el nuevo nombre
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRespuesta'
+        '500':
+          description: Fallo al aplicar el cambio en DNS
           content:
             application/json:
               schema:

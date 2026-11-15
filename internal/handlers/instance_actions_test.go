@@ -82,6 +82,64 @@ func TestInstanceHandler_Access(t *testing.T) {
 	}
 }
 
+func TestInstanceHandler_Activate(t *testing.T) {
+	handler, _, _, _ := actionHandler(domain.StatusStopped)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/instancias/mario/activar", nil)
+	rec := httptest.NewRecorder()
+	handler.HandleInstance(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var body struct {
+		Datos struct {
+			Estado string `json:"estado"`
+		} `json:"datos"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("respuesta inválida: %v", err)
+	}
+	if body.Datos.Estado != string(domain.StatusRunning) {
+		t.Errorf("expected ACTIVA, got %q", body.Datos.Estado)
+	}
+}
+
+func TestInstanceHandler_Deactivate(t *testing.T) {
+	handler, _, _, _ := actionHandler(domain.StatusRunning)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/instancias/mario/desactivar", nil)
+	rec := httptest.NewRecorder()
+	handler.HandleInstance(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var body struct {
+		Datos struct {
+			Estado string `json:"estado"`
+		} `json:"datos"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("respuesta inválida: %v", err)
+	}
+	if body.Datos.Estado != string(domain.StatusStopped) {
+		t.Errorf("expected DETENIDA, got %q", body.Datos.Estado)
+	}
+}
+
+func TestInstanceHandler_ActivateConflict(t *testing.T) {
+	handler, _, _, _ := actionHandler(domain.StatusCreating)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/instancias/mario/activar", nil)
+	rec := httptest.NewRecorder()
+	handler.HandleInstance(rec, req)
+
+	if rec.Code != http.StatusConflict {
+		t.Errorf("expected 409, got %d", rec.Code)
+	}
+}
+
 func TestInstanceHandler_RestartServices(t *testing.T) {
 	handler, op, _, _ := actionHandler(domain.StatusRunning)
 

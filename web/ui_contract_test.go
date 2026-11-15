@@ -94,6 +94,31 @@ func TestIndexHelpIsTooltip(t *testing.T) {
 	}
 }
 
+func TestInstanceActionsAndDnsRenameUI(t *testing.T) {
+	panel := readFile(t, filepath.Join("js", "instances-panel.js"))
+	for _, needle := range []string{`d-restart-btn`, `d-ssh-btn`, `d-redeploy-btn`, `d-delete-btn`, `d-redeploy-drop`, `zip-dropzone compact`, `data-detail`} {
+		assertContains(t, panel, needle, "js/instances-panel.js (acciones del drawer)")
+	}
+	detalle := readFile(t, filepath.Join("js", "pages", "detalle.js"))
+	for _, needle := range []string{`/servicios/reiniciar`, `/acceso`, `/despliegue`, `closeInstanceDrawer`, `acceptRedeployFile`} {
+		assertContains(t, detalle, needle, "js/pages/detalle.js (acciones de instancia)")
+	}
+
+	vhosts := readFile(t, filepath.Join("js", "pages", "vhosts.js"))
+	for _, needle := range []string{`data-power`, `/activar`, `/desactivar`, `vhost-switch`} {
+		assertContains(t, vhosts, needle, "js/pages/vhosts.js (activar/desactivar)")
+	}
+
+	dns := readFile(t, "dns.html")
+	for _, needle := range []string{`dns-rename-modal`, `dns-rename-input`, `dns-rename-confirm`} {
+		assertContains(t, dns, needle, "dns.html (renombrar registro)")
+	}
+	dnsJS := readFile(t, filepath.Join("js", "pages", "dns.js"))
+	for _, needle := range []string{`/api/dns/registros`, `PATCH`, `nuevo_nombre`, `data-rename`} {
+		assertContains(t, dnsJS, needle, "js/pages/dns.js (renombrar registro)")
+	}
+}
+
 func TestHeaderUsesWordmark(t *testing.T) {
 	components := readFile(t, filepath.Join("js", "components.js"))
 	for _, needle := range []string{`brand-wordmark`, `brand-dot`, `HTTPaaS`} {

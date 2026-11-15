@@ -23,6 +23,9 @@ const (
 	// StatusError indica que ocurrió una falla durante el aprovisionamiento o ejecución.
 	StatusError InstanceStatus = "ERROR"
 
+	// StatusStopped indica que la instancia está apagada y puede reactivarse.
+	StatusStopped InstanceStatus = "DETENIDA"
+
 	// StatusTerminated indica que la instancia ha sido apagada y desmantelada.
 	StatusTerminated InstanceStatus = "ELIMINADA"
 )

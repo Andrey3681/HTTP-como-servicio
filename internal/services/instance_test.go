@@ -35,6 +35,35 @@ func (r *actionRepo) FindByID(_ context.Context, id string) (*domain.Instance, e
 func (r *actionRepo) FindAll(context.Context) ([]domain.Instance, error) { return nil, nil }
 func (r *actionRepo) Delete(context.Context, string) error               { return nil }
 
+type powerHypervisor struct {
+	ip      netip.Addr
+	started bool
+	stopped bool
+	err     error
+}
+
+func (f *powerHypervisor) CreateInstanceFromBase(context.Context, string, string) (*domain.Instance, error) {
+	return nil, nil
+}
+
+func (f *powerHypervisor) Start(context.Context, string) error {
+	f.started = true
+	return f.err
+}
+
+func (f *powerHypervisor) GetIPAddress(context.Context, string) (netip.Addr, error) {
+	if f.err != nil {
+		return netip.Addr{}, f.err
+	}
+	return f.ip, nil
+}
+
+func (f *powerHypervisor) Stop(context.Context, string) error {
+	f.stopped = true
+	return f.err
+}
+func (f *powerHypervisor) Destroy(context.Context, string) error { return nil }
+
 type fakeOperator struct {
 	calls int
 	err   error
@@ -76,6 +105,59 @@ func newActionService(inst domain.Instance, op *fakeOperator, dep *fakeActionDep
 			SSHKeyPath: "/keys/id_ed25519",
 		},
 	)
+}
+
+func TestInstanceService_Activate(t *testing.T) {
+	repo := &actionRepo{instance: domain.Instance{
+		ID: "mario", Name: "mario", FQDN: "mario.cloud.local",
+		IP: "192.168.57.105/24", Status: domain.StatusStopped,
+	}}
+	hyp := &powerHypervisor{ip: netip.MustParseAddr("192.168.57.106")}
+	svc := services.NewInstanceService(repo, hyp, nil, nil, services.InstanceOptions{})
+
+	inst, err := svc.Activate(context.Background(), "mario")
+	if err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	if !hyp.started {
+		t.Fatal("expected hypervisor.Start to be called")
+	}
+	if inst.Status != domain.StatusRunning || inst.IP != "192.168.57.106/24" {
+		t.Fatalf("unexpected instance after activate: %+v", inst)
+	}
+}
+
+func TestInstanceService_Deactivate(t *testing.T) {
+	repo := &actionRepo{instance: runningInstance()}
+	hyp := &powerHypervisor{ip: netip.MustParseAddr("192.168.57.105")}
+	svc := services.NewInstanceService(repo, hyp, nil, nil, services.InstanceOptions{})
+
+	inst, err := svc.Deactivate(context.Background(), "mario")
+	if err != nil {
+		t.Fatalf("deactivate: %v", err)
+	}
+	if !hyp.stopped {
+		t.Fatal("expected hypervisor.Stop to be called")
+	}
+	if inst.Status != domain.StatusStopped {
+		t.Fatalf("expected DETENIDA, got %s", inst.Status)
+	}
+}
+
+func TestInstanceService_ActivateRejectsCreating(t *testing.T) {
+	repo := &actionRepo{instance: domain.Instance{ID: "mario", Name: "mario", Status: domain.StatusCreating}}
+	svc := services.NewInstanceService(repo, &powerHypervisor{}, nil, nil, services.InstanceOptions{})
+	if _, err := svc.Activate(context.Background(), "mario"); err == nil {
+		t.Fatal("expected error for CREANDO")
+	}
+}
+
+func TestInstanceService_DeactivateRejectsCreating(t *testing.T) {
+	repo := &actionRepo{instance: domain.Instance{ID: "mario", Name: "mario", Status: domain.StatusCreating}}
+	svc := services.NewInstanceService(repo, &powerHypervisor{}, nil, nil, services.InstanceOptions{})
+	if _, err := svc.Deactivate(context.Background(), "mario"); err == nil {
+		t.Fatal("expected error for CREANDO")
+	}
 }
 
 func TestInstanceService_RestartServices(t *testing.T) {
