@@ -29,7 +29,7 @@ Este documento identifica de forma exhaustiva los endpoints HTTP expuestos por e
 | 9 | `DELETE` | `/api/logs` | Limpiar el anillo de logs del servidor. | — | `200` `{mensaje}` | `200`, `405` | Existe |
 | 10 | `GET` | `/api/setup/estado` | Obtener el estado del configuración inicial. | — | `200` `SetupEstado` | `200`, `405` | Existe |
 | 11 | `POST` | `/api/setup/configuracion` | Guardar los datos del formulario (usuario y contraseña). | JSON `SetupInput` | `200` `{mensaje}` | `200`, `400`, `405` | Existe |
-| 12 | `POST` | `/api/setup/reiniciar` | Eliminar las VMs base y reiniciar la preparación (conserva imagen y red). | — | `200` `{mensaje}` | `200`, `405`, `409`, `500` | Existe |
+| 12 | `POST` | `/api/setup/reiniciar` | Eliminar las VMs base y las instancias administradas, y reiniciar la preparación (conserva imagen y red). | — | `200` `{mensaje}` | `200`, `405`, `409`, `500` | Existe |
 | 13 | `POST` | `/api/setup/iniciar` | Arrancar la preparación automática (ISO, red, VMs, multiattach). | — | `202` `{mensaje}` | `202`, `405`, `409`, `500` | Existe |
 | 14 | `GET` | `/api/setup/stream` | Estado de la preparación en tiempo real (SSE). | — | `200` `text/event-stream` (`data: <SetupEstado JSON>`) | `200`, `405`, `500` | Existe |
 

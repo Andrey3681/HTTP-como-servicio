@@ -23,7 +23,7 @@ El orquestador expone la API y la consola en `:8080` y opera VirtualBox sobre la
 | **Git** | Clonar y versionar el proyecto | [git-scm.com/downloads](https://git-scm.com/downloads) |
 | **Oracle VirtualBox 7** | Hipervisor y `VBoxManage` en el PATH | [virtualbox.org/wiki/Downloads](https://www.virtualbox.org/wiki/Downloads) |
 | **OpenSSH** (`ssh`, `scp`, `ssh-keygen`) | Acceso y despliegue en las VM | Linux/macOS: preinstalado · Windows: [OpenSSH](https://learn.microsoft.com/windows-server/administration/openssh/openssh_install_firstuse) |
-| **Herramientas ISO** | Crear las semillas NoCloud | Linux: `genisoimage` ([paquete](https://packages.debian.org/stable/genisoimage)) o `xorriso` ([xorriso](https://www.gnu.org/software/xorriso/)) · Windows: `oscdimg` (incluido en Windows) |
+| **Herramientas ISO** | Crear las semillas NoCloud | Linux: `genisoimage` ([paquete](https://packages.debian.org/stable/genisoimage)) o `xorriso` ([xorriso](https://www.gnu.org/software/xorriso/)) · Windows: `oscdimg` si está disponible; si no, generador nativo incluido |
 
 > Las VM **`ns`** y **`ApacheServer`** no se instalan a mano: las crea la preparación inicial. Lo mismo aplica a la imagen cloud, la red host-only y el disco `multiattach`.
 

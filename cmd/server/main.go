@@ -128,6 +128,8 @@ func main() {
 		SSHKeyPath: filepath.Join(layout.SSHDir, "id_ed25519"),
 	})
 
+	setupService.SetResetHook(instanceService.DeleteAll)
+
 	// 5. Inicializar manejadores HTTP
 	instanceHandler := handlers.NewInstanceHandler(orchestrator, instanceService, logBroker)
 	dnsHandler := handlers.NewDnsHandler(dns, *domainZone, logBroker)

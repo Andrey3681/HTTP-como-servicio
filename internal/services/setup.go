@@ -58,6 +58,7 @@ type SetupService struct {
 	sshReady     map[string]bool
 	completed    map[domain.SetupStepID]bool
 	baseDisk     string
+	resetHook    func(context.Context) error
 	progressLog  map[domain.SetupStepID]time.Time
 	subs         map[int]chan domain.SetupState
 	nextSub      int
@@ -145,6 +146,14 @@ func (s *SetupService) BaseDiskPath() string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.baseDisk
+}
+
+// SetResetHook registra la limpieza que se ejecuta antes de reiniciar el
+// entorno (por ejemplo, eliminar todas las instancias administradas).
+func (s *SetupService) SetResetHook(hook func(context.Context) error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.resetHook = hook
 }
 
 // GuestUser retorna el usuario configurado para los invitados.
@@ -338,8 +347,16 @@ func (s *SetupService) Reiniciar(ctx context.Context) error {
 		return ErrSetupEjecutando
 	}
 	cfg := s.cfg
+	hook := s.resetHook
 	s.mu.Unlock()
 
+	// Reiniciar elimina también las instancias administradas: sus discos
+	// diferenciales mantienen vivo el disco base y bloquean la clonación.
+	if hook != nil {
+		if err := hook(ctx); err != nil {
+			return fmt.Errorf("no se pudieron eliminar las instancias antes de reiniciar: %w", err)
+		}
+	}
 	if err := s.prov.ResetEnvironment(ctx, cfg); err != nil {
 		return err
 	}

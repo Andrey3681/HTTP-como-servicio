@@ -289,6 +289,20 @@ func (s *InstanceService) GetAccess(ctx context.Context, id string) (domain.Inst
 	}, nil
 }
 
+// DeleteAll elimina todas las instancias del inventario (VM, DNS y registro).
+func (s *InstanceService) DeleteAll(ctx context.Context) error {
+	items, err := s.repo.FindAll(ctx)
+	if err != nil {
+		return err
+	}
+	for _, inst := range items {
+		if err := s.DeleteInstance(ctx, inst.ID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // DeleteInstance apaga y destruye la máquina virtual, remueve el registro DNS y elimina el registro del inventario.
 func (s *InstanceService) DeleteInstance(ctx context.Context, id string) error {
 	inst, err := s.repo.FindByID(ctx, id)

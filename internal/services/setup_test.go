@@ -528,3 +528,30 @@ func TestSetupService_RestoresGuestUserFromState(t *testing.T) {
 		t.Errorf("expected guest user 'jorge', got %q", got)
 	}
 }
+
+func TestSetupService_ResetCleansInstancesBeforeResetting(t *testing.T) {
+	prov := &fakeProvisioner{}
+	svc := newService(t, prov, &fakeImages{})
+	configure(t, svc)
+
+	called := 0
+	svc.SetResetHook(func(context.Context) error {
+		called++
+		return nil
+	})
+	if err := svc.Reiniciar(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if called != 1 {
+		t.Errorf("expected the reset hook once, got %d", called)
+	}
+	found := false
+	for _, call := range prov.calls {
+		if call == "reset" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected the environment to be reset, got %v", prov.calls)
+	}
+}

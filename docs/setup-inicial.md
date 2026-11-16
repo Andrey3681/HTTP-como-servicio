@@ -36,7 +36,7 @@ VBoxManage convertfromraw debian-13-generic-amd64.raw debian-13-generic-amd64.vd
 VBoxManage modifymedium disk <vm>.vdi --resize 8192
 ```
 
-Reiniciar la preparación elimina solo las copias y las semillas; el `.raw` y el VDI base se conservan.
+Reiniciar la preparación elimina las copias de las VM base, **las instancias administradas** y las semillas; la imagen `.raw` descargada y la red se conservan. El disco base registrado se libera antes de clonarlo de nuevo, de modo que el reinicio es idempotente.
 
 ---
 
@@ -110,7 +110,7 @@ La contraseña solo se mantiene en memoria y se usa para renderizar las semillas
 | `GET` | `/api/setup/estado` | Estado completo (pasos, progreso, red, imagen y error) |
 | `POST` | `/api/setup/configuracion` | Valida y guarda usuario y contraseña |
 | `POST` | `/api/setup/iniciar` | Arranca la preparación (`409` si falta configuración o ya corre) |
-| `POST` | `/api/setup/reiniciar` | Elimina las VMs base y sus semillas, limpia el progreso y redetecta (conserva imagen y red) |
+| `POST` | `/api/setup/reiniciar` | Elimina las VMs base, las instancias administradas y sus semillas, limpia el progreso y redetecta (conserva imagen y red) |
 | `GET` | `/api/setup/stream` | SSE con una instantánea del estado por cada cambio |
 
 Mientras no esté completa, la consola queda bloqueada y la API rechaza escrituras con `409`.
@@ -136,7 +136,7 @@ La aplicación no lee ni escribe fuera de este directorio.
 ## 7. Requisitos
 
 - VirtualBox 7.x con `VBoxManage` en el `PATH`.
-- `genisoimage` o `mkisofs` para crear las semillas en Linux/macOS; en Windows, `oscdimg` (Windows ADK).
+- `genisoimage` o `mkisofs` para crear las semillas en Linux/macOS; en Windows, `oscdimg` si está disponible o el generador nativo.
 - Internet la primera vez (imagen y paquetes).
 - Sin privilegios de administrador: no se reconfiguran interfaces del host.
 - Las VM base usan una NIC NAT temporal para instalar paquetes; las instancias aprovisionadas solo llevan la NIC host-only.

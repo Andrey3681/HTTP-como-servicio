@@ -4,7 +4,7 @@ Esta guía contiene las instrucciones detalladas para inicializar, estructurar y
 
 El nuevo proyecto adopta y refina el estándar de ingeniería, calidad y automatización de `vm-console-automation`, aplicando **Arquitectura Hexagonal en Go**, ciclo de desarrollo **Docs → Tests → Implementación (TDD)**, gestión automatizada con **Taskfile**, documentación técnica en **Markdown + PlantUML + OpenAPI**, informe académico formal en **LaTeX (IEEEtran)** y un conjunto de **Skills para Agentes de IA (`.agents/skills`)** adaptadas al hipervisor VirtualBox con discos multiconexión y al servidor DNS Bind9.
 
-> **Nota:** las direcciones `192.168.10.x` de esta guía son ilustrativas. La implementación deriva la subred de la interfaz host-only que asigna VirtualBox (DNS en `.10`, plantilla en `.11` y DHCP en `.10–.199`).
+> **Nota:** las direcciones `192.168.10.x` de esta guía son ilustrativas. La implementación deriva la subred de la interfaz host-only que asigna VirtualBox (DNS en `.10`, plantilla en `.11` y DHCP en `.100–.199`).
 
 ---
 
@@ -331,20 +331,20 @@ Para garantizar que los agentes de IA (Antigravity, Claude, Copilot) operen con 
 - **Directrices y Procedimientos Técnicos:**
   1. **Estructura de Zona:**
      - Dominio raíz del laboratorio: `cloud.local.`
-     - Servidor de nombres: `ns.cloud.local.` (`192.168.10.10`).
+     - Servidor de nombres: `ns.cloud.local.` (`<subred> + .10`, derivado de la interfaz host-only).
   2. **Mecanismos de Actualización Dinámica:**
      - **Opción A (Recomendada - RFC 2136 vía `nsupdate`):**
        Uso de `nsupdate` con clave TSIG compartida para insertar y remover registros `A` de forma transaccional y sin reiniciar el servicio `named`.
        ```text
-       server 192.168.10.10
+       server <ip-dns>
        zone cloud.local.
-       update add paisajes.cloud.local. 300 A 192.168.10.30
+       update add paisajes.cloud.local. 300 A <ip-dhcp>
        send
        ```
      - **Opción B (Automatización por SSH / Script Remoto):**
        Invocación de comandos en la VM `ns` mediante el puerto `Executor` o SSH para actualizar el archivo de zona y ejecutar `rndc reload cloud.local.`.
   3. **Verificación Automatizada de Resolución:**
-     - Invocación de `dig @192.168.10.10 <hostname>.cloud.local +short` para confirmar la propagación antes de declarar completado el aprovisionamiento.
+     - Invocación de `dig @<ip-dns> <hostname>.cloud.local +short` para confirmar la propagación antes de declarar completado el aprovisionamiento.
   4. **Eliminación de Registros:**
      - Eliminación idempotente del registro `A` cuando se elimina la instancia.
 
@@ -494,7 +494,7 @@ Conforme a las diapositivas y requerimientos del proyecto parcial, la interfaz w
 ### 7.2 Tablero de Control de Instancias Disponibles
 Tabla dinámica actualizada que muestra las instancias activas:
 - **URL / Enlace Directo:** Hipervínculo con formato `http://<host>.cloud.local` que abre el sitio desplegado en una nueva pestaña.
-- **Dirección IP:** Dirección IPv4 asignada a la instancia (ej. `192.168.10.30/24`).
+- **Dirección IP:** Dirección IPv4 asignada por DHCP (rango `.100-.199`, ej. `192.168.57.100/24`).
 - **Nombre de Host:** Nombre identificador único.
 - **Fecha y Hora de Creación:** Timestamp legible (ej. `2026-04-22 17:02:03`).
 - **Acción «Eliminar»:** Botón de acción (color rojo) que solicita confirmación y desmantela la máquina virtual y su registro DNS.

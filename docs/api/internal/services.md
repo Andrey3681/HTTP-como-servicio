@@ -16,6 +16,7 @@ Package services implementa los casos de uso y la lógica de orquestación trans
   - [func NewInstanceService\(repo ports.Repository, hypervisor ports.Hypervisor, dnsProvider ports.DnsProvider, logger ports.EventLogger, opts InstanceOptions\) \*InstanceService](<#NewInstanceService>)
   - [func \(s \*InstanceService\) Activate\(ctx context.Context, id string\) \(\*domain.Instance, error\)](<#InstanceService.Activate>)
   - [func \(s \*InstanceService\) Deactivate\(ctx context.Context, id string\) \(\*domain.Instance, error\)](<#InstanceService.Deactivate>)
+  - [func \(s \*InstanceService\) DeleteAll\(ctx context.Context\) error](<#InstanceService.DeleteAll>)
   - [func \(s \*InstanceService\) DeleteInstance\(ctx context.Context, id string\) error](<#InstanceService.DeleteInstance>)
   - [func \(s \*InstanceService\) GetAccess\(ctx context.Context, id string\) \(domain.InstanceAccess, error\)](<#InstanceService.GetAccess>)
   - [func \(s \*InstanceService\) GetInstance\(ctx context.Context, id string\) \(\*domain.Instance, error\)](<#InstanceService.GetInstance>)
@@ -36,6 +37,7 @@ Package services implementa los casos de uso y la lógica de orquestación trans
   - [func \(s \*SetupService\) Iniciar\(ctx context.Context\) error](<#SetupService.Iniciar>)
   - [func \(s \*SetupService\) Network\(\) domain.NetworkConfig](<#SetupService.Network>)
   - [func \(s \*SetupService\) Reiniciar\(ctx context.Context\) error](<#SetupService.Reiniciar>)
+  - [func \(s \*SetupService\) SetResetHook\(hook func\(context.Context\) error\)](<#SetupService.SetResetHook>)
   - [func \(s \*SetupService\) Subscribe\(\) \(\<\-chan domain.SetupState, func\(\)\)](<#SetupService.Subscribe>)
 
 
@@ -112,8 +114,17 @@ func (s *InstanceService) Deactivate(ctx context.Context, id string) (*domain.In
 
 Deactivate apaga una instancia activa sin destruirla ni eliminar su DNS.
 
+<a name="InstanceService.DeleteAll"></a>
+### func \(\*InstanceService\) [DeleteAll](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L293>)
+
+```go
+func (s *InstanceService) DeleteAll(ctx context.Context) error
+```
+
+DeleteAll elimina todas las instancias del inventario \(VM, DNS y registro\).
+
 <a name="InstanceService.DeleteInstance"></a>
-### func \(\*InstanceService\) [DeleteInstance](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L293>)
+### func \(\*InstanceService\) [DeleteInstance](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/instance.go#L307>)
 
 ```go
 func (s *InstanceService) DeleteInstance(ctx context.Context, id string) error
@@ -210,7 +221,7 @@ type ProvisionRequest struct {
 ```
 
 <a name="SetupService"></a>
-## type [SetupService](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L45-L64>)
+## type [SetupService](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L45-L65>)
 
 SetupService orquesta la configuración inicial del laboratorio y publica su estado a los suscriptores en tiempo real.
 
@@ -221,7 +232,7 @@ type SetupService struct {
 ```
 
 <a name="NewSetupService"></a>
-### func [NewSetupService](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L67>)
+### func [NewSetupService](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L68>)
 
 ```go
 func NewSetupService(cfg domain.SetupConfig, prov ports.SetupProvisioner, images ports.ImageStore, logger ports.EventLogger, stateFile string) *SetupService
@@ -230,7 +241,7 @@ func NewSetupService(cfg domain.SetupConfig, prov ports.SetupProvisioner, images
 NewSetupService crea el servicio de la preparación con el estado inicial pendiente.
 
 <a name="SetupService.ActualizarDeteccion"></a>
-### func \(\*SetupService\) [ActualizarDeteccion](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L225>)
+### func \(\*SetupService\) [ActualizarDeteccion](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L234>)
 
 ```go
 func (s *SetupService) ActualizarDeteccion(ctx context.Context) error
@@ -239,7 +250,7 @@ func (s *SetupService) ActualizarDeteccion(ctx context.Context) error
 ActualizarDeteccion inspecciona el host y decide si hace falta configuración.
 
 <a name="SetupService.BaseDiskPath"></a>
-### func \(\*SetupService\) [BaseDiskPath](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L144>)
+### func \(\*SetupService\) [BaseDiskPath](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L145>)
 
 ```go
 func (s *SetupService) BaseDiskPath() string
@@ -248,7 +259,7 @@ func (s *SetupService) BaseDiskPath() string
 BaseDiskPath retorna la ruta persistida del disco base multiconexión.
 
 <a name="SetupService.Configurar"></a>
-### func \(\*SetupService\) [Configurar](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L116>)
+### func \(\*SetupService\) [Configurar](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L117>)
 
 ```go
 func (s *SetupService) Configurar(in domain.SetupInput) error
@@ -257,7 +268,7 @@ func (s *SetupService) Configurar(in domain.SetupInput) error
 Configurar valida y aplica los datos del formulario de la preparación.
 
 <a name="SetupService.Estado"></a>
-### func \(\*SetupService\) [Estado](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L109>)
+### func \(\*SetupService\) [Estado](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L110>)
 
 ```go
 func (s *SetupService) Estado() domain.SetupState
@@ -266,7 +277,7 @@ func (s *SetupService) Estado() domain.SetupState
 Estado retorna una copia de la instantánea actual.
 
 <a name="SetupService.GuestUser"></a>
-### func \(\*SetupService\) [GuestUser](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L151>)
+### func \(\*SetupService\) [GuestUser](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L160>)
 
 ```go
 func (s *SetupService) GuestUser() string
@@ -275,7 +286,7 @@ func (s *SetupService) GuestUser() string
 GuestUser retorna el usuario configurado para los invitados.
 
 <a name="SetupService.Iniciar"></a>
-### func \(\*SetupService\) [Iniciar](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L308>)
+### func \(\*SetupService\) [Iniciar](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L317>)
 
 ```go
 func (s *SetupService) Iniciar(ctx context.Context) error
@@ -284,7 +295,7 @@ func (s *SetupService) Iniciar(ctx context.Context) error
 Iniciar arranca la configuración inicial en segundo plano.
 
 <a name="SetupService.Network"></a>
-### func \(\*SetupService\) [Network](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L137>)
+### func \(\*SetupService\) [Network](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L138>)
 
 ```go
 func (s *SetupService) Network() domain.NetworkConfig
@@ -293,7 +304,7 @@ func (s *SetupService) Network() domain.NetworkConfig
 Network retorna la red host\-only detectada o derivada.
 
 <a name="SetupService.Reiniciar"></a>
-### func \(\*SetupService\) [Reiniciar](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L334>)
+### func \(\*SetupService\) [Reiniciar](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L343>)
 
 ```go
 func (s *SetupService) Reiniciar(ctx context.Context) error
@@ -301,8 +312,17 @@ func (s *SetupService) Reiniciar(ctx context.Context) error
 
 Reiniciar elimina las VMs base, limpia el progreso y vuelve a detectar el entorno.
 
+<a name="SetupService.SetResetHook"></a>
+### func \(\*SetupService\) [SetResetHook](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L153>)
+
+```go
+func (s *SetupService) SetResetHook(hook func(context.Context) error)
+```
+
+SetResetHook registra la limpieza que se ejecuta antes de reiniciar el entorno \(por ejemplo, eliminar todas las instancias administradas\).
+
 <a name="SetupService.Subscribe"></a>
-### func \(\*SetupService\) [Subscribe](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L158>)
+### func \(\*SetupService\) [Subscribe](<https://github.com/Andrey3681/httpaas-orchestrator/blob/main/internal/services/setup.go#L167>)
 
 ```go
 func (s *SetupService) Subscribe() (<-chan domain.SetupState, func())

@@ -207,6 +207,11 @@ func (p *Provisioner) CreateVM(ctx context.Context, cfg domain.SetupConfig, vmNa
 		return p.attachBaseDisk(ctx, cfg, vmName, baseVDI)
 	}
 
+	// Si quedó una carpeta de un intento anterior (el .vbox existe pero la VM
+	// no está registrada), se descarta antes de crear.
+	if folder, err := p.defaultMachineFolder(ctx); err == nil {
+		_ = os.RemoveAll(filepath.Join(folder, vmName))
+	}
 	if _, err := p.vbox(ctx, "createvm", "--name", vmName, "--ostype", "Debian13_64", "--register"); err != nil {
 		return "", err
 	}
@@ -257,17 +262,20 @@ func (p *Provisioner) attachBaseDisk(ctx context.Context, cfg domain.SetupConfig
 		return "", err
 	}
 	diskPath := filepath.Join(folder, vmName+".vdi")
-	if _, statErr := os.Stat(diskPath); statErr == nil {
-		// Copia previa (posiblemente registrada o con UUID duplicado): se
-		// desconecta, se desregistra y se descarta; el clon nuevo recibe un
-		// UUID propio.
-		_, _ = p.vbox(ctx, "storageattach", vmName,
-			"--storagectl", "SATA", "--port", "0", "--device", "0",
-			"--type", "hdd", "--medium", "none")
-		_, _, _ = p.executor.Execute(ctx, vboxBinary, "closemedium", "disk", diskPath, "--delete")
-		if err := os.Remove(diskPath); err != nil && !os.IsNotExist(err) {
-			return "", fmt.Errorf("no se pudo reemplazar el disco previo: %w", err)
+	// Se desconecta siempre el destino y se libera cualquier medio previo
+	// registrado en esa ruta, exista o no el archivo: si no, clonemedium no
+	// puede registrar el nuevo UUID.
+	_, _ = p.vbox(ctx, "storageattach", vmName,
+		"--storagectl", "SATA", "--port", "0", "--device", "0",
+		"--type", "hdd", "--medium", "none")
+	if uuid, ok := p.findRegisteredMedium(ctx, diskPath); ok {
+		p.purgeMediumChildren(ctx, uuid)
+		if _, stderr, err := p.executor.Execute(ctx, vboxBinary, "closemedium", "disk", uuid, "--delete"); err != nil {
+			return "", fmt.Errorf("el disco %s sigue registrado y no se pudo liberar: %w (%s). Elimina las instancias que dependen de él", diskPath, err, strings.TrimSpace(string(stderr)))
 		}
+	}
+	if err := os.Remove(diskPath); err != nil && !os.IsNotExist(err) {
+		return "", fmt.Errorf("no se pudo reemplazar el disco previo: %w", err)
 	}
 	if _, err := p.vbox(ctx, "clonemedium", "disk", baseVDI, diskPath, "--format", "VDI"); err != nil {
 		return "", fmt.Errorf("fallo duplicando el VDI base: %w", err)
@@ -285,6 +293,66 @@ func (p *Provisioner) attachBaseDisk(ctx context.Context, cfg domain.SetupConfig
 		return "", err
 	}
 	return diskPath, nil
+}
+
+// defaultMachineFolder retorna la carpeta por defecto de VirtualBox.
+func (p *Provisioner) defaultMachineFolder(ctx context.Context) (string, error) {
+	out, err := p.vbox(ctx, "list", "systemproperties")
+	if err != nil {
+		return "", err
+	}
+	for _, line := range strings.Split(out, "\n") {
+		if strings.HasPrefix(line, "Default machine folder:") {
+			return strings.TrimSpace(strings.TrimPrefix(line, "Default machine folder:")), nil
+		}
+	}
+	return "", fmt.Errorf("VirtualBox no reporta la carpeta de máquinas")
+}
+
+// purgeMediumChildren elimina los discos diferenciales registrados cuyo padre
+// es el medio indicado, para poder liberar el disco base.
+func (p *Provisioner) purgeMediumChildren(ctx context.Context, parentUUID string) {
+	out, err := p.vbox(ctx, "list", "hdds")
+	if err != nil {
+		return
+	}
+	var uuid string
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "UUID:") {
+			uuid = strings.TrimSpace(strings.TrimPrefix(line, "UUID:"))
+			continue
+		}
+		if strings.HasPrefix(line, "Parent UUID:") && strings.TrimSpace(strings.TrimPrefix(line, "Parent UUID:")) == parentUUID && uuid != "" {
+			_, _, _ = p.executor.Execute(ctx, vboxBinary, "closemedium", "disk", uuid, "--delete")
+		}
+	}
+}
+
+// findRegisteredMedium busca en "list hdds" un medio registrado en la ruta
+// indicada y retorna su UUID, aunque el archivo ya no exista.
+func (p *Provisioner) findRegisteredMedium(ctx context.Context, diskPath string) (string, bool) {
+	out, err := p.vbox(ctx, "list", "hdds")
+	if err != nil {
+		return "", false
+	}
+	want := filepath.Clean(diskPath)
+	var uuid string
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "UUID:") {
+			uuid = strings.TrimSpace(strings.TrimPrefix(line, "UUID:"))
+			continue
+		}
+		if !strings.HasPrefix(line, "Location:") {
+			continue
+		}
+		loc := filepath.Clean(strings.TrimSpace(strings.TrimPrefix(line, "Location:")))
+		if strings.EqualFold(loc, want) {
+			return uuid, uuid != ""
+		}
+	}
+	return "", false
 }
 
 // vmRunning indica si la máquina está en ejecución.

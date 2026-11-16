@@ -375,14 +375,15 @@ func TestCreateVMReplacesStaleDisk(t *testing.T) {
 	exec := &fakeExecutor{responses: map[string]string{
 		"VBoxManage list vms":                        `"ns" {uuid}`,
 		"VBoxManage showvminfo ns --machinereadable": "CfgFile=\"" + filepath.Join(folder, "ns.vbox") + "\"\nVMState=\"poweroff\"\n",
+		"VBoxManage list hdds":                       "UUID: stale-uuid\nLocation: " + disk + "\n",
 	}}
 	prov := provisioner.NewProvisioner(exec)
 
 	if _, err := prov.CreateVM(context.Background(), setupConfig(), "ns", "vboxnet1", base); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !exec.contains("closemedium disk " + disk) {
-		t.Errorf("expected the stale disk to be unregistered, got %v", exec.calls)
+	if !exec.contains("closemedium disk stale-uuid --delete") {
+		t.Errorf("expected the stale disk to be unregistered by UUID, got %v", exec.calls)
 	}
 	if !exec.contains("clonemedium disk " + base + " " + disk) {
 		t.Errorf("expected a fresh clone, got %v", exec.calls)

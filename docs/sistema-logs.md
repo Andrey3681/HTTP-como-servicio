@@ -34,7 +34,7 @@ Representación JSON (contrato):
   "nivel": "INFO",
   "componente": "orchestrator",
   "mensaje": "Aprovisionamiento completado",
-  "campos": {"instancia": "paisajes", "ip": "192.168.10.30/24"}
+  "campos": {"instancia": "paisajes", "ip": "192.168.57.100/24"}
 }
 ```
 
